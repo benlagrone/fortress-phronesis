@@ -1,0 +1,36 @@
+%% Services run inside Docker network `fortress-phronesis-net`
+%% Create it with: `docker network create fortress-phronesis-net`
+graph TD
+    BV[Bible Verse Prompt]
+    MT[Mortgage Topic Prompt]
+    AK[Animal Safari Kids Prompt]
+
+    subgraph CLIENTS[External Clients]
+        BV
+        MT
+        AK
+    end
+
+    subgraph NET[Docker Network: fortress-phronesis-net]
+        WEB[phronesis-webui\nPort 7861]
+        NGINX[Image Orchestrator Web\nnginx:alpine @ 8080]
+        API[Image Orchestrator SD API\nPort 8000]
+        VIDEO[video-gen Service\nPort 8001]
+        RAPI[render-api Service\nPort 8082]
+        RWORK[render-worker]
+        XTTS[local-xtts Voice Service\nPort 5002]
+        OLLAMA[Ollama LLM Service\nPort 11434]
+    end
+
+    CLIENTS -->|HTTP POST| WEB
+    WEB -->|Reverse proxy| NGINX
+    NGINX -->|REST calls| API
+
+    API -->|Scene prompting| OLLAMA
+    API -->|Narration text| XTTS
+    API -->|Frame jobs| RAPI
+    RAPI -->|Dispatch| RWORK
+    RWORK -->|Rendered frames| RAPI
+    API -->|Assemble scenes| VIDEO
+    VIDEO -->|Video segments| API
+    API -->|Responses| WEB

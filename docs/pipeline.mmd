@@ -1,0 +1,19 @@
+%% Some pipeline steps run inside Docker network `fortress-phronesis-net`
+%% Create it with: `docker network create fortress-phronesis-net`
+flowchart TD
+    A[Start Video Job] --> B{Do I have scene prompts?}
+    B -- No --> C[Generate prompt with PromptAgent]
+    B -- Yes --> D
+
+    %% Docker network boundary for service calls
+    subgraph NET[Docker Network: fortress-phronesis-net]
+        D[Call ImageGen API]
+        E[Call Narration API]
+        F[Call MusicGen API]
+        G[Call FFmpeg Stitch API]
+    end
+
+    D --> E
+    E --> F
+    F --> G
+    G --> H[Mark Scene Done]

@@ -1,0 +1,71 @@
+graph TD
+
+U1["End User / Browser"]
+U1 -->|HTTPS 443| P1
+
+%% ─── NGINX FRONT (CONTABO) ──────────────────
+subgraph P1["🧭 /etc/nginx/ (Contabo 89.117.151.145)"]
+  P1a["sites-enabled/askmortgageauthority.com (conflicts present)"]
+  P1b["sites-enabled/chat.askmortgageauthority.com (overridden)"]
+  P1c["sites-enabled/pericopeai.com"]
+  P1d["sites-enabled/auth.pericopeai.com.conf"]
+end
+
+%% ─── WORDPRESS (CONTABO) ────────────────────
+subgraph F1["🎨 WordPress /var/www/askmortgageauthority/"]
+  F1a["Apache php-fpm on 8080"]
+  F1b["wp-config.php → DB_HOST=localhost"]
+end
+
+P1 -->|proxy to 8080| F1
+
+%% ─── CHAT API (CONTABO) ─────────────────────
+subgraph P2["🤖 Chat API /var/www/chat-api/app/"]
+  P2a["main.py (FastAPI uvicorn)"]
+  P2b["Port 9001 (host process, not Docker)"]
+end
+
+P1b -->|should proxy| P2a
+
+%% ─── AUTH (CONTABO) ─────────────────────────
+subgraph A1["🔐 Keycloak"]
+  A1a["Host Java (8080)"]
+  A1b["Docker container (8081) — duplicate"]
+end
+
+P1d --> A1a
+P2a -->|OIDC| A1a
+
+%% ─── DATABASE (CONTABO) ─────────────────────
+subgraph D1["🗄️ MariaDB localhost:3306"]
+  D1a["AMA WordPress DB (local)"]
+  D1b["PericopeAI DB"]
+end
+
+F1b --> D1a
+P2a -->|likely uses| D1
+
+%% ─── HOSTGATOR EXTERNALS ────────────────────
+subgraph H1["🌐 HostGator 50.6.160.246"]
+  H1a["calculator.askmortgageauthority.com (static JS)"]
+  H1b["crm.askmortgageauthority.com (Laravel API)"]
+  H1c["MySQL (CRM + calculators)"]
+end
+
+U1 -->|calculator| H1a
+F1 -->|forms/redirects| H1b
+H1b --> H1c
+
+%% ─── FLOW SUMMARY ───────────────────────────
+U1 -->|AMA site| F1
+U1 -->|Chat| P1b
+P1a -->|conflict with| P1b
+F1 -->|may call CRM| H1b
+P2a -->|DB| D1
+A1a -->|tokens| P2a
+
+%% ─── NOTES ──────────────────────────────────
+%% - WordPress and Chat API run on Contabo; Apache 8080, FastAPI 9001.
+%% - Nginx vhost conflicts cause /chat to hit WordPress 404.
+%% - Two Keycloaks exist (8080 host, 8081 Docker); pick one to keep.
+%% - HostGator still serves calculators + CRM + MySQL; AMA WP no longer uses HostGator DB.

@@ -1,0 +1,62 @@
+graph TD
+
+%% ─── ENTRYPOINTS ─────────────────────────────
+A1["🌐 pericopeai.com (Frontend + /api path)"]
+A2["🔐 auth.pericopeai.com (Keycloak realm)"]
+
+%% ─── NGINX CONFIGURATION ─────────────────────
+subgraph S1["🧭 /etc/nginx/sites-available/pericopeai.conf"]
+  S1a["location / → React build"]
+  S1b["location /api → proxy_pass 127.0.0.1:8000"]
+end
+
+A1 --> S1
+A2 -->|OIDC authority| S1
+
+%% ─── FRONTEND ────────────────────────────────
+subgraph S2["🎨 /var/www/pericopeai/"]
+  S2a["build/ → compiled React app"]
+  S2b["assets/ → images, fonts, JS bundles"]
+  S2c["config.json → Keycloak + API endpoints"]
+end
+
+S1a --> S2a
+S2a -->|calls /api| S1b
+
+%% ─── BACKEND (HOST PROCESS) ──────────────────
+subgraph S3["⚙️ /var/www/pericopeai.com/AugustineService/"]
+  S3a["main.py → FastAPI uvicorn"]
+  S3b["routes/auth.py → token exchange"]
+  S3c["routes/chat.py → chat + RAG"]
+  S3d[".env → secrets, DB creds, OIDC vars"]
+end
+
+S1b --> S3a
+S3b -->|OIDC| A2
+S3a -->|reads env| S3d
+
+%% ─── DATABASE ────────────────────────────────
+subgraph S4["🗄️ MariaDB localhost:3306"]
+  S4a["users"]
+  S4b["sessions"]
+  S4c["messages"]
+end
+
+S3a -->|SQLAlchemy| S4
+
+%% ─── AUTH SERVER ─────────────────────────────
+subgraph S5["🔐 Keycloak (two instances present)"]
+  S5a["Host Java → 8080 (active)"]
+  S5b["Docker → 8081 (duplicate)"]
+end
+
+A2 --> S5a
+S3b --> S5a
+
+%% ─── LOGICAL FLOW ────────────────────────────
+User["User Browser"] -->|visit pericopeai.com| A1
+User -->|login redirect| A2
+A1 -->|/api calls| S3a
+S3a -->|persist| S4
+S5a -->|tokens| S3a
+%% Note: API served via path /api on pericopeai.com (api.* subdomain unused).

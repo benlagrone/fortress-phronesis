@@ -1,0 +1,160 @@
+graph LR
+
+%% ===========================
+%% DNS LAYER
+%% ===========================
+
+subgraph DNS_ALL["DNS Records"]
+    DNS_P_MAIN["pericopeai.com -> 89.117.151.145"]
+    DNS_P_AUTH["auth.pericopeai.com -> 89.117.151.145"]
+
+    DNS_AMA_MAIN["askmortgageauthority.com -> 89.117.151.145"]
+    DNS_AMA_CHAT["chat.askmortgageauthority.com -> 89.117.151.145"]
+
+    DNS_AMA_CALC["calculator.askmortgageauthority.com -> 50.6.160.246"]
+
+    DNS_LP["lecrownproperties.com -> 50.6.160.246"]
+    DNS_LH["lecrownhomes.com -> 50.6.160.246"]
+    DNS_LD["lecrowndevelopment.com -> 50.6.160.246"]
+
+    DNS_EDE_MAIN["energydataexplorer.com -> 50.6.160.246"]
+    DNS_EDE_API["api.energydataexplorer.com -> 50.6.160.246"]
+
+    DNS_P_API["api.pericopeai.com missing"]
+    DNS_AMA_CRM["crm.askmortgageauthority.com missing"]
+    DNS_AMA_AUTH["auth.askmortgageauthority.com missing"]
+    DNS_AMA_CALCS["calculators.askmortgageauthority.com missing"]
+end
+
+
+%% ===========================
+%% CONTABO SERVER
+%% ===========================
+
+subgraph CONTABO["Contabo VPS 89.117.151.145"]
+
+    subgraph CT_WEB["Reverse Proxy"]
+        CT_WEB_P["vhost pericopeai.com"]
+        CT_WEB_AMA["vhost askmortgageauthority.com"]
+        CT_WEB_TLS["TLS Certificates"]
+    end
+
+    subgraph PERICOPE["PericopeAI"]
+        P_FE["Frontend Build"]
+        P_API["FastAPI Backend"]
+        P_DB["MariaDB"]
+    end
+
+    subgraph KC["Keycloak"]
+        KC_P["PericopeAI Realm"]
+        KC_AMA["AMA Realm"]
+    end
+
+    subgraph AMA_CONTABO["AMA on Contabo"]
+        AMA_WP["WordPress Frontend"]
+        AMA_CHAT["FastAPI Chat Service"]
+    end
+
+end
+
+
+%% ===========================
+%% HOSTGATOR SERVER
+%% ===========================
+
+subgraph HOSTGATOR["HostGator Shared Hosting"]
+
+    subgraph AMA_HG["AMA HostGator Services"]
+        AMA_CALC["Mortgage Calculators"]
+        AMA_CRM["Laravel CRM API"]
+    end
+
+    subgraph HG_DB["HostGator MySQL"]
+        HG_DB_WP["WordPress Tables"]
+        HG_DB_CRM["CRM Leads"]
+        HG_DB_CHAT["Chat Sessions"]
+    end
+
+    subgraph LE_CROWN["LeCrown Sites"]
+        LC_PROP["lecrownproperties.com"]
+        LC_HOMES["lecrownhomes.com"]
+        LC_DEV["lecrowndevelopment.com"]
+    end
+
+    subgraph EDE["Energy Data Explorer"]
+        EDE_MAIN_NODE["energydataexplorer.com"]
+        EDE_API_NODE["api.energydataexplorer.com"]
+    end
+
+end
+
+
+%% ===========================
+%% MAIL LAYER
+%% ===========================
+
+subgraph MAIL["Mail and SPF"]
+    SPF_P["PericopeAI SPF: 50.6.160.230 websitewelcome.com"]
+    SPF_AMA["AMA SPF: 50.6.160.230 websitewelcome.com"]
+    SPF_LE["LeCrown SPF: 50.6.160.230"]
+    SPF_EDE["EnergyDataExplorer SPF: 50.6.160.230"]
+
+    MX_P["MX pericopeai.com -> mail.pericopeai.com"]
+    MX_AMA["MX AMA -> mail.askmortgageauthority.com"]
+    MX_LE["MX LeCrown -> mail domain"]
+    MX_EDE["MX EDE -> mail.energydataexplorer.com"]
+end
+
+
+%% ===========================
+%% DNS TO SERVER LINKING
+%% ===========================
+
+DNS_P_MAIN --> CT_WEB_P
+DNS_P_AUTH --> KC_P
+
+DNS_AMA_MAIN --> CT_WEB_AMA
+DNS_AMA_CHAT --> AMA_CHAT
+
+DNS_AMA_CALC --> AMA_CALC
+
+DNS_LP --> LC_PROP
+DNS_LH --> LC_HOMES
+DNS_LD --> LC_DEV
+
+DNS_EDE_MAIN --> EDE_MAIN_NODE
+DNS_EDE_API --> EDE_API_NODE
+
+DNS_P_API --> P_API
+DNS_AMA_CRM --> AMA_CRM
+DNS_AMA_AUTH --> KC_AMA
+DNS_AMA_CALCS --> AMA_CALC
+
+
+%% ===========================
+%% REQUEST FLOWS
+%% ===========================
+
+USER["User Browser"]
+
+USER -->|visit pericopeai.com| CT_WEB_P
+CT_WEB_P --> P_FE
+CT_WEB_P -->|api calls| P_API
+P_API --> P_DB
+P_API --> KC_P
+
+USER -->|visit askmortgageauthority.com| CT_WEB_AMA
+CT_WEB_AMA --> AMA_WP
+
+USER -->|open chat| AMA_CHAT
+AMA_CHAT --> HG_DB_CHAT
+AMA_CHAT --> KC_AMA
+
+USER -->|calculator| AMA_CALC
+AMA_CALC -->|lead submit| AMA_CRM
+AMA_CRM --> HG_DB_CRM
+
+USER -->|visit LeCrown sites| LE_CROWN
+USER -->|visit energydataexplorer.com| EDE_MAIN_NODE
+EDE_MAIN_NODE --> EDE_API_NODE
+EDE_API_NODE --> HG_DB

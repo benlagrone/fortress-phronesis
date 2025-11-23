@@ -1,0 +1,83 @@
+graph TD
+
+%% ─── USER TRAFFIC ───────────────────────────────
+U["🌐 User Browser (pericopeai.com)"] -->|HTTPS 443| NGINX
+
+%% ─── NGINX REVERSE PROXY (HOST) ──────────────
+subgraph NGINX["🧭 NGINX Reverse Proxy (Host, Contabo)"]
+    N1["Ports 80/443 on 89.117.151.145"]
+    N2["/etc/nginx/sites-available/pericopeai.conf → routing"]
+    N3["/etc/letsencrypt/ → SSL certificates"]
+    N4["location / → serves React build from /var/www/pericopeai/"]
+    N5["location /api → proxy_pass http://127.0.0.1:8000"]
+    N6["location /auth → proxy_pass https://auth.pericopeai.com"]
+end
+
+%% ─── FRONTEND STATIC ────────────────────────────
+subgraph FRONTEND["🎨 React Frontend (Static Files)"]
+    F1["/var/www/pericopeai/build/ → React compiled app"]
+    F2["/var/www/pericopeai/assets/ → images, fonts, js bundles"]
+    F3["/var/www/pericopeai/config.json → Keycloak + API URLs"]
+end
+
+NGINX -->|serves static| F1
+
+%% ─── FASTAPI BACKEND (HOST PROCESS) ─────────────
+subgraph FASTAPI["⚙️ FastAPI Backend (Host process)"]
+    B1["/var/www/pericopeai.com/AugustineService/main.py → uvicorn"]
+    B2["routes/auth.py → Handles OIDC exchange"]
+    B3["routes/chat.py → Chat and RAG endpoints"]
+    B4["utils/token_handler.py → JWT parsing + refresh"]
+    B5["db/models.py → SQLAlchemy models"]
+    B6[".env → Secrets, DB creds, Keycloak config"]
+    B7["logs/ → Runtime logs"]
+end
+
+NGINX -->|proxy /api| FASTAPI
+FASTAPI -->|Port 8000| DB
+
+%% ─── DATABASE (HOST) ─────────────────────────
+subgraph DB["🗄️ MariaDB (Host)"]
+    D1["Port 3306 localhost"]
+    D2["/var/lib/mysql/users"]
+    D3["/var/lib/mysql/sessions"]
+    D4["/var/lib/mysql/messages"]
+    D5["/var/lib/mysql/persona_configs"]
+end
+
+FASTAPI -->|SQLAlchemy ORM| DB
+
+%% ─── KEYCLOAK INSTANCES ─────────────────────────
+subgraph KC["🔐 Keycloak (Two runtimes present)"]
+    K1["Host Java → 8080 (active)"]
+    K2["Docker container → 8081 (duplicate)"]
+    K3["/opt/keycloak/data/realms/pericope.json → Realm config"]
+    K4["/opt/keycloak/themes/pericope/ → Custom login theme"]
+    K5["/opt/keycloak/conf/keycloak.conf → Server config"]
+end
+
+FASTAPI -->|POST /token| KC
+U -->|Redirect /auth| KC
+
+%% ─── NETWORKING ─────────────────────────────────
+subgraph NET["🕸️ Host networking (Contabo)"]
+    NGINX -.->|localhost| FASTAPI
+    FASTAPI -.->|localhost| DB
+    KC -.->|8080/8081| NGINX
+    NGINX -.->|public| U
+end
+
+%% ─── FOLDER SUMMARY NODES ───────────────────────
+subgraph SUMMARY["📂 Folder → Function Mapping"]
+    S1["/etc/nginx/ → Reverse proxy + SSL configuration"]
+    S2["/var/www/pericopeai/ → Frontend build and static assets"]
+    S3["/var/www/pericopeai.com/AugustineService/ → FastAPI backend codebase"]
+    S4["/var/lib/mysql/ → Persistent database data"]
+    S5["/opt/keycloak/ → Identity provider realm + theme"]
+end
+
+NGINX --> S1
+FRONTEND --> S2
+FASTAPI --> S3
+DB --> S4
+KC --> S5
