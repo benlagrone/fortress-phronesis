@@ -1,0 +1,33 @@
+version: "3.9"
+
+networks:
+  pericope_net:
+    name: pericope_net
+
+services:
+  pericopeai-api:
+    build:
+      context: /opt/pericopeai-api            # clone backend repo here or update path
+      dockerfile: Dockerfile                  # update if named differently
+    env_file:
+      - /opt/pericopeai-api/.env              # ensure this exists and is sanitized
+    ports:
+      - "18000:8000"                          # host:container
+    networks:
+      - pericope_net
+    restart: unless-stopped
+
+  pericopeai-frontend:
+    build:
+      context: /opt/pericopeai-frontend       # clone frontend repo here or update path
+      dockerfile: Dockerfile                  # update if named differently
+    ports:
+      - "13080:80"                            # host:container
+    networks:
+      - pericope_net
+    restart: unless-stopped
+
+# Notes:
+# - Update the build contexts and dockerfile names to match your cloned repos.
+# - Ensure env files exist and contain rotated/safe values.
+# - Host ports 18000/13080 are chosen to avoid conflicts; update Nginx upstreams to point there after containers are healthy.

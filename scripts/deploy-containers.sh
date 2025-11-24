@@ -10,10 +10,14 @@ COMPOSE_FILE="docker-compose.pericope.yml"
 KEYCLOAK_CONTAINER="auth-keycloak-1"
 KEYCLOAK_DB_CONTAINER="kc-db"
 
-# Host ports to map container services onto
+# Host ports to map container services onto (must match docker-compose.pericope.yml)
 API_HOST_PORT=18000     # PericopeAI API
 FE_HOST_PORT=13080      # PericopeAI frontend
 CHAT_HOST_PORT=19001    # AMA Chat API (once added to compose)
+
+# Expected build contexts (update if your repos are elsewhere)
+API_CONTEXT="/opt/pericopeai-api"
+FE_CONTEXT="/opt/pericopeai-frontend"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -25,6 +29,15 @@ require_cmd() {
 }
 
 require_cmd docker
+
+echo "==> Checking build contexts"
+for path in "${API_CONTEXT}" "${FE_CONTEXT}"; do
+  if [ ! -d "${path}" ]; then
+    echo "Missing build context directory: ${path}" >&2
+    echo "Create/cloned repos there or update API_CONTEXT/FE_CONTEXT in this script and docker-compose.pericope.yml" >&2
+    exit 1
+  fi
+done
 
 echo "==> Ensuring network ${NETWORK} exists"
 if ! docker network ls --format '{{.Name}}' | grep -q "^${NETWORK}$"; then
