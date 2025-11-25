@@ -7,10 +7,10 @@ networks:
 services:
   pericopeai-api:
     build:
-      context: /opt/pericopeai-api            # clone backend repo here or update path
+      context: /root/workspace/AugustineService   # backend repo path
       dockerfile: Dockerfile                  # update if named differently
     env_file:
-      - /opt/pericopeai-api/.env              # ensure this exists and is sanitized
+      - /root/workspace/AugustineService/.env      # ensure this exists and is sanitized
     ports:
       - "18000:8000"                          # host:container
     networks:
@@ -19,7 +19,7 @@ services:
 
   pericopeai-frontend:
     build:
-      context: /opt/pericopeai-frontend       # clone frontend repo here or update path
+      context: /root/workspace/AugustineFE        # frontend repo path
       dockerfile: Dockerfile                  # update if named differently
     ports:
       - "13080:80"                            # host:container

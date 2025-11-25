@@ -16,8 +16,8 @@ FE_HOST_PORT=13080      # PericopeAI frontend
 CHAT_HOST_PORT=19001    # AMA Chat API (once added to compose)
 
 # Expected build contexts (update if your repos are elsewhere)
-API_CONTEXT="/opt/pericopeai-api"
-FE_CONTEXT="/opt/pericopeai-frontend"
+API_CONTEXT="/root/workspace/AugustineService"
+FE_CONTEXT="/root/workspace/AugustineFE"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
