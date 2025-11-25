@@ -71,19 +71,24 @@ echo "    docker compose -f ${COMPOSE_FILE} ps"
 cat <<EOF
 
 Next steps:
-1) Update host Nginx upstreams to the mapped ports:
+1) Test containers directly on mapped ports before touching Nginx:
+   curl -I http://127.0.0.1:${API_HOST_PORT}/docs    # API
+   curl -I http://127.0.0.1:${FE_HOST_PORT}           # Frontend
+   # Chat (once added): curl -I http://127.0.0.1:${CHAT_HOST_PORT}/docs
+
+2) Update host Nginx upstreams to the mapped ports (after tests pass):
    upstream pericope_api { server 127.0.0.1:${API_HOST_PORT}; }
    upstream pericope_fe  { server 127.0.0.1:${FE_HOST_PORT}; }
    upstream ama_chat     { server 127.0.0.1:${CHAT_HOST_PORT}; }  # when chat container added
 
-2) Routes:
+3) Routes:
    pericopeai.com:
      location /api { proxy_pass http://pericope_api; ... }
      location /    { proxy_pass http://pericope_fe; ... }
    chat.askmortgageauthority.com (or /chat):
      proxy_pass http://ama_chat;
 
-3) Reload Nginx after edits: nginx -t && nginx -s reload
+4) Reload Nginx after edits: nginx -t && nginx -s reload
 
-4) Stop old host uvicorn processes once traffic is flowing through containers.
+5) Stop old host uvicorn processes once traffic is flowing through containers.
 EOF
