@@ -13,7 +13,7 @@ services:
     env_file:
       - /root/workspace/AugustineService/.env      # ensure this exists and is sanitized
     ports:
-      - "18000:8000"                          # host:container
+      - "18000:8080"                          # host:container (uvicorn listens on 8080)
     networks:
       - pericope_net
     restart: unless-stopped
