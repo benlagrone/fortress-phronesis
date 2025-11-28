@@ -8,8 +8,8 @@
 - **Nginx:** fronting all Contabo domains; conflicting vhosts for AMA/chat (chat vhost overridden).
 - **Apache:** PHP for WordPress on 8080.
 - **WordPress:** `/var/www/askmortgageauthority/`; DB_HOST=localhost; DB `wordpress` (WooCommerce tables present).
-- **Chat API:** `/var/www/chat-api/app/main.py` (FastAPI on 9001); `.env` present but no DB_HOST/DB_NAME entries (only provider API keys).
-- **PericopeAI backend:** `/var/www/pericopeai.com/AugustineService/main.py`; `.env` points to HostGator MySQL (`MYSQL_HOST=gator4416.hostgator.com`, `MYSQL_DB=cwrihote_chatbook`, user specified).
+- **Chat API (host):** `/var/www/chat-api/app/main.py` (FastAPI on 9001); systemd `chat-api.service` runs uvicorn on 127.0.0.1:8000 (keep running).
+- **PericopeAI frontend+API (containerized):** `docker-compose.pericope.yml` → pericopeai-api (host port 18000 -> container 8080), pericopeai-frontend (host port 13080 -> container 80). Nginx proxies `/api` to 127.0.0.1:18000 and `/` to 127.0.0.1:13080. `.env` points to HostGator MySQL (`gator4416.hostgator.com`, DB `cwrihote_chatbook`).
 - **Keycloak:** two instances — host Java on 8080; Docker `auth-keycloak-1` on 8081 with Postgres DB (kc-db container).
 - **MariaDB:** 127.0.0.1:3306; only database present is `wordpress`.
 

@@ -8,41 +8,32 @@ subgraph NGINX["🧭 NGINX Reverse Proxy (Host, Contabo)"]
     N1["Ports 80/443 on 89.117.151.145"]
     N2["/etc/nginx/sites-available/pericopeai.conf → routing"]
     N3["/etc/letsencrypt/ → SSL certificates"]
-    N4["location / → serves React build from /var/www/pericopeai/"]
-    N5["location /api → proxy_pass http://127.0.0.1:8000"]
+    N4["location / → proxy_pass http://127.0.0.1:13080 (FE container)"]
+    N5["location /api → proxy_pass http://127.0.0.1:18000 (API container)"]
     N6["location /auth → proxy_pass https://auth.pericopeai.com"]
 end
 
-%% ─── FRONTEND STATIC ────────────────────────────
-subgraph FRONTEND["🎨 React Frontend (Static Files)"]
-    F1["/var/www/pericopeai/build/ → React compiled app"]
-    F2["/var/www/pericopeai/assets/ → images, fonts, js bundles"]
-    F3["/var/www/pericopeai/config.json → Keycloak + API URLs"]
+%% ─── FRONTEND (CONTAINER) ─────────────────────────
+subgraph FRONTEND["🎨 pericopeai-frontend (container)"]
+    F1["Build from /root/workspace/AugustineFE"]
+    F2["nginx inside container on :80 → host :13080"]
 end
 
-NGINX -->|serves static| F1
+NGINX -->|proxies / to FE| F1
 
-%% ─── FASTAPI BACKEND (HOST PROCESS) ─────────────
-subgraph FASTAPI["⚙️ FastAPI Backend (Host process)"]
-    B1["/var/www/pericopeai.com/AugustineService/main.py → uvicorn"]
-    B2["routes/auth.py → Handles OIDC exchange"]
+%% ─── FASTAPI BACKEND (CONTAINER) ─────────────
+subgraph FASTAPI["⚙️ pericopeai-api (container)"]
+    B1["/root/workspace/AugustineService → uvicorn on :8080 → host :18000"]
+    B2["routes/auth.py → OIDC exchange"]
     B3["routes/chat.py → Chat and RAG endpoints"]
-    B4["utils/token_handler.py → JWT parsing + refresh"]
-    B5["db/models.py → SQLAlchemy models"]
-    B6[".env → Secrets, DB creds, Keycloak config"]
-    B7["logs/ → Runtime logs"]
+    B4[".env → DB creds (HostGator), OIDC config"]
 end
 
 NGINX -->|proxy /api| FASTAPI
-FASTAPI -->|Port 8000| DB
 
-%% ─── DATABASE (HOST) ─────────────────────────
-subgraph DB["🗄️ MariaDB (Host)"]
-    D1["Port 3306 localhost"]
-    D2["/var/lib/mysql/users"]
-    D3["/var/lib/mysql/sessions"]
-    D4["/var/lib/mysql/messages"]
-    D5["/var/lib/mysql/persona_configs"]
+%% ─── DATABASE (REMOTE) ─────────────────--------
+subgraph DB["🗄️ HostGator MySQL (remote)"]
+    D1["DB: cwrihote_chatbook (per .env)"]
 end
 
 FASTAPI -->|SQLAlchemy ORM| DB

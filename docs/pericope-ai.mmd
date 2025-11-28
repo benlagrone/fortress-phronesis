@@ -5,53 +5,47 @@ A1["🌐 pericopeai.com (Frontend + /api path)"]
 A2["🔐 auth.pericopeai.com (Keycloak realm)"]
 
 %% ─── NGINX CONFIGURATION ─────────────────────
-subgraph S1["🧭 /etc/nginx/sites-available/pericopeai.conf"]
-  S1a["location / → React build"]
-  S1b["location /api → proxy_pass 127.0.0.1:8000"]
+subgraph S1["🧭 /etc/nginx/sites-available/pericopeai.conf (host)"]
+  S1a["location / → proxy_pass 127.0.0.1:13080 (FE container)"]
+  S1b["location /api → proxy_pass 127.0.0.1:18000 (API container)"]
 end
 
 A1 --> S1
 A2 -->|OIDC authority| S1
 
-%% ─── FRONTEND ────────────────────────────────
-subgraph S2["🎨 /var/www/pericopeai/"]
-  S2a["build/ → compiled React app"]
-  S2b["assets/ → images, fonts, JS bundles"]
-  S2c["config.json → Keycloak + API endpoints"]
+%% ─── FRONTEND (CONTAINER) ─────────────────────
+subgraph S2["🎨 pericopeai-frontend container"]
+  S2a["build from /root/workspace/AugustineFE"]
+  S2b["nginx in-container on :80 → mapped to host :13080"]
 end
 
 S1a --> S2a
-S2a -->|calls /api| S1b
 
-%% ─── BACKEND (HOST PROCESS) ──────────────────
-subgraph S3["⚙️ /var/www/pericopeai.com/AugustineService/"]
-  S3a["main.py → FastAPI uvicorn"]
-  S3b["routes/auth.py → token exchange"]
-  S3c["routes/chat.py → chat + RAG"]
-  S3d[".env → secrets, DB creds, OIDC vars"]
+%% ─── BACKEND (CONTAINER) ─────────────────────
+subgraph S3["⚙️ pericopeai-api container"]
+  S3a["main.py (FastAPI uvicorn) on :8080 → host :18000"]
+  S3b["routes/auth.py, routes/chat.py"]
+  S3c[".env → DB creds (HostGator), OIDC vars"]
 end
 
 S1b --> S3a
-S3b -->|OIDC| A2
-S3a -->|reads env| S3d
+S3a -->|OIDC| A2
 
 %% ─── DATABASE ────────────────────────────────
-subgraph S4["🗄️ MariaDB localhost:3306"]
-  S4a["users"]
-  S4b["sessions"]
-  S4c["messages"]
+subgraph S4["🗄️ HostGator MySQL (remote)"]
+  S4a["DB: cwrihote_chatbook (per .env)"]
 end
 
 S3a -->|SQLAlchemy| S4
 
 %% ─── AUTH SERVER ─────────────────────────────
 subgraph S5["🔐 Keycloak (two instances present)"]
-  S5a["Host Java → 8080 (active)"]
-  S5b["Docker → 8081 (duplicate)"]
+  S5a["Host Java → 8080"]
+  S5b["Docker → 8081 (auth-keycloak-1)"]
 end
 
 A2 --> S5a
-S3b --> S5a
+S3a --> S5a
 
 %% ─── LOGICAL FLOW ────────────────────────────
 User["User Browser"] -->|visit pericopeai.com| A1
