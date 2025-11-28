@@ -1,17 +1,30 @@
-version: "3.9"
-
 networks:
   pericope_net:
     external: true
     name: pericope_net
 
 services:
+  augustine-corpus-live:
+    # Use a prebuilt image (set CORPUS_IMAGE) or adjust to build from AugustineCorpus repo
+    image: ${CORPUS_IMAGE:-augustinecorpus:latest}
+    environment:
+      - CORPUS_VERSION=${CORPUS_VERSION:-live}
+      - INDEX_DIR=/app/indexes
+      - CORPUS_DATA_DIR=/app/texts
+    expose:
+      - "8001"                         # internal only; no host mapping
+    networks:
+      - pericope_net
+    restart: unless-stopped
+
   pericopeai-api:
     build:
       context: /root/workspace/AugustineService   # backend repo path
       dockerfile: Dockerfile                  # update if named differently
     env_file:
       - /root/workspace/AugustineService/.env      # ensure this exists and is sanitized
+    environment:
+      - CORPUS_API_URL=${CORPUS_API_URL:-http://augustine-corpus-live:8001}
     ports:
       - "18000:8080"                          # host:container (uvicorn listens on 8080)
     networks:
@@ -32,3 +45,4 @@ services:
 # - Update the build contexts and dockerfile names to match your cloned repos.
 # - Ensure env files exist and contain rotated/safe values.
 # - Host ports 18000/13080 are chosen to avoid conflicts; update Nginx upstreams to point there after containers are healthy.
+# - Corpus service is expected on the internal network at 8001; provide CORPUS_IMAGE or build/run via AugustineCorpus/docker-compose.corpus.yml.
