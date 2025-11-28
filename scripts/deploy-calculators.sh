@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Build and (re)deploy the calculators site container.
 # Assumptions:
-# - Calculators repo is cloned at /root/workspace/ama-calculators (update CALC_REPO if different)
+# - Calculators repo is cloned at /root/workspace/calculator.askmortgageauthority.com (update CALC_REPO if different)
 # - Dockerfile in that repo is as provided (serves FastAPI on :8000 inside container)
 # - Host port 18010 is free and used for mapping (change HOST_PORT if needed)
 # - Container name calculators-app (change CONTAINER if desired)
 
 set -euo pipefail
 
-CALC_REPO="/root/workspace/ama-calculators"  # TODO: update to your calculators repo path
+CALC_REPO="/root/workspace/calculator.askmortgageauthority.com"  # TODO: update to your calculators repo path
 COMPOSE_FILE="${CALC_REPO}/docker-compose.yml"
 IMAGE_NAME="ama-calculators"
 CONTAINER="calculators-app"

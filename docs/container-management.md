@@ -58,7 +58,7 @@ Network: external `pericope_net`
 - Main compose (`docker-compose.pericope.yml`) includes a placeholder `augustine-corpus-live` service; set `CORPUS_IMAGE` to your built image tag or deploy corpus via its own compose above.
 
 ## Calculators (askmortgageauthority)
-- Repo path assumed: `/root/workspace/ama-calculators`.
+- Repo path assumed: `/root/workspace/calculator.askmortgageauthority.com`.
 - From control pane:
   ```bash
   docker compose -f docker-compose.calculators.yml up -d --build
