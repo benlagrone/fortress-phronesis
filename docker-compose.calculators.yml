@@ -1,0 +1,14 @@
+services:
+  calculators:
+    container_name: calculators-app
+    build:
+      context: /root/workspace/ama-calculators   # adjust if the repo lives elsewhere
+      dockerfile: Dockerfile
+    ports:
+      - "18010:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -58,18 +58,19 @@ Network: external `pericope_net`
 - Main compose (`docker-compose.pericope.yml`) includes a placeholder `augustine-corpus-live` service; set `CORPUS_IMAGE` to your built image tag or deploy corpus via its own compose above.
 
 ## Calculators (askmortgageauthority)
-- Repo path assumed: `/root/workspace/ama-calculators` with `docker-compose.yml` exposing host `18010:8000`.
-- Deploy via script:
+- Repo path assumed: `/root/workspace/ama-calculators`.
+- From control pane:
+  ```bash
+  docker compose -f docker-compose.calculators.yml up -d --build
+  curl -I http://127.0.0.1:18010
+  ```
+- Or via script (uses repo compose if present, else build/run):
   ```bash
   bash scripts/deploy-calculators.sh
   curl -I http://127.0.0.1:18010
   ```
-- If using compose directly:
-  ```bash
-  docker compose -f /root/workspace/ama-calculators/docker-compose.yml up -d --build
-  ```
 - Nginx: proxy `calculators.askmortgageauthority.com` to `http://127.0.0.1:18010`.
-- Note: healthcheck in compose uses curl inside the container; ensure `curl` is installed in the image.
+- Healthcheck uses curl inside the container; ensure `curl` is in the image.
 
 ## Nginx Routing (host)
 - `/api` → 127.0.0.1:18000
