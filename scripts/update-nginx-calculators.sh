@@ -6,16 +6,11 @@ set -euo pipefail
 VHOST="/etc/nginx/sites-available/calculators.askmortgageauthority.com"
 BACKUP="${VHOST}.bak.$(date +%Y%m%d%H%M%S)"
 
+# Write HTTP-only vhost; add SSL after cert is issued.
 cat <<'CONF' | sudo tee "${VHOST}.new" >/dev/null
 server {
     listen 80;
-    listen 443 ssl;
     server_name calculators.askmortgageauthority.com;
-
-    ssl_certificate /etc/letsencrypt/live/calculators.askmortgageauthority.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/calculators.askmortgageauthority.com/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
         proxy_pass http://127.0.0.1:18010;
@@ -46,4 +41,5 @@ sudo nginx -s reload
 
 echo "Done. Verify:"
 echo "  curl -I http://127.0.0.1:18010"
-echo "  curl -I https://calculators.askmortgageauthority.com"
+echo "  curl -I http://calculators.askmortgageauthority.com"
+echo "After DNS and cert issuance, reintroduce ssl_certificate directives for HTTPS."
