@@ -19,7 +19,7 @@ services:
     depends_on:
       - wordpress
     ports:
-      - "8081:80" # host nginx can proxy_pass to http://127.0.0.1:8081
+      - "18020:80" # host nginx can proxy_pass to http://127.0.0.1:18020
     volumes:
       - wordpress_data:/var/www/html
       - /root/workspace/askmortgageauthority.com/data/wp-content:/var/www/html/wp-content
