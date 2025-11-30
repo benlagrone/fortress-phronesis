@@ -4,10 +4,8 @@
 
 set -euo pipefail
 
-if [ -z "${SSH_HOST:-}" ] || [ -z "${WP_PATH:-}" ]; then
-  echo "Set SSH_HOST (user@host) and WP_PATH (remote WP directory) before running." >&2
-  exit 1
-fi
+SSH_HOST="${SSH_HOST:-root@vmi2669159}"
+WP_PATH="${WP_PATH:-/var/www/askmortgageauthority}"
 
 DEST="/Users/benjaminlagrone/Documents/projects/askmortgageauthority.com/data"
 mkdir -p "${DEST}"
