@@ -26,23 +26,5 @@ services:
       - /root/workspace/askmortgageauthority.com/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
 
-  db:
-    image: mariadb:10.11
-    container_name: ama-wordpress-db
-    profiles: ["with-db"] # only if you want DB in Docker; otherwise omit this service
-    env_file:
-      - /root/workspace/askmortgageauthority.com/.env
-    environment:
-      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-changeme}"
-      MARIADB_DATABASE: "${WORDPRESS_DB_NAME:-wordpress}"
-      MARIADB_USER: "${WORDPRESS_DB_USER:-wordpress}"
-      MARIADB_PASSWORD: "${WORDPRESS_DB_PASSWORD:-wordpress}"
-    volumes:
-      - db_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    restart: unless-stopped
-
 volumes:
   wordpress_data:
-  db_data:

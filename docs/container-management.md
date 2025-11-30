@@ -108,7 +108,6 @@ Network: external `pericope_net`
 ## WordPress (containerized)
 - Compose file: `docker-compose.wordpress.yml` (builds `ama-wordpress:local` from `/root/workspace/askmortgageauthority.com`, runs nginx on host 8081).
 - Volumes: `wordpress_data` for core; `/root/workspace/askmortgageauthority.com/data/wp-content` bind-mounted for content.
-- DB: optional `db` service under profile `with-db`; otherwise set DB env in `/root/workspace/askmortgageauthority.com/.env` to point to existing DB.
-- Start (without bundled DB): `docker compose -f docker-compose.wordpress.yml up -d --build wordpress nginx`
-- Start with bundled DB: `docker compose --profile with-db -f docker-compose.wordpress.yml up -d --build`
+- DB: no bundled DB; set DB env in `/root/workspace/askmortgageauthority.com/.env` to point to your existing database.
+- Start: `docker compose -f docker-compose.wordpress.yml up -d --build wordpress nginx`
 - Host nginx: proxy askmortgageauthority.com to `http://127.0.0.1:8081` (keep TLS on host).
