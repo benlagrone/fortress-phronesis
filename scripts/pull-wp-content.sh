@@ -9,9 +9,10 @@ if [ -z "${SSH_HOST:-}" ] || [ -z "${WP_PATH:-}" ]; then
   exit 1
 fi
 
-mkdir -p ./data/wp-content
+DEST="/Users/benjaminlagrone/Documents/projects/askmortgageauthority.com/data/wp-content"
+mkdir -p "${DEST}"
 
-echo "==> Syncing wp-content from ${SSH_HOST}:${WP_PATH}/wp-content/ to ./data/wp-content/"
-rsync -avz --delete "${SSH_HOST}:${WP_PATH}/wp-content/" "./data/wp-content/"
+echo "==> Syncing wp-content from ${SSH_HOST}:${WP_PATH}/wp-content/ to ${DEST}/"
+rsync -avz --delete "${SSH_HOST}:${WP_PATH}/wp-content/" "${DEST}/"
 
-echo "Done. Local copy in ./data/wp-content"
+echo "Done. Local copy in ${DEST}"

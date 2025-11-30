@@ -9,9 +9,10 @@ if [ -z "${SSH_HOST:-}" ] || [ -z "${WP_PATH:-}" ]; then
   exit 1
 fi
 
-mkdir -p ./data
+DEST="/Users/benjaminlagrone/Documents/projects/askmortgageauthority.com/data"
+mkdir -p "${DEST}"
 
 echo "==> Pulling wp-config.php from ${SSH_HOST}:${WP_PATH}"
-scp "${SSH_HOST}:${WP_PATH}/wp-config.php" "./data/wp-config.php.backup"
+scp "${SSH_HOST}:${WP_PATH}/wp-config.php" "${DEST}/wp-config.php.backup"
 
-echo "Saved to ./data/wp-config.php.backup"
+echo "Saved to ${DEST}/wp-config.php.backup"
