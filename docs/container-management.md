@@ -72,6 +72,25 @@ Network: external `pericope_net`
 - Nginx: proxy `calculators.askmortgageauthority.com` to `http://127.0.0.1:18010`.
 - Healthcheck uses curl inside the container; ensure `curl` is in the image.
 
+## WordPress (askmortgageauthority.com) pull helpers
+- Set env vars:
+  ```bash
+  export SSH_HOST="root@vmi2669159"              # or your host
+  export WP_PATH="/var/www/askmortgageauthority" # path containing wp-config.php
+  ```
+- Pull wp-config:
+  ```bash
+  bash scripts/pull-wp-config.sh          # saves to ./data/wp-config.php.backup
+  ```
+- Pull wp-content:
+  ```bash
+  bash scripts/pull-wp-content.sh         # syncs to ./data/wp-content
+  ```
+- Dry-run wp-content (optional):
+  ```bash
+  rsync -avzn --delete "${SSH_HOST}:${WP_PATH}/wp-content/" "./data/wp-content/"
+  ```
+
 ## Nginx Routing (host)
 - `/api` → 127.0.0.1:18000
 - `/` → 127.0.0.1:13080
