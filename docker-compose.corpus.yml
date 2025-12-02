@@ -1,0 +1,54 @@
+# Corpus-only compose (run from control plane).
+name: pericopeai-corpus
+
+networks:
+  pericope_net:
+    external: true
+    name: pericope_net
+
+volumes:
+  corpus_indexes:
+
+services:
+  augustine-corpus-live:
+    build:
+      context: /root/workspace/AugustineCorpus
+      dockerfile: Dockerfile
+    env_file:
+      - /root/workspace/AugustineCorpus/.env
+    environment:
+      - CORPUS_VERSION=${CORPUS_VERSION:-live}
+      - INDEX_DIR=/app/indexes
+      - CORPUS_DATA_DIR=/app/texts
+      - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
+      - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
+    expose:
+      - "8001"  # internal only
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz', timeout=5).read()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - corpus_indexes:/app/texts
+    networks:
+      - pericope_net
+    restart: unless-stopped
+
+  pericopeai-indexer:
+    build:
+      context: /root/workspace/AugustineCorpus
+      dockerfile: Dockerfile
+    env_file:
+      - /root/workspace/AugustineCorpus/.env
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - ENV=${ENV:-dev}
+      - RUN_INDEXING_ON_START=1
+    command: ["python", "preprocess_and_index.py"]
+    profiles: ["index"]
+    restart: "no"
+    volumes:
+      - corpus_indexes:/app/texts
+    networks:
+      - pericope_net
