@@ -26,31 +26,40 @@ subgraph S3["⚙️ pericopeai-api container"]
   S3a["main.py (FastAPI uvicorn) on :8080 → host :18000"]
   S3b["routes/auth.py, routes/chat.py"]
   S3c[".env → DB creds (HostGator), OIDC vars"]
+  S3d["CORPUS_API_URL → http://augustine-corpus-1-0-0:8001"]
 end
 
 S1b --> S3a
 S3a -->|OIDC| A2
+S3a -->|corpus/search| S4a
+
+%% ─── CORPUS SERVICE ──────────────────────────
+subgraph S4["📚 Augustine Corpus (container)"]
+  S4a["augustine-corpus-1-0-0 → port 8001"]
+  S4b["Indexes volume: corpus_indexes"]
+end
 
 %% ─── DATABASE ────────────────────────────────
-subgraph S4["🗄️ HostGator MySQL (remote)"]
-  S4a["DB: cwrihote_chatbook (per .env)"]
+subgraph S5["🗄️ HostGator MySQL (remote)"]
+  S5a["DB: cwrihote_chatbook (per .env)"]
 end
 
-S3a -->|SQLAlchemy| S4
+S3a -->|SQLAlchemy| S5
 
 %% ─── AUTH SERVER ─────────────────────────────
-subgraph S5["🔐 Keycloak (two instances present)"]
-  S5a["Host Java → 8080"]
-  S5b["Docker → 8081 (auth-keycloak-1)"]
+subgraph S6["🔐 Keycloak (two instances present)"]
+  S6a["Host Java → 8080"]
+  S6b["Docker → 8081 (auth-keycloak-1)"]
 end
 
-A2 --> S5a
-S3a --> S5a
+A2 --> S6a
+S3a --> S6a
 
 %% ─── LOGICAL FLOW ────────────────────────────
 User["User Browser"] -->|visit pericopeai.com| A1
 User -->|login redirect| A2
 A1 -->|/api calls| S3a
-S3a -->|persist| S4
-S5a -->|tokens| S3a
+S3a -->|persist| S5
+S6a -->|tokens| S3a
+S3a -->|corpus calls| S4a
 %% Note: API served via path /api on pericopeai.com (api.* subdomain unused).

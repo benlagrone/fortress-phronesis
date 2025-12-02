@@ -1,22 +1,23 @@
 graph TD
 
 %% ─── ENTRYPOINTS ─────────────────────────────
-A1["🌐 askmortgageauthority.com (WordPress – Contabo)"]
+A1["🌐 askmortgageauthority.com (WordPress – Contabo, container)"]
 A2["🤖 chat.askmortgageauthority.com (Chat API – Contabo, FastAPI:9001)"]
-A3["📊 calculator.askmortgageauthority.com (Mortgage Calculators – HostGator)"]
+A3["📊 calculator.askmortgageauthority.com (Calculators – Contabo, container)"]
 A4["📨 crm.askmortgageauthority.com (CRM API – HostGator Laravel)"]
 A5["🔐 auth.askmortgageauthority.com (Keycloak – missing DNS)"]
 
 %% ─── CONTABO STACK ──────────────────────────
 subgraph C1["🧭 Contabo VPS 89.117.151.145"]
   subgraph C1a["Nginx reverse proxy (80/443)"]
-    C1a1["askmortgageauthority.com vhost (conflicts present)"]
-    C1a2["chat.askmortgageauthority.com vhost (overridden)"]
+    C1a1["askmortgageauthority.com vhost → WP container 18020"]
+    C1a2["chat.askmortgageauthority.com vhost → FastAPI 9001"]
     C1a3["auth.pericopeai.com vhost"]
   end
-  subgraph C1b["Apache php-fpm (8080)"]
-    C1b1["/var/www/askmortgageauthority/ → WordPress root"]
-    C1b2["wp-config.php → DB_HOST=localhost"]
+  subgraph C1b["Containers"]
+    C1b1["ama-wordpress-nginx → host 18020"]
+    C1b2["ama-wordpress (php-fpm)"]
+    C1b3["calculators-app → host 18010"]
   end
   subgraph C1c["FastAPI Services (host processes)"]
     C1c1["/var/www/chat-api/app/main.py → port 9001"]
@@ -34,18 +35,17 @@ end
 A1 -->|proxied by| C1a1
 A2 -->|should proxy| C1a2
 A1 -->|served via| C1b1
+A3 -->|proxied via| C1b3
 A1 -->|uses DB| C1e2
 C1c1 -->|auth| C1d1
 C1c1 -->|DB?| C1e1
 
 %% ─── HOSTGATOR STACK ────────────────────────
 subgraph H1["🌐 HostGator 50.6.160.246"]
-  H1a["/public_html/calculator → static JS tools"]
   H1b["/home/authority/crm_api → Laravel CRM"]
-  H1c["MySQL → CRM + calculator data"]
+  H1c["MySQL → CRM data"]
 end
 
-A3 --> H1a
 A4 --> H1b
 H1b --> H1c
 

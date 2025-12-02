@@ -2,7 +2,7 @@
 
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
-Services: `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80)
+Services: `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
 Network: external `pericope_net`
 
 ## Update & Rebuild
@@ -48,14 +48,14 @@ Network: external `pericope_net`
 - Run corpus only:
   ```bash
   docker network create pericope_net || true
-  docker compose -f AugustineCorpus/docker-compose.corpus.yml up -d AugustineCorpus-1.0.0
+  docker compose -f AugustineCorpus/docker-compose.corpus.yml up -d augustine-corpus-1-0-0
   ```
 - Optional indexer (on-demand):
   ```bash
   docker compose -f AugustineCorpus/docker-compose.corpus.yml --profile index run --rm pericopeai-indexer
   ```
-- API wiring: set `CORPUS_API_URL` to `http://augustine-corpus-live:8001` (default in compose) so API talks to corpus over `pericope_net`.
-- Main compose (`docker-compose.pericope.yml`) includes a placeholder `augustine-corpus-live` service; set `CORPUS_IMAGE` to your built image tag or deploy corpus via its own compose above.
+- API wiring: set `CORPUS_API_URL` to `http://augustine-corpus-1-0-0:8001` so API talks to corpus over `pericope_net`.
+- Main compose (`docker-compose.pericope.yml`) can point to a corpus image if desired via `CORPUS_IMAGE`; otherwise run corpus via its own compose above.
 
 ## Calculators (askmortgageauthority)
 - Repo path assumed: `/root/workspace/calculator.askmortgageauthority.com`.
@@ -106,8 +106,8 @@ Network: external `pericope_net`
 - If you see the `version` warning in compose, remove the `version:` line to silence it.
 
 ## WordPress (containerized)
-- Compose file: `docker-compose.wordpress.yml` (builds `ama-wordpress:local` from `/root/workspace/askmortgageauthority.com`, runs nginx on host 8081).
+- Compose file: `docker-compose.wordpress.yml` (builds `ama-wordpress:local` from `/root/workspace/askmortgageauthority.com`, runs nginx on host 18020).
 - Volumes: `wordpress_data` for core; `/root/workspace/askmortgageauthority.com/data/wp-content` bind-mounted for content.
 - DB: no bundled DB; set DB env in `/root/workspace/askmortgageauthority.com/.env` to point to your existing database.
 - Start: `docker compose -f docker-compose.wordpress.yml up -d --build wordpress nginx`
-- Host nginx: proxy askmortgageauthority.com to `http://127.0.0.1:8081` (keep TLS on host).
+- Host nginx: proxy askmortgageauthority.com to `http://127.0.0.1:18020` (keep TLS on host).

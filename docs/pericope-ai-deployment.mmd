@@ -27,9 +27,16 @@ subgraph FASTAPI["⚙️ pericopeai-api (container)"]
     B2["routes/auth.py → OIDC exchange"]
     B3["routes/chat.py → Chat and RAG endpoints"]
     B4[".env → DB creds (HostGator), OIDC config"]
+    B5["CORPUS_API_URL → http://augustine-corpus-1-0-0:8001"]
 end
 
 NGINX -->|proxy /api| FASTAPI
+
+%% ─── CORPUS SERVICE ──────────────────────────
+subgraph CORPUS["📚 Augustine Corpus (container)"]
+    C1["augustine-corpus-1-0-0 → port 8001"]
+    C2["Indexes volume: corpus_indexes"]
+end
 
 %% ─── DATABASE (REMOTE) ─────────────────--------
 subgraph DB["🗄️ HostGator MySQL (remote)"]
@@ -37,6 +44,7 @@ subgraph DB["🗄️ HostGator MySQL (remote)"]
 end
 
 FASTAPI -->|SQLAlchemy ORM| DB
+FASTAPI -->|Corpus calls| CORPUS
 
 %% ─── KEYCLOAK INSTANCES ─────────────────────────
 subgraph KC["🔐 Keycloak (Two runtimes present)"]
@@ -53,7 +61,8 @@ U -->|Redirect /auth| KC
 %% ─── NETWORKING ─────────────────────────────────
 subgraph NET["🕸️ Host networking (Contabo)"]
     NGINX -.->|localhost| FASTAPI
-    FASTAPI -.->|localhost| DB
+    FASTAPI -.->|localhost| CORPUS
+    FASTAPI -.->|remote| DB
     KC -.->|8080/8081| NGINX
     NGINX -.->|public| U
 end
@@ -63,8 +72,9 @@ subgraph SUMMARY["📂 Folder → Function Mapping"]
     S1["/etc/nginx/ → Reverse proxy + SSL configuration"]
     S2["/var/www/pericopeai/ → Frontend build and static assets"]
     S3["/var/www/pericopeai.com/AugustineService/ → FastAPI backend codebase"]
-    S4["/var/lib/mysql/ → Persistent database data"]
+    S4["HostGator DB → cwrihote_chatbook"]
     S5["/opt/keycloak/ → Identity provider realm + theme"]
+    S6["Corpus service (AugustineCorpus compose) → port 8001"]
 end
 
 NGINX --> S1
@@ -72,3 +82,4 @@ FRONTEND --> S2
 FASTAPI --> S3
 DB --> S4
 KC --> S5
+CORPUS --> S6
