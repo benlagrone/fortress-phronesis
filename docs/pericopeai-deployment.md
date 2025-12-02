@@ -35,6 +35,34 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
    docker compose -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend
    ```
 
+## API & Frontend specifics
+- Build contexts (hard-coded in compose):
+  - API: `/root/workspace/AugustineService` (uses `/root/workspace/AugustineService/.env`)
+  - FE:  `/root/workspace/AugustineFE` (build args come from `docker-compose.pericope.yml`; set `REACT_APP_*` there or in the FE Dockerfile ARGs)
+- Key API envs:
+  - `CORPUS_API_URL=http://augustine-corpus-live:8001`
+  - DB creds in `/root/workspace/AugustineService/.env`
+- Key FE build args (to avoid mixed-content/CORS):
+  - `REACT_APP_ROOT_URL=https://pericopeai.com` (API base through nginx `/api`)
+  - `REACT_APP_ENVIRONMENT=prd`
+  - `REACT_APP_KEYCLOAK_URL=https://auth.pericopeai.com`
+  - `REACT_APP_KEYCLOAK_REALM=pericope`
+  - `REACT_APP_KEYCLOAK_CLIENT_ID=pericope-web`
+- Ports:
+  - API: host `18000` → container `8080`
+  - FE:  host `13080` → container `80`
+
+## Redeploy / rebuild
+- Corpus redeploy:
+  ```
+  docker compose -f docker-compose.corpus.yml up -d --build augustine-corpus-live
+  ```
+  (Re-run indexer if needed.)
+- API/FE redeploy:
+  ```
+  docker compose -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend
+  ```
+
 ## Verify
 ```
 curl -I http://127.0.0.1:8001/healthz        # corpus

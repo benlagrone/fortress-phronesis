@@ -51,6 +51,13 @@ services:
     build:
       context: /root/workspace/AugustineFE        # frontend repo path
       dockerfile: Dockerfile                  # update if named differently
+      args:
+        REACT_APP_ROOT_URL: https://pericopeai.com
+        REACT_APP_ENVIRONMENT: prd
+        REACT_APP_AUGUSTINE_API_KEY: ${REACT_APP_AUGUSTINE_API_KEY:-}
+        REACT_APP_KEYCLOAK_URL: https://auth.pericopeai.com
+        REACT_APP_KEYCLOAK_REALM: pericope
+        REACT_APP_KEYCLOAK_CLIENT_ID: pericope-web
     ports:
       - "13080:80"                            # host:container
     networks:
