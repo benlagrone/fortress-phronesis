@@ -2,19 +2,20 @@
 
 ## Phase 1: PericopeAI Frontend + API (target now)
 - Compose stack:
-  - pericopeai-api (uvicorn), pericopeai-frontend (nginx serving build).
+  - mysql (local DB with `mysql_data` volume), pericopeai-api (uvicorn), pericopeai-frontend (nginx serving build).
   - Network: `pericope_net`.
   - Keycloak container (`auth-keycloak-1`) attached to `pericope_net`; kc-db stays as-is.
 - Code pull/contexts:
   - API build context: `/var/www/pericopeai.com/AugustineService/` (contains main.py, requirements.txt, .env).
   - Frontend build context: `/var/www/pericopeai/` (React app to build then serve via nginx).
 - Host mappings:
+  - DB container port 3306 → host 3306.
   - API container port 8000 → host 18000.
   - FE container port 80 → host 13080.
   - Nginx host upstreams: `/api` → 127.0.0.1:18000; `/` → 127.0.0.1:13080 (after cutover).
 - DB:
-  - Keep HostGator MySQL for now (`gator4416.hostgator.com`, DB `cwrihote_chatbook`).
-  - Option later: migrate to local DB; would require schema/data import and env updates.
+  - Default to bundled MySQL container (init via `MYSQL_*` env vars).
+  - If staying on HostGator, override `MYSQL_HOST`/creds in `.env` and ensure outbound 3306 is allowed.
 - Actions:
   - Rotate secrets; sanitize `.env` for containers.
   - Build/run: `docker compose -f docker-compose.pericope.yml up -d`.

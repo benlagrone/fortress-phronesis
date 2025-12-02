@@ -5,8 +5,24 @@ networks:
 
 volumes:
   corpus_indexes:
+  mysql_data:
 
 services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
+      - MYSQL_DATABASE=${MYSQL_DB:-augustine_chat}
+      - MYSQL_USER=${MYSQL_USER:-augustine}
+      - MYSQL_PASSWORD=${MYSQL_PASS:-password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - pericope_net
+
   augustine-corpus-live:
     # Build directly from the corpus repo on disk; comment these lines and set image: if you push a registry image instead.
     build:
@@ -41,8 +57,14 @@ services:
       - /root/workspace/AugustineService/.env      # ensure this exists and is sanitized
     environment:
       - CORPUS_API_URL=${CORPUS_API_URL:-http://augustine-corpus-live:8001}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_USER=${MYSQL_USER:-augustine}
+      - MYSQL_PASS=${MYSQL_PASS:-password}
+      - MYSQL_DB=${MYSQL_DB:-augustine_chat}
     ports:
       - "18000:8080"                          # host:container (uvicorn listens on 8080)
+    depends_on:
+      - mysql
     networks:
       - pericope_net
     restart: unless-stopped

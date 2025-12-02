@@ -25,7 +25,7 @@ S1a --> S2a
 subgraph S3["⚙️ pericopeai-api container"]
   S3a["main.py (FastAPI uvicorn) on :8080 → host :18000"]
   S3b["routes/auth.py, routes/chat.py"]
-  S3c[".env → DB creds (HostGator), OIDC vars"]
+  S3c[".env → DB creds (local MySQL), OIDC vars"]
   S3d["CORPUS_API_URL → http://augustine-corpus-1-0-0:8001"]
 end
 
@@ -40,8 +40,9 @@ subgraph S4["📚 Augustine Corpus (container)"]
 end
 
 %% ─── DATABASE ────────────────────────────────
-subgraph S5["🗄️ HostGator MySQL (remote)"]
-  S5a["DB: cwrihote_chatbook (per .env)"]
+subgraph S5["🗄️ MySQL (container)"]
+  S5a["mysql:8.0 → port 3306 (host-mapped)"]
+  S5b["Volume: mysql_data"]
 end
 
 S3a -->|SQLAlchemy| S5

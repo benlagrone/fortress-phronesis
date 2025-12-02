@@ -2,7 +2,7 @@
 
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
-Services: `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
+Services: `mysql` (host port 3306 → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
 Network: external `pericope_net`
 
 ## Update & Rebuild
@@ -24,6 +24,7 @@ Network: external `pericope_net`
 - Status: `docker compose -f docker-compose.pericope.yml ps`
 - Logs: 
   ```bash
+  docker compose -f docker-compose.pericope.yml logs -f mysql
   docker compose -f docker-compose.pericope.yml logs -f pericopeai-api
   docker compose -f docker-compose.pericope.yml logs -f pericopeai-frontend
   ```
@@ -96,6 +97,7 @@ Network: external `pericope_net`
 ## Verification
 - API: `curl -I http://127.0.0.1:18000/api/docs` and `curl -I https://pericopeai.com/api/docs`
 - FE: `curl -I http://127.0.0.1:13080` and `curl -I https://pericopeai.com`
+- DB: `mysql -h 127.0.0.1 -P 3306 -u${MYSQL_USER:-augustine} -p` (requires local MySQL client)
 
 ## Services to Keep
 - Host chat API stays on 127.0.0.1:8000 (`chat-api.service`); do not stop it.
@@ -104,6 +106,7 @@ Network: external `pericope_net`
 ## Notes
 - Compose network `pericope_net` is external; leave it in place (Keycloak containers attached).
 - If you see the `version` warning in compose, remove the `version:` line to silence it.
+- MySQL data persists to `mysql_data`. Defaults come from env vars (`MYSQL_ROOT_PASSWORD`, `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASS`); override in `.env` before starting.
 
 ## WordPress (containerized)
 - Compose file: `docker-compose.wordpress.yml` (builds `ama-wordpress:local` from `/root/workspace/askmortgageauthority.com`, runs nginx on host 18020).

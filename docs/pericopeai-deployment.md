@@ -3,6 +3,7 @@
 This is the minimal, repeatable way to deploy the PericopeAI stack from the control-plane repo (`fortress-phronesis`) on the Contabo host.
 
 ## Components
+- `mysql` (local DB, host port 3306, data persisted to `mysql_data` volume).
 - `augustine-corpus-live` (in `/root/workspace/AugustineCorpus`, internal port 8001, data persisted to `corpus_indexes` volume).
 - `pericopeai-api` (backend, host port 18000).
 - `pericopeai-frontend` (React, host port 13080).
@@ -14,7 +15,7 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
    - FE: `/root/workspace/AugustineFE`
 2) Ensure `.env` files exist:
    - `/root/workspace/AugustineCorpus/.env` (corpus settings).
-   - `/root/workspace/AugustineService/.env` (API, including `CORPUS_API_URL`).
+   - `/root/workspace/AugustineService/.env` (API, including `CORPUS_API_URL` and DB creds if overriding defaults).
 3) Network:
    ```
    docker network create pericope_net 2>/dev/null || true
@@ -34,6 +35,7 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
    ```
    docker compose -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend
    ```
+   (`mysql` will start automatically via `depends_on`.)
 
 ## API & Frontend specifics
 - Build contexts (hard-coded in compose):
@@ -41,7 +43,7 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
   - FE:  `/root/workspace/AugustineFE` (build args come from `docker-compose.pericope.yml`; set `REACT_APP_*` there or in the FE Dockerfile ARGs)
 - Key API envs:
   - `CORPUS_API_URL=http://augustine-corpus-live:8001`
-  - DB creds in `/root/workspace/AugustineService/.env`
+  - DB defaults (if not overridden): `MYSQL_HOST=mysql`, `MYSQL_DB=augustine_chat`, `MYSQL_USER=augustine`, `MYSQL_PASS=password`, `MYSQL_ROOT_PASSWORD=rootpass`
 - Key FE build args (to avoid mixed-content/CORS):
   - `REACT_APP_ROOT_URL=https://pericopeai.com` (API base through nginx `/api`)
   - `REACT_APP_ENVIRONMENT=prd`
@@ -49,6 +51,7 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
   - `REACT_APP_KEYCLOAK_REALM=pericope`
   - `REACT_APP_KEYCLOAK_CLIENT_ID=pericope-web`
 - Ports:
+  - DB: host `3306` → container `3306`
   - API: host `18000` → container `8080`
   - FE:  host `13080` → container `80`
 
@@ -68,6 +71,7 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
 curl -I http://127.0.0.1:8001/healthz        # corpus
 curl -I http://127.0.0.1:18000/api/docs      # API
 curl -I http://127.0.0.1:13080               # FE
+mysql -h 127.0.0.1 -P 3306 -u${MYSQL_USER:-augustine} -p   # DB (requires mysql client)
 ```
 
 ## Nginx (host)
@@ -87,3 +91,4 @@ Reload after edits: `nginx -t && nginx -s reload`.
 - The corpus container is internal-only (no host port). If you need host access, add `ports: ["8001:8001"]` in `docker-compose.corpus.yml`.
 - Ensure `CORPUS_API_URL` in the API env points to `http://augustine-corpus-live:8001`.
 - Healthcheck on corpus is enabled; API/FE use compose defaults. Use `docker compose -f docker-compose.pericope.yml logs -f` for runtime logs.
+- MySQL data persists to the `mysql_data` volume. Rotate DB creds in `.env` before first run.
