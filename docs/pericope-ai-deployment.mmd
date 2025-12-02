@@ -40,7 +40,7 @@ end
 
 %% ─── DATABASE (CONTAINER) ─────────────────-----
 subgraph DB["🗄️ MySQL (container)"]
-    D1["mysql:8.0 → port 3306 (host-mapped)"]
+    D1["mysql:8.0 → port 3306 (host-mapped as ${MYSQL_HOST_PORT:-3307})"]
     D2["Volume: mysql_data"]
 end
 
