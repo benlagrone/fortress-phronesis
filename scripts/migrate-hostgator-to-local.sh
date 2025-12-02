@@ -29,12 +29,15 @@ HOSTGATOR_USER=${HOSTGATOR_USER:-${MYSQL_USER:-}}
 HOSTGATOR_PASS=${HOSTGATOR_PASS:-${MYSQL_PASS:-}}
 HOSTGATOR_DB=${HOSTGATOR_DB:-${MYSQL_DB:-}}
 
-# Local target: defaults to this repo's compose mysql service.
+# Local target: defaults to this repo's compose mysql service (not HostGator creds).
 LOCAL_COMPOSE_FILE=${LOCAL_COMPOSE_FILE:-"${REPO_ROOT}/docker-compose.pericope.yml"}
 LOCAL_MYSQL_SERVICE=${LOCAL_MYSQL_SERVICE:-mysql}
-LOCAL_DB=${LOCAL_DB:-${LOCAL_MYSQL_DB:-${MYSQL_DB:-augustine_chat}}}
-LOCAL_USER=${LOCAL_USER:-${LOCAL_MYSQL_USER:-${MYSQL_USER:-augustine}}}
-LOCAL_PASS=${LOCAL_PASS:-${LOCAL_MYSQL_PASS:-${MYSQL_PASS:-password}}}
+LOCAL_DEFAULT_DB=${LOCAL_DEFAULT_DB:-augustine_chat}
+LOCAL_DEFAULT_USER=${LOCAL_DEFAULT_USER:-augustine}
+LOCAL_DEFAULT_PASS=${LOCAL_DEFAULT_PASS:-password}
+LOCAL_DB=${LOCAL_DB:-${LOCAL_MYSQL_DB:-${LOCAL_DEFAULT_DB}}}
+LOCAL_USER=${LOCAL_USER:-${LOCAL_MYSQL_USER:-${LOCAL_DEFAULT_USER}}}
+LOCAL_PASS=${LOCAL_PASS:-${LOCAL_MYSQL_PASS:-${LOCAL_DEFAULT_PASS}}}
 DUMP_OPTS=${DUMP_OPTS:---no-tablespaces}
 DUMP_FILE=${DUMP_FILE:-/tmp/hostgator_dump.sql}
 
@@ -65,6 +68,6 @@ docker cp "$DUMP_FILE" "$LOCAL_MYSQL_CID":/tmp/hostgator_dump.sql
 
 echo "==> Importing into local DB $LOCAL_DB..."
 docker compose -f "$LOCAL_COMPOSE_FILE" exec "$LOCAL_MYSQL_SERVICE" sh -c \
-  "mysql -u$LOCAL_USER -p$LOCAL_PASS $LOCAL_DB < /tmp/hostgator_dump.sql"
+  "mysql -u\"$LOCAL_USER\" --password=\"${LOCAL_PASS}\" \"$LOCAL_DB\" < /tmp/hostgator_dump.sql"
 
 echo "==> Migration complete."
