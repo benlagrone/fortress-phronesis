@@ -4,7 +4,7 @@ set -euo pipefail
 # Control-plane helper to deploy pericopeai.com (AugustineService) on prod.
 # Steps: down, git pull, start DB, rebuild API, run migrations, health check.
 
-APP_PATH=${APP_PATH:-/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineService}
+APP_PATH=${APP_PATH:-/root/workspace/AugustineService}
 COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml}
 API_SERVICE=${API_SERVICE:-api}
 DB_SERVICE=${DB_SERVICE:-mysql}
@@ -20,8 +20,15 @@ require_cmd docker
 require_cmd curl
 
 if [[ ! -d "$APP_PATH" ]]; then
-  echo "App path not found: $APP_PATH" >&2
-  exit 1
+  # Fallback to the macOS path if the server path is absent
+  ALT_PATH="/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineService"
+  if [[ -d "$ALT_PATH" ]]; then
+    APP_PATH="$ALT_PATH"
+  else
+    echo "App path not found: $APP_PATH" >&2
+    echo "Override with APP_PATH=/path/to/AugustineService when running the script." >&2
+    exit 1
+  fi
 fi
 
 cd "$APP_PATH"
