@@ -20,6 +20,16 @@ Network: external `pericope_net`
   docker compose -f docker-compose.pericope.yml restart pericopeai-frontend
   ```
 
+## Full Stack Up/Down
+- Bring up the whole stack (build if needed):
+  ```bash
+  docker compose -f docker-compose.pericope.yml up -d --build
+  ```
+- Stop and remove containers/volumes:
+  ```bash
+  docker compose -f docker-compose.pericope.yml down
+  ```
+
 ## Status & Logs
 - Status: `docker compose -f docker-compose.pericope.yml ps`
 - Logs: 
