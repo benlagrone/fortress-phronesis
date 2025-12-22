@@ -18,6 +18,7 @@ CHAT_HOST_PORT=19001    # AMA Chat API (once added to compose)
 # Expected build contexts (update if your repos are elsewhere)
 API_CONTEXT="/root/workspace/AugustineService"
 FE_CONTEXT="/root/workspace/AugustineFE"
+CORPUS_CONTEXT="/root/workspace/AugustineCorpus"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -31,10 +32,10 @@ require_cmd() {
 require_cmd docker
 
 echo "==> Checking build contexts"
-for path in "${API_CONTEXT}" "${FE_CONTEXT}"; do
+for path in "${API_CONTEXT}" "${FE_CONTEXT}" "${CORPUS_CONTEXT}"; do
   if [ ! -d "${path}" ]; then
     echo "Missing build context directory: ${path}" >&2
-    echo "Create/cloned repos there or update API_CONTEXT/FE_CONTEXT in this script and docker-compose.pericope.yml" >&2
+    echo "Create/cloned repos there or update the *_CONTEXT values in this script and docker-compose.pericope.yml" >&2
     exit 1
   fi
 done
