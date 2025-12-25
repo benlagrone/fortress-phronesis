@@ -1,7 +1,7 @@
 services:
   corpus-gateway:
     build:
-      context: /root/workspace/CorpusGateway
+      context: /root/workspace/AugustineCorpusGateway
       dockerfile: Dockerfile
     image: corpus-gateway:local
     container_name: corpus-gateway
