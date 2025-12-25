@@ -30,7 +30,12 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - corpus_indexes:/app/texts
+      # Text sources (read-only)
+      - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
+      - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
+      - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
+      # Persisted indexes
+      - corpus_indexes:/app/indexes
     networks:
       - pericope_net
     restart: unless-stopped
@@ -49,6 +54,9 @@ services:
     profiles: ["index"]
     restart: "no"
     volumes:
-      - corpus_indexes:/app/texts
+      - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
+      - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
+      - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
+      - corpus_indexes:/app/indexes
     networks:
       - pericope_net
