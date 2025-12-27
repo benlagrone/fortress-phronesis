@@ -22,6 +22,8 @@ services:
       - CORPUS_DATA_DIR=/app/texts
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato}
+      - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-3}
     expose:
       - "8001"  # internal only
     healthcheck:
@@ -50,6 +52,7 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - ENV=${ENV:-dev}
       - RUN_INDEXING_ON_START=1
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato}
     command: ["python", "preprocess_and_index.py"]
     profiles: ["index"]
     restart: "no"
