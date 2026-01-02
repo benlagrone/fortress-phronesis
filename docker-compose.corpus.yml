@@ -36,7 +36,7 @@ services:
       - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
       - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      # Persisted indexes
+      # Persisted indexes (IMPORTANT: mount to /app/indexes)
       - corpus_indexes:/app/indexes
     networks:
       - pericope_net
