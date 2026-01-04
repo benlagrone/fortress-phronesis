@@ -4,7 +4,9 @@ networks:
     name: pericope_net
 
 volumes:
-  corpus_indexes:
+  corpus_augustine_index:
+  corpus_freud_index:
+  corpus_plato_index:
   mysql_data:
 
 services:
@@ -33,8 +35,6 @@ services:
       - /root/workspace/AugustineCorpus/.env
     environment:
       - CORPUS_VERSION=${CORPUS_VERSION:-live}
-      - INDEX_DIR=/app/indexes
-      - CORPUS_DATA_DIR=/app/texts
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
       - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato}
@@ -47,12 +47,12 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      # Text sources (read-only)
       - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
       - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      # Persisted indexes
-      - corpus_indexes:/app/indexes
+      - corpus_augustine_index:/app/indexes/augustine
+      - corpus_freud_index:/app/indexes/freud
+      - corpus_plato_index:/app/indexes/plato
     networks:
       - pericope_net
     restart: unless-stopped
@@ -75,7 +75,9 @@ services:
       - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
       - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      - corpus_indexes:/app/indexes
+      - corpus_augustine_index:/app/indexes/augustine
+      - corpus_freud_index:/app/indexes/freud
+      - corpus_plato_index:/app/indexes/plato
     networks:
       - pericope_net
 
