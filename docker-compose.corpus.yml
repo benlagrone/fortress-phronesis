@@ -7,7 +7,11 @@ networks:
     name: pericope_net
 
 volumes:
-  corpus_indexes:
+  corpus_augustine_index:
+  corpus_freud_index:
+  corpus_plato_index:
+  corpus_irenaeus_index:
+  # corpus_aquinas_index:
 
 services:
   augustine-corpus-live:
@@ -18,11 +22,9 @@ services:
       - /root/workspace/AugustineCorpus/.env
     environment:
       - CORPUS_VERSION=${CORPUS_VERSION:-live}
-      - INDEX_DIR=/app/indexes
-      - CORPUS_DATA_DIR=/app/texts
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
-      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato}
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato,irenaeus=/app/indexes/irenaeus}
       - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-3}
     expose:
       - "8001"  # internal only
@@ -36,8 +38,12 @@ services:
       - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
       - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      # Persisted indexes (IMPORTANT: mount to /app/indexes)
-      - corpus_indexes:/app/indexes
+      - /root/workspace/AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      # Per-author index volumes mounted to distinct paths
+      - corpus_augustine_index:/app/indexes/augustine
+      - corpus_freud_index:/app/indexes/freud
+      - corpus_plato_index:/app/indexes/plato
+      - corpus_irenaeus_index:/app/indexes/irenaeus
     networks:
       - pericope_net
     restart: unless-stopped
@@ -52,14 +58,19 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - ENV=${ENV:-dev}
       - RUN_INDEXING_ON_START=1
-      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato}
-    command: ["python", "preprocess_and_index.py"]
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato,irenaeus=/app/indexes/irenaeus}
+      - TEXTS_ROOT=/app/texts
+    command: ["python", "preprocess_and_index.py", "--author", "augustine"]
     profiles: ["index"]
     restart: "no"
     volumes:
       - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
       - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      - corpus_indexes:/app/indexes
+      - /root/workspace/AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - corpus_augustine_index:/app/indexes/augustine
+      - corpus_freud_index:/app/indexes/freud
+      - corpus_plato_index:/app/indexes/plato
+      - corpus_irenaeus_index:/app/indexes/irenaeus
     networks:
       - pericope_net
