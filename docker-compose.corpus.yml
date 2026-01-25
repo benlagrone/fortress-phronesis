@@ -7,70 +7,310 @@ networks:
     name: pericope_net
 
 volumes:
+  corpus_1_esdras_index:
+  corpus_1_maccabees_index:
+  corpus_2_esdras_index:
+  corpus_2_maccabees_index:
+  corpus_alpha_index:
+  corpus_amos_index:
   corpus_augustine_index:
+  corpus_baruch_index:
+  corpus_bel_and_the_dragon_index:
+  corpus_daniel_index:
+  corpus_david_index:
+  corpus_ecclesiasticus_index:
+  corpus_ezekiel_index:
+  corpus_ezra_index:
   corpus_freud_index:
-  corpus_plato_index:
+  corpus_habakkuk_index:
+  corpus_haggai_index:
+  corpus_hosea_index:
   corpus_irenaeus_index:
-  # corpus_aquinas_index:
+  corpus_isaiah_index:
+  corpus_james_index:
+  corpus_jeremiah_index:
+  corpus_joel_index:
+  corpus_john_index:
+  corpus_jonah_index:
+  corpus_joshua_index:
+  corpus_jude_index:
+  corpus_judith_index:
+  corpus_letter_of_jeremiah_index:
+  corpus_luke_index:
+  corpus_malachi_index:
+  corpus_mark_index:
+  corpus_matthew_index:
+  corpus_micah_index:
+  corpus_mordecai_index:
+  corpus_moses_index:
+  corpus_nahum_index:
+  corpus_obadiah_index:
+  corpus_paul_index:
+  corpus_peter_index:
+  corpus_plato_index:
+  corpus_prayer_of_manasseh_index:
+  corpus_rest_of_esther_index:
+  corpus_samuel_index:
+  corpus_solomon_index:
+  corpus_solomon_expanded_index:
+  corpus_song_of_the_three_holy_children_index:
+  corpus_susanna_index:
+  corpus_tobit_index:
+  corpus_wisdom_of_solomon_index:
+  corpus_zechariah_index:
+  corpus_zephaniah_index:
 
 services:
   augustine-corpus-live:
     build:
-      context: /root/workspace/AugustineCorpus
+      context: ${WORKSPACE_ROOT}/${CORPUS_REPO}
       dockerfile: Dockerfile
     env_file:
-      - /root/workspace/AugustineCorpus/.env
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/.env
     environment:
-      - CORPUS_VERSION=${CORPUS_VERSION:-live}
+      - CORPUS_VERSION=${CORPUS_VERSION:-dev}
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
-      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato,irenaeus=/app/indexes/irenaeus}
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP}
       - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-3}
+      - TEXTS_ROOT=/app/texts
     expose:
       - "8001"  # internal only
+    ports:
+      - "${CORPUS_PORT:-8001}:8001"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz', timeout=5).read()\""]
       interval: 15s
       timeout: 5s
       retries: 5
     volumes:
-      # Text sources (read-only)
-      - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
-      - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
-      - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      - /root/workspace/AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
-      # Per-author index volumes mounted to distinct paths
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/1_esdras_texts:/app/texts/1_esdras_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/1_maccabees_texts:/app/texts/1_maccabees_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/2_esdras_texts:/app/texts/2_esdras_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/2_maccabees_texts:/app/texts/2_maccabees_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/alpha_texts:/app/texts/alpha_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/amos_texts:/app/texts/amos_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/augustine_texts:/app/texts/augustine_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/baruch_texts:/app/texts/baruch_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/bel_and_the_dragon_texts:/app/texts/bel_and_the_dragon_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/daniel_texts:/app/texts/daniel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/david_texts:/app/texts/david_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/ecclesiasticus_texts:/app/texts/ecclesiasticus_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/ezekiel_texts:/app/texts/ezekiel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/ezra_texts:/app/texts/ezra_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/freud_texts:/app/texts/freud_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/habakkuk_texts:/app/texts/habakkuk_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/haggai_texts:/app/texts/haggai_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/hosea_texts:/app/texts/hosea_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/isaiah_texts:/app/texts/isaiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/james_texts:/app/texts/james_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jeremiah_texts:/app/texts/jeremiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/joel_texts:/app/texts/joel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/john_texts:/app/texts/john_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jonah_texts:/app/texts/jonah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/joshua_texts:/app/texts/joshua_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jude_texts:/app/texts/jude_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/judith_texts:/app/texts/judith_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/letter_of_jeremiah_texts:/app/texts/letter_of_jeremiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/luke_texts:/app/texts/luke_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/malachi_texts:/app/texts/malachi_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/mark_texts:/app/texts/mark_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/matthew_texts:/app/texts/matthew_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/micah_texts:/app/texts/micah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/mordecai_texts:/app/texts/mordecai_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/moses_texts:/app/texts/moses_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/nahum_texts:/app/texts/nahum_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/obadiah_texts:/app/texts/obadiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/paul_texts:/app/texts/paul_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/peter_texts:/app/texts/peter_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/plato_texts:/app/texts/plato_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/prayer_of_manasseh_texts:/app/texts/prayer_of_manasseh_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/rest_of_esther_texts:/app/texts/rest_of_esther_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/samuel_texts:/app/texts/samuel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/solomon_texts:/app/texts/solomon_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/solomon_expanded_texts:/app/texts/solomon_expanded_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/song_of_the_three_holy_children_texts:/app/texts/song_of_the_three_holy_children_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/susanna_texts:/app/texts/susanna_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/tobit_texts:/app/texts/tobit_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/wisdom_of_solomon_texts:/app/texts/wisdom_of_solomon_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/zechariah_texts:/app/texts/zechariah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/zephaniah_texts:/app/texts/zephaniah_texts:ro
+      - corpus_1_esdras_index:/app/indexes/1_esdras
+      - corpus_1_maccabees_index:/app/indexes/1_maccabees
+      - corpus_2_esdras_index:/app/indexes/2_esdras
+      - corpus_2_maccabees_index:/app/indexes/2_maccabees
+      - corpus_alpha_index:/app/indexes/alpha
+      - corpus_amos_index:/app/indexes/amos
       - corpus_augustine_index:/app/indexes/augustine
+      - corpus_baruch_index:/app/indexes/baruch
+      - corpus_bel_and_the_dragon_index:/app/indexes/bel_and_the_dragon
+      - corpus_daniel_index:/app/indexes/daniel
+      - corpus_david_index:/app/indexes/david
+      - corpus_ecclesiasticus_index:/app/indexes/ecclesiasticus
+      - corpus_ezekiel_index:/app/indexes/ezekiel
+      - corpus_ezra_index:/app/indexes/ezra
       - corpus_freud_index:/app/indexes/freud
-      - corpus_plato_index:/app/indexes/plato
+      - corpus_habakkuk_index:/app/indexes/habakkuk
+      - corpus_haggai_index:/app/indexes/haggai
+      - corpus_hosea_index:/app/indexes/hosea
       - corpus_irenaeus_index:/app/indexes/irenaeus
+      - corpus_isaiah_index:/app/indexes/isaiah
+      - corpus_james_index:/app/indexes/james
+      - corpus_jeremiah_index:/app/indexes/jeremiah
+      - corpus_joel_index:/app/indexes/joel
+      - corpus_john_index:/app/indexes/john
+      - corpus_jonah_index:/app/indexes/jonah
+      - corpus_joshua_index:/app/indexes/joshua
+      - corpus_jude_index:/app/indexes/jude
+      - corpus_judith_index:/app/indexes/judith
+      - corpus_letter_of_jeremiah_index:/app/indexes/letter_of_jeremiah
+      - corpus_luke_index:/app/indexes/luke
+      - corpus_malachi_index:/app/indexes/malachi
+      - corpus_mark_index:/app/indexes/mark
+      - corpus_matthew_index:/app/indexes/matthew
+      - corpus_micah_index:/app/indexes/micah
+      - corpus_mordecai_index:/app/indexes/mordecai
+      - corpus_moses_index:/app/indexes/moses
+      - corpus_nahum_index:/app/indexes/nahum
+      - corpus_obadiah_index:/app/indexes/obadiah
+      - corpus_paul_index:/app/indexes/paul
+      - corpus_peter_index:/app/indexes/peter
+      - corpus_plato_index:/app/indexes/plato
+      - corpus_prayer_of_manasseh_index:/app/indexes/prayer_of_manasseh
+      - corpus_rest_of_esther_index:/app/indexes/rest_of_esther
+      - corpus_samuel_index:/app/indexes/samuel
+      - corpus_solomon_index:/app/indexes/solomon
+      - corpus_solomon_expanded_index:/app/indexes/solomon_expanded
+      - corpus_song_of_the_three_holy_children_index:/app/indexes/song_of_the_three_holy_children
+      - corpus_susanna_index:/app/indexes/susanna
+      - corpus_tobit_index:/app/indexes/tobit
+      - corpus_wisdom_of_solomon_index:/app/indexes/wisdom_of_solomon
+      - corpus_zechariah_index:/app/indexes/zechariah
+      - corpus_zephaniah_index:/app/indexes/zephaniah
     networks:
       - pericope_net
     restart: unless-stopped
 
   pericopeai-indexer:
     build:
-      context: /root/workspace/AugustineCorpus
+      context: ${WORKSPACE_ROOT}/${CORPUS_REPO}
       dockerfile: Dockerfile
     env_file:
-      - /root/workspace/AugustineCorpus/.env
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/.env
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - ENV=${ENV:-dev}
       - RUN_INDEXING_ON_START=1
-      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-augustine=/app/indexes/augustine,freud=/app/indexes/freud,plato=/app/indexes/plato,irenaeus=/app/indexes/irenaeus}
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP}
       - TEXTS_ROOT=/app/texts
-    command: ["python", "preprocess_and_index.py", "--author", "augustine"]
+    command: ["python", "preprocess_and_index.py"]
     profiles: ["index"]
     restart: "no"
     volumes:
-      - /root/workspace/AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
-      - /root/workspace/AugustineCorpus/texts/freud_texts:/app/texts/freud_texts:ro
-      - /root/workspace/AugustineCorpus/texts/plato_texts:/app/texts/plato_texts:ro
-      - /root/workspace/AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/1_esdras_texts:/app/texts/1_esdras_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/1_maccabees_texts:/app/texts/1_maccabees_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/2_esdras_texts:/app/texts/2_esdras_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/2_maccabees_texts:/app/texts/2_maccabees_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/alpha_texts:/app/texts/alpha_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/amos_texts:/app/texts/amos_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/augustine_texts:/app/texts/augustine_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/baruch_texts:/app/texts/baruch_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/bel_and_the_dragon_texts:/app/texts/bel_and_the_dragon_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/daniel_texts:/app/texts/daniel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/david_texts:/app/texts/david_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/ecclesiasticus_texts:/app/texts/ecclesiasticus_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/ezekiel_texts:/app/texts/ezekiel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/ezra_texts:/app/texts/ezra_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/freud_texts:/app/texts/freud_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/habakkuk_texts:/app/texts/habakkuk_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/haggai_texts:/app/texts/haggai_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/hosea_texts:/app/texts/hosea_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/isaiah_texts:/app/texts/isaiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/james_texts:/app/texts/james_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jeremiah_texts:/app/texts/jeremiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/joel_texts:/app/texts/joel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/john_texts:/app/texts/john_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jonah_texts:/app/texts/jonah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/joshua_texts:/app/texts/joshua_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jude_texts:/app/texts/jude_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/judith_texts:/app/texts/judith_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/letter_of_jeremiah_texts:/app/texts/letter_of_jeremiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/luke_texts:/app/texts/luke_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/malachi_texts:/app/texts/malachi_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/mark_texts:/app/texts/mark_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/matthew_texts:/app/texts/matthew_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/micah_texts:/app/texts/micah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/mordecai_texts:/app/texts/mordecai_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/moses_texts:/app/texts/moses_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/nahum_texts:/app/texts/nahum_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/obadiah_texts:/app/texts/obadiah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/paul_texts:/app/texts/paul_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/peter_texts:/app/texts/peter_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/plato_texts:/app/texts/plato_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/prayer_of_manasseh_texts:/app/texts/prayer_of_manasseh_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/rest_of_esther_texts:/app/texts/rest_of_esther_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/samuel_texts:/app/texts/samuel_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/solomon_texts:/app/texts/solomon_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/solomon_expanded_texts:/app/texts/solomon_expanded_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/song_of_the_three_holy_children_texts:/app/texts/song_of_the_three_holy_children_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/susanna_texts:/app/texts/susanna_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/tobit_texts:/app/texts/tobit_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/wisdom_of_solomon_texts:/app/texts/wisdom_of_solomon_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/zechariah_texts:/app/texts/zechariah_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/zephaniah_texts:/app/texts/zephaniah_texts:ro
+      - corpus_1_esdras_index:/app/indexes/1_esdras
+      - corpus_1_maccabees_index:/app/indexes/1_maccabees
+      - corpus_2_esdras_index:/app/indexes/2_esdras
+      - corpus_2_maccabees_index:/app/indexes/2_maccabees
+      - corpus_alpha_index:/app/indexes/alpha
+      - corpus_amos_index:/app/indexes/amos
       - corpus_augustine_index:/app/indexes/augustine
+      - corpus_baruch_index:/app/indexes/baruch
+      - corpus_bel_and_the_dragon_index:/app/indexes/bel_and_the_dragon
+      - corpus_daniel_index:/app/indexes/daniel
+      - corpus_david_index:/app/indexes/david
+      - corpus_ecclesiasticus_index:/app/indexes/ecclesiasticus
+      - corpus_ezekiel_index:/app/indexes/ezekiel
+      - corpus_ezra_index:/app/indexes/ezra
       - corpus_freud_index:/app/indexes/freud
-      - corpus_plato_index:/app/indexes/plato
+      - corpus_habakkuk_index:/app/indexes/habakkuk
+      - corpus_haggai_index:/app/indexes/haggai
+      - corpus_hosea_index:/app/indexes/hosea
       - corpus_irenaeus_index:/app/indexes/irenaeus
+      - corpus_isaiah_index:/app/indexes/isaiah
+      - corpus_james_index:/app/indexes/james
+      - corpus_jeremiah_index:/app/indexes/jeremiah
+      - corpus_joel_index:/app/indexes/joel
+      - corpus_john_index:/app/indexes/john
+      - corpus_jonah_index:/app/indexes/jonah
+      - corpus_joshua_index:/app/indexes/joshua
+      - corpus_jude_index:/app/indexes/jude
+      - corpus_judith_index:/app/indexes/judith
+      - corpus_letter_of_jeremiah_index:/app/indexes/letter_of_jeremiah
+      - corpus_luke_index:/app/indexes/luke
+      - corpus_malachi_index:/app/indexes/malachi
+      - corpus_mark_index:/app/indexes/mark
+      - corpus_matthew_index:/app/indexes/matthew
+      - corpus_micah_index:/app/indexes/micah
+      - corpus_mordecai_index:/app/indexes/mordecai
+      - corpus_moses_index:/app/indexes/moses
+      - corpus_nahum_index:/app/indexes/nahum
+      - corpus_obadiah_index:/app/indexes/obadiah
+      - corpus_paul_index:/app/indexes/paul
+      - corpus_peter_index:/app/indexes/peter
+      - corpus_plato_index:/app/indexes/plato
+      - corpus_prayer_of_manasseh_index:/app/indexes/prayer_of_manasseh
+      - corpus_rest_of_esther_index:/app/indexes/rest_of_esther
+      - corpus_samuel_index:/app/indexes/samuel
+      - corpus_solomon_index:/app/indexes/solomon
+      - corpus_solomon_expanded_index:/app/indexes/solomon_expanded
+      - corpus_song_of_the_three_holy_children_index:/app/indexes/song_of_the_three_holy_children
+      - corpus_susanna_index:/app/indexes/susanna
+      - corpus_tobit_index:/app/indexes/tobit
+      - corpus_wisdom_of_solomon_index:/app/indexes/wisdom_of_solomon
+      - corpus_zechariah_index:/app/indexes/zechariah
+      - corpus_zephaniah_index:/app/indexes/zephaniah
     networks:
       - pericope_net

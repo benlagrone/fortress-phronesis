@@ -1,14 +1,14 @@
 services:
   corpus-gateway:
     build:
-      context: /root/workspace/AugustineCorpusGateway
+      context: ${WORKSPACE_ROOT}/${GATEWAY_REPO}
       dockerfile: Dockerfile
     image: corpus-gateway:local
     container_name: corpus-gateway
     environment:
       - CORPUS_BASE_URL=${CORPUS_BASE_URL:-http://augustine-corpus-live:8001}
     ports:
-      - "18002:8001"
+      - "${GATEWAY_HOST_PORT:-18002}:8001"
     networks:
       - pericope_net
     restart: unless-stopped
