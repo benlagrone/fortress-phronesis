@@ -16,4 +16,4 @@ services:
 networks:
   pericope_net:
     external: true
-    name: pericope_net
+    name: ${PERICOPE_NET_NAME:-pericope_net}
