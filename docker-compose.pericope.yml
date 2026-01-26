@@ -352,7 +352,7 @@ services:
       context: ${WORKSPACE_ROOT}/${FE_REPO}        # frontend repo path
       dockerfile: Dockerfile
       args:
-        REACT_APP_ROOT_URL: ${REACT_APP_ROOT_URL:-http://localhost:18000}
+        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-/api}
         REACT_APP_ENVIRONMENT: ${REACT_APP_ENVIRONMENT:-dev}
         REACT_APP_AUGUSTINE_API_KEY: ${REACT_APP_AUGUSTINE_API_KEY:-}
         REACT_APP_KEYCLOAK_URL: ${REACT_APP_KEYCLOAK_URL:-https://auth.pericopeai.com}
