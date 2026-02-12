@@ -259,6 +259,7 @@ def main() -> int:
         results.append(row)
 
     out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     if args.format == "csv":
         _write_csv(out_path, results)
     else:
