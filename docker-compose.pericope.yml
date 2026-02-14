@@ -1,6 +1,5 @@
 networks:
   pericope_net:
-    external: true
     name: fortress-phronesis-net
 
 volumes:
@@ -367,4 +366,5 @@ services:
 
 # Notes:
 # - Paths are relative to this compose file (../AugustineCorpus, ../AugustineService, ../AugustineFE).
+# - Compose will create the pericope_net network if missing.
 # - Corpus service is expected on the internal network at 8001.
