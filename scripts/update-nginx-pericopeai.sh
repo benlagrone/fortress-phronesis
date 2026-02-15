@@ -25,6 +25,10 @@ server {
         proxy_pass http://pericope_api;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        # Cold-start requests (index/model warmup) can exceed nginx defaults.
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
     }
 
     location / {
