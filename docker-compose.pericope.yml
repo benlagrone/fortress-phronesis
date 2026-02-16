@@ -81,6 +81,9 @@ services:
     env_file:
       - ../AugustineCorpus/.env
     environment:
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - ENV=${ENV:-dev}
+      - CLIENT_ACCESS_PROFILE=${CLIENT_ACCESS_PROFILE:-}
       - CORPUS_VERSION=${CORPUS_VERSION:-dev}
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
