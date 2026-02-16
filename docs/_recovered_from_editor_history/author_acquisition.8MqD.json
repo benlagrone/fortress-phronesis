@@ -1,0 +1,232 @@
+[
+  {
+    "name": "Augustine of Hippo",
+    "status": "texts present; index volume wired",
+    "acquired_date": "2025-12-22",
+    "version": "0.4.0",
+    "version_date": "2025-12-15",
+    "persona_mode": "Interior",
+    "notes": [
+      "Time: 354–430 AD; Origin: Numidia (North Africa)",
+      "Role: Bishop, theologian, philosopher",
+      "Key Works: Confessions, City of God",
+      "Contribution: Interior psychology, grace, time, Western theology backbone"
+    ]
+  },
+  {
+    "name": "Sigmund Freud",
+    "status": "texts present; index volume wired",
+    "acquired_date": "2025-12-22",
+    "version": "0.4.0",
+    "version_date": "2025-12-15",
+    "persona_mode": "Interior",
+    "notes": [
+      "Time: 1856–1939; Origin: Austrian Empire",
+      "Role: Psychologist",
+      "Key Works: Interpretation of Dreams; Civilization and Its Discontents",
+      "Contribution: Descriptive psychology of drives and repression"
+    ]
+  },
+  {
+    "name": "Plato",
+    "status": "texts present; index volume wired",
+    "acquired_date": "2025-12-22",
+    "version": "0.5.0",
+    "version_date": "2025-12-22",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 428–348 BC; Origin: Athens",
+      "Role: Philosopher",
+      "Key Works: Republic; Phaedo; Timaeus",
+      "Contribution: Forms, metaphysics, groundwork for Christian thought"
+    ]
+  },
+  {
+    "name": "Irenaeus of Lyons",
+    "status": "pending",
+    "about": "Bishop of Lyons; Asia Minor-born (c. 130–142), disciple of Polycarp; priest in Lyons during Marcus Aurelius’ persecution; succeeded Pothinus as bishop; wrote chiefly against Gnosticism (Against Heresies) and the Demonstration of the Apostolic Preaching; advocated for Quartodecimans’ reconciliation; died late 2nd/early 3rd century; feast 28 June (Latin), 23 August (Greek).",
+    "persona_mode": "Authority",
+    "works": [
+      "https://www.tertullian.org/fathers/irenaeus_02_proof.htm#263",
+      "https://www.newadvent.org/fathers/0103.htm",
+      "https://www.earlychristianwritings.com/text/irenaeus-book1.html",
+      "https://www.earlychristianwritings.com/text/irenaeus-book3.html",
+      "https://www.gnosis.org/library/advh1.htm",
+      "https://www.gnosis.org/library/advh2.htm",
+      "https://www.gnosis.org/library/advh3.htm",
+      "https://www.gnosis.org/library/advh4.htm",
+      "https://www.gnosis.org/library/advh5.htm",
+      "https://ia904501.us.archive.org/11/items/SaintIrenaeusAgainstHeresiesComplete/Saint%20Irenaeus%20Against%20Heresies%20Complete.pdf",
+      "https://www.ccel.org/ccel/s/schaff/anf01.xml",
+      "https://earlychurchtexts.com/main/irenaeus/recapitulation_in_christ.shtml",
+      "https://earlychurchtexts.com/public/irenaeus_on_recapitulation_in_christ.htm",
+      "https://earlychurchtexts.com/public/irenaeus_on_rule_of_faith.htm",
+      "https://earlychurchtexts.com/main/irenaeus/rule_of_faith.shtml",
+      "https://www.earlychristianwritings.com/irenaeus.html?utm_source=chatgpt.com"
+    ],
+    "notes": [
+      "Time: c. 130–202 AD; Origin: Asia Minor; bishop in Gaul",
+      "Role: Early Church Father, anti-Gnostic theologian",
+      "Key Work: Against Heresies",
+      "Contribution: Apostolic succession, doctrinal continuity, recapitulation theology"
+    ]
+  },
+  {
+    "name": "John Chrysostom",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 347–407 AD; Origin: Antioch; later Constantinople",
+      "Role: Archbishop, preacher",
+      "Key Works: Homilies on Scripture",
+      "Contribution: Moral clarity, rhetoric, pastoral authority"
+    ]
+  },
+  {
+    "name": "Solomon",
+    "status": "pending",
+    "persona_mode": "Aphoristic",
+    "notes": [
+      "Time: c. 10th century BC (traditional); Origin: United Kingdom of Israel",
+      "Role: King, wisdom figure",
+      "Key Texts: Proverbs; Ecclesiastes; Song of Songs",
+      "Contribution: Biblical wisdom tradition, order, discernment"
+    ]
+  },
+  {
+    "name": "Aristotle",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 384–322 BC; Origin: Stagira",
+      "Role: Philosopher, systematizer",
+      "Key Works: Ethics; Metaphysics; Politics",
+      "Contribution: Logic, causality, practical ethics"
+    ]
+  },
+  {
+    "name": "Niccolò Machiavelli",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Time: 1469–1527; Origin: Florence",
+      "Role: Political theorist",
+      "Key Work: The Prince",
+      "Contribution: Power realism, leadership optics, political anthropology"
+    ]
+  },
+  {
+    "name": "Athanasius of Alexandria",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 296–373 AD; Origin: Alexandria",
+      "Role: Bishop, defender of orthodoxy",
+      "Key Work: On the Incarnation",
+      "Contribution: Trinitarian doctrine, Nicene orthodoxy"
+    ]
+  },
+  {
+    "name": "Origen of Alexandria",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 185–253 AD; Origin: Alexandria",
+      "Role: Theologian, biblical scholar",
+      "Key Works: On First Principles; Hexapla",
+      "Contribution: Allegorical exegesis, speculative theology"
+    ]
+  },
+  {
+    "name": "Basil the Great",
+    "status": "pending",
+    "persona_mode": "Ascetic",
+    "notes": [
+      "Time: c. 330–379 AD; Origin: Cappadocia",
+      "Role: Bishop, theologian",
+      "Key Works: Monastic Rules; Trinitarian writings",
+      "Contribution: Monastic discipline, Trinitarian clarity"
+    ]
+  },
+  {
+    "name": "Gregory of Nazianzus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 329–390 AD; Origin: Cappadocia",
+      "Role: Theologian, poet",
+      "Key Works: Theological Orations",
+      "Contribution: Doctrinal precision, Christology"
+    ]
+  },
+  {
+    "name": "Jerome",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 347–420 AD; Origin: Dalmatia; later Rome and Bethlehem",
+      "Role: Scholar, translator",
+      "Key Work: Latin Vulgate Bible",
+      "Contribution: Scripture standardization for the West"
+    ]
+  },
+  {
+    "name": "Ambrose of Milan",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 339–397 AD; Origin: Roman Gaul; bishop in Milan",
+      "Role: Bishop, statesman",
+      "Key Works: Sermons; hymns",
+      "Contribution: Church authority over emperors; mentor to Augustine"
+    ]
+  },
+  {
+    "name": "Anacharsis",
+    "status": "pending",
+    "persona_mode": "Aphoristic",
+    "notes": [
+      "Time: 6th century BC; Origin: Scythia",
+      "Role: Wisdom figure, outsider philosopher",
+      "Sources: Quoted by Greeks (Plato, Diogenes Laërtius)",
+      "Contribution: Aphoristic moral realism, anti-luxury critique"
+    ]
+  },
+  {
+    "name": "Dionysius Exiguus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 470–544 AD; Origin: Scythia Minor",
+      "Role: Monk, scholar",
+      "Key Achievement: Anno Domini dating system",
+      "Contribution: Christian chronology, canonical transmission"
+    ]
+  },
+  {
+    "name": "John Cassian",
+    "status": "pending",
+    "persona_mode": "Ascetic",
+    "notes": [
+      "Time: c. 360–435 AD; Origin: Scythia Minor",
+      "Role: Monk, theologian",
+      "Key Works: Conferences; Institutes",
+      "Contribution: Transmission of Eastern monastic wisdom to the West"
+    ]
+  },
+  { "name": "Clement of Rome", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Ignatius of Antioch", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Polycarp of Smyrna", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Gregory of Nyssa", "status": "pending", "persona_mode": "Ascetic", "notes": [] },
+  { "name": "Tertullian", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Cyprian of Carthage", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Boethius", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Anselm of Canterbury", "status": "pending", "persona_mode": "Interior", "notes": [] },
+  { "name": "Bernard of Clairvaux", "status": "pending", "persona_mode": "Ascetic", "notes": [] },
+  { "name": "Thomas Aquinas", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Martin Luther", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "John Calvin", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Blaise Pascal", "status": "pending", "persona_mode": "Aphoristic", "notes": [] },
+  { "name": "John Locke", "status": "pending", "persona_mode": "Political", "notes": [] },
+  { "name": "Maximus the Confessor", "status": "pending", "persona_mode": "Authority", "notes": [] }
+]

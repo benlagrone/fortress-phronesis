@@ -1,0 +1,19 @@
+graph TD
+  subgraph Corpus
+    C1["augustine-corpus-1-0-0<br/>port 8001<br/>uses corpus_indexes volume"]
+    I1["pericopeai-indexer<br/>one-off rebuild<br/>shares corpus_indexes"]
+  end
+
+  subgraph API
+    A1["augustineservice-api-1<br/>port 8080"]
+  end
+
+  subgraph Frontend
+    F1["augustinefe-frontend-1<br/>port 3000"]
+  end
+
+  C1 -. shared .-> V1[(corpus_indexes volume)]
+  I1 -. shared .-> V1
+
+  F1 -->|calls| A1
+  A1 -->|CORPUS_API_URL=http://host.docker.internal:8001| C1
