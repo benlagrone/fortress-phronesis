@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-NETWORK="pericope_net"
+NETWORK="fortress-phronesis-net"
 COMPOSE_FILE="docker-compose.pericope.yml"
 KEYCLOAK_CONTAINER="auth-keycloak-1"
 KEYCLOAK_DB_CONTAINER="kc-db"
@@ -15,13 +15,14 @@ API_HOST_PORT=18000     # PericopeAI API
 FE_HOST_PORT=13080      # PericopeAI frontend
 CHAT_HOST_PORT=19001    # AMA Chat API (once added to compose)
 
-# Expected build contexts (update if your repos are elsewhere)
-API_CONTEXT="/root/workspace/AugustineService"
-FE_CONTEXT="/root/workspace/AugustineFE"
-CORPUS_CONTEXT="/root/workspace/AugustineCorpus"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+WORKSPACE_ROOT="$(cd "${REPO_ROOT}/.." && pwd)"
+
+# Expected build contexts (siblings of control-plane repo)
+API_CONTEXT="${WORKSPACE_ROOT}/AugustineService"
+FE_CONTEXT="${WORKSPACE_ROOT}/AugustineFE"
+CORPUS_CONTEXT="${WORKSPACE_ROOT}/AugustineCorpus"
 
 cd "${REPO_ROOT}"
 

@@ -68,7 +68,7 @@ AMA chat and WordPress routing should avoid conflicting vhosts
 and duplicate `server_name` blocks. See `docs/system-handbook.md`.
 
 ## Scripts overview
-- `scripts/deploy-containers.sh`: bootstrap containers, ensure `pericope_net`, connect Keycloak, print Nginx hints.
+- `scripts/deploy-containers.sh`: bootstrap containers, ensure `fortress-phronesis-net`, connect Keycloak, print Nginx hints.
 - `scripts/deploy-pericopeai-prod.sh`: deploy a standalone AugustineService stack (legacy path).
 - `scripts/apply-updates.sh`: git pull + rebuild for API/FE containers.
 - `scripts/deploy-calculators.sh`: build/run calculators container or use its compose.

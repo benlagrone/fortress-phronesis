@@ -3,8 +3,8 @@
 ## Phase 1: PericopeAI Frontend + API (target now)
 - Compose stack:
   - mysql (local DB with `mysql_data` volume), pericopeai-api (uvicorn), pericopeai-frontend (nginx serving build).
-  - Network: `pericope_net`.
-  - Keycloak container (`auth-keycloak-1`) attached to `pericope_net`; kc-db stays as-is.
+  - Network: `fortress-phronesis-net`.
+  - Keycloak container (`auth-keycloak-1`) attached to `fortress-phronesis-net`; kc-db stays as-is.
 - Code pull/contexts:
   - API build context: `/var/www/pericopeai.com/AugustineService/` (contains main.py, requirements.txt, .env).
   - Frontend build context: `/var/www/pericopeai/` (React app to build then serve via nginx).
@@ -19,12 +19,12 @@
 - Actions:
   - Rotate secrets; sanitize `.env` for containers.
   - Build/run: `docker compose -f docker-compose.pericope.yml up -d`.
-  - Connect Keycloak to network: `docker network connect pericope_net auth-keycloak-1`.
+  - Connect Keycloak to network: `docker network connect fortress-phronesis-net auth-keycloak-1`.
   - Update host Nginx upstreams; reload; stop host uvicorn.
 
 ## Phase 2: AMA Chat API
 - Containerize FastAPI Chat service.
-- Network: join `pericope_net`.
+- Network: join `fortress-phronesis-net`.
 - Host mapping: container 8000 → host 19001 (example).
 - Nginx host: `/chat` (or chat.askmortgageauthority.com) → 127.0.0.1:19001.
 - Code pull/context: `/var/www/chat-api/` (app/main.py, .env).
@@ -37,7 +37,7 @@
 ## Phase 3: Keycloak Consolidation
 - Choose Docker Keycloak + kc-db as source of truth; retire host Keycloak.
 - Backup realms; import into the chosen instance.
-- Keep Keycloak on `pericope_net`; proxy via host Nginx to localhost-mapped port.
+- Keep Keycloak on `fortress-phronesis-net`; proxy via host Nginx to localhost-mapped port.
 
 ## Phase 4: WordPress + Apache/DB
 - Option A: Keep WordPress on host Apache 8080 behind Nginx; just clean vhosts.

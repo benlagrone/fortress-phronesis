@@ -10,14 +10,14 @@ Prod (vmi2669159)
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis`
 - Ports: API `18000`, FE `13080`, MySQL `3307`
-- Network: `fortress-phronesis-net` (compose-managed)
+- Network: `fortress-phronesis-net` (shared external)
 
 Dev (fortress-phronesis / 192.168.86.23)
 - Workspace: `/home/master-benjamin/Projects/pericopeai.com`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
-- Compose project: `pericope-dev`
+- Compose project: `fortress-phronesis` (match prod by default)
 - Ports: API `18000`, FE `13080`, MySQL `3307`
-- Network: `fortress-phronesis-net` (compose-managed)
+- Network: `fortress-phronesis-net` (shared external)
 
 Local (macOS)
 - Workspace: `/Users/benjaminlagrone/Documents/projects/pericopeai.com`
@@ -43,21 +43,20 @@ You can also force this behavior in API regardless of ENV with:
 Location: `fortress-phronesis/docker-compose.pericope.yml`
 - Paths are relative to the compose file (`../AugustineCorpus`,
   `../AugustineService`, `../AugustineFE`).
-- `fortress-phronesis-net` is created by compose automatically.
+- `fortress-phronesis-net` is a shared external network.
 - Internal service DNS: `augustine-corpus-live`, `mysql`.
 - Do not use `localhost` inside containers.
 
 Start/stop
 ```bash
-cd /root/workspace/fortress-phronesis
-docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build
-docker compose -p fortress-phronesis -f docker-compose.pericope.yml ps
+cd <workspace>/fortress-phronesis
+bash scripts/apply-updates.sh
 ```
 
 ## Reindex workflow (prod/dev)
 
 ```bash
-cd /root/workspace/fortress-phronesis
+cd <workspace>/fortress-phronesis
 docker compose -p fortress-phronesis -f docker-compose.pericope.yml stop augustine-corpus-live
 docker compose -p fortress-phronesis -f docker-compose.pericope.yml rm -f augustine-corpus-live
 docker volume ls --format '{{.Name}}' | grep '^fortress-phronesis_corpus_' | xargs -r docker volume rm
@@ -104,11 +103,11 @@ fortress-phronesis/scripts/test-authors.py \
 
 Prod/dev (server):
 ```bash
-mkdir -p /root/workspace/tests
-python3 /root/workspace/fortress-phronesis/scripts/test-authors.py \
+mkdir -p <workspace>/tests
+python3 <workspace>/fortress-phronesis/scripts/test-authors.py \
   --base-url http://localhost:18000 \
   --question "Summarize the main themes in 3-5 sentences and include citations." \
-  --out /root/workspace/tests/author-chat-test.jsonl
+  --out <workspace>/tests/author-chat-test.jsonl
 ```
 
 ## Troubleshooting
@@ -117,6 +116,6 @@ If API cannot reach MySQL:
 - Ensure both containers are on `fortress-phronesis-net`.
 - Recreate services via compose to restore DNS:
 ```bash
-cd /root/workspace/fortress-phronesis
+cd <workspace>/fortress-phronesis
 docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --force-recreate mysql pericopeai-api
 ```

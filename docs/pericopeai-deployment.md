@@ -18,7 +18,7 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
    - `/root/workspace/AugustineService/.env` (API, including `CORPUS_API_URL` and DB creds if overriding defaults).
 3) Network:
    ```
-   docker network create pericope_net 2>/dev/null || true
+   docker network create fortress-phronesis-net 2>/dev/null || true
    ```
 
 ## Deploy
@@ -90,5 +90,6 @@ Reload after edits: `nginx -t && nginx -s reload`.
 ## Notes
 - The corpus container is internal-only (no host port). If you need host access, add `ports: ["8001:8001"]` in `docker-compose.corpus.yml`.
 - Ensure `CORPUS_API_URL` in the API env points to `http://augustine-corpus-live:8001`.
+- Shared network defaults to `fortress-phronesis-net` (override with `PERICOPE_NET_NAME` if needed).
 - Healthcheck on corpus is enabled; API/FE use compose defaults. Use `docker compose -f docker-compose.pericope.yml logs -f` for runtime logs.
 - MySQL data persists to the `mysql_data` volume. Rotate DB creds in `.env` before first run; set `MYSQL_HOST_PORT` if 3306 is taken on the host.

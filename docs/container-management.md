@@ -3,7 +3,7 @@
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
 Services: `mysql` (host port `${MYSQL_HOST_PORT:-3307}` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
-Network: external `pericope_net`
+Network: external `fortress-phronesis-net`
 
 ## Update & Rebuild
 - Backend only (after pulling AugustineService code):
@@ -58,14 +58,14 @@ Network: external `pericope_net`
 - Compose in AugustineCorpus repo: `AugustineCorpus/docker-compose.corpus.yml`
 - Run corpus only:
   ```bash
-  docker network create pericope_net || true
+  docker network create fortress-phronesis-net || true
   docker compose -f AugustineCorpus/docker-compose.corpus.yml up -d augustine-corpus-1-0-0
   ```
 - Optional indexer (on-demand):
   ```bash
   docker compose -f AugustineCorpus/docker-compose.corpus.yml --profile index run --rm pericopeai-indexer
   ```
-- API wiring: set `CORPUS_API_URL` to `http://augustine-corpus-1-0-0:8001` so API talks to corpus over `pericope_net`.
+- API wiring: set `CORPUS_API_URL` to `http://augustine-corpus-1-0-0:8001` so API talks to corpus over `fortress-phronesis-net`.
 - Main compose (`docker-compose.pericope.yml`) can point to a corpus image if desired via `CORPUS_IMAGE`; otherwise run corpus via its own compose above.
 
 ## Calculators (askmortgageauthority)
@@ -114,7 +114,7 @@ Network: external `pericope_net`
 - Host nginx and Apache remain for reverse proxy and WordPress (8080).
 
 ## Notes
-- Compose network `pericope_net` is external; leave it in place (Keycloak containers attached).
+- Compose network `fortress-phronesis-net` is external; leave it in place (Keycloak containers attached).
 - If you see the `version` warning in compose, remove the `version:` line to silence it.
 - MySQL data persists to `mysql_data`. Defaults come from env vars (`MYSQL_ROOT_PASSWORD`, `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASS`, `MYSQL_HOST_PORT`); override in `.env` before starting.
 

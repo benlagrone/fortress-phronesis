@@ -24,7 +24,7 @@
    - API: `http://localhost:18000`
    - FE: `http://localhost:13080`
 2. **QA server:**
-   - Compose project: `pericope-dev`
+   - Compose project: `fortress-phronesis` (same as prod contract)
    - Profile: `CLIENT_ACCESS_PROFILE=p-qa` (or `mde-qa` for MDE interface)
 3. **Prod server:**
    - Compose project: `fortress-phronesis`

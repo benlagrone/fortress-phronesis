@@ -63,7 +63,7 @@ U -->|Redirect /auth| KC
 subgraph NET["🕸️ Host networking (Contabo)"]
     NGINX -.->|localhost| FASTAPI
     FASTAPI -.->|localhost| CORPUS
-    FASTAPI -.->|pericope_net| DB
+    FASTAPI -.->|fortress-phronesis-net| DB
     KC -.->|8080/8081| NGINX
     NGINX -.->|public| U
 end
