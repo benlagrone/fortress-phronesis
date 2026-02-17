@@ -1,0 +1,3 @@
+{"author": "augustine", "status": 200, "elapsed_ms": 9955, "answer_chars": 1344, "answer_words": 227, "citations": 3, "books": 3, "metadata": 3, "position_min": 202, "position_max": 2966, "error": null, "pass": true, "fail_reasons": [], "response_bytes": 4754}
+{"author": "freud", "status": 200, "elapsed_ms": 12775, "answer_chars": 1151, "answer_words": 167, "citations": 3, "books": 3, "metadata": 3, "position_min": 5, "position_max": 270, "error": null, "pass": true, "fail_reasons": [], "response_bytes": 4566}
+{"author": "plato", "status": 200, "elapsed_ms": 54928, "answer_chars": 1361, "answer_words": 217, "citations": 3, "books": 3, "metadata": 3, "position_min": 548, "position_max": 4392, "error": null, "pass": true, "fail_reasons": [], "response_bytes": 5167}

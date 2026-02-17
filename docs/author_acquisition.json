@@ -43,7 +43,8 @@
   },
   {
     "name": "Irenaeus of Lyons",
-    "status": "pending",
+    "status": "texts downloaded; pending index",
+    "acquired_date": "2026-02-17",
     "about": "Bishop of Lyons; Asia Minor-born (c. 130–142), disciple of Polycarp; priest in Lyons during Marcus Aurelius’ persecution; succeeded Pothinus as bishop; wrote chiefly against Gnosticism (Against Heresies) and the Demonstration of the Apostolic Preaching; advocated for Quartodecimans’ reconciliation; died late 2nd/early 3rd century; feast 28 June (Latin), 23 August (Greek).",
     "persona_mode": "Authority",
     "works": [
@@ -229,5 +230,91 @@
   { "name": "John Calvin", "status": "pending", "persona_mode": "Authority", "notes": [] },
   { "name": "Blaise Pascal", "status": "pending", "persona_mode": "Aphoristic", "notes": [] },
   { "name": "John Locke", "status": "pending", "persona_mode": "Political", "notes": [] },
+  {
+    "name": "Epictetus",
+    "status": "texts downloaded; pending index",
+    "acquired_date": "2026-02-17",
+    "persona_mode": "Authority",
+    "works": [
+      "https://www.gutenberg.org/cache/epub/10661/pg10661.txt",
+      "https://www.gutenberg.org/cache/epub/45109/pg45109.txt",
+      "https://www.gutenberg.org/cache/epub/871/pg871.txt"
+    ],
+    "notes": [
+      "Time: c. 50–135 AD; Origin: Hierapolis (Phrygia), later Nicopolis",
+      "Role: Stoic philosopher, teacher",
+      "Key Works: Discourses; Enchiridion (as recorded by Arrian)",
+      "Contribution: Discipline of assent, control vs. not-in-our-control framework"
+    ]
+  },
+  {
+    "name": "Seneca",
+    "status": "texts downloaded; pending index",
+    "acquired_date": "2026-02-17",
+    "persona_mode": "Authority",
+    "works": [
+      "https://www.gutenberg.org/cache/epub/64576/pg64576.txt",
+      "https://www.gutenberg.org/cache/epub/56075/pg56075.txt",
+      "https://www.gutenberg.org/cache/epub/3794/pg3794.txt"
+    ],
+    "notes": [
+      "Time: c. 4 BC–65 AD; Origin: Corduba, later Rome",
+      "Role: Stoic philosopher, statesman",
+      "Key Works: Letters to Lucilius; On Anger; On the Shortness of Life",
+      "Contribution: Practical Stoic ethics, moral psychology, daily self-examination"
+    ]
+  },
+  {
+    "name": "Musonius Rufus",
+    "status": "texts downloaded; pending index",
+    "acquired_date": "2026-02-17",
+    "persona_mode": "Authority",
+    "works": [
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/01",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/02",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/03",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/04",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/05",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/06",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/07",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/08",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/09",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/10",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/11",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/12",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/13-0",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/13-1",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/14",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/15",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/16",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/17",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/18-0",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/18-1",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/19",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/20",
+      "https://sites.google.com/site/thestoiclife/the_teachers/musonius-rufus/lectures/21"
+    ],
+    "notes": [
+      "Time: c. 25–95 AD; Origin: Etruria/Rome",
+      "Role: Stoic teacher",
+      "Key Works: Lectures and fragments (preserved by students/compilers)",
+      "Contribution: Applied virtue ethics, discipline, and ethics of ordinary life"
+    ]
+  },
+  {
+    "name": "Marcus Aurelius",
+    "status": "texts downloaded; pending index",
+    "acquired_date": "2026-02-17",
+    "persona_mode": "Authority",
+    "works": [
+      "https://www.gutenberg.org/files/2680/2680-0.txt"
+    ],
+    "notes": [
+      "Time: 121–180 AD; Origin: Rome",
+      "Role: Roman emperor, Stoic philosopher",
+      "Key Work: Meditations",
+      "Contribution: Stoic ethics, discipline of judgment, duty and civic virtue"
+    ]
+  },
   { "name": "Maximus the Confessor", "status": "pending", "persona_mode": "Authority", "notes": [] }
 ]
