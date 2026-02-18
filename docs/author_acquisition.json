@@ -316,5 +316,18 @@
       "Contribution: Stoic ethics, discipline of judgment, duty and civic virtue"
     ]
   },
-  { "name": "Maximus the Confessor", "status": "pending", "persona_mode": "Authority", "notes": [] }
+  { "name": "Maximus the Confessor", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Thucydides", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Xenophon", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Plutarch", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Titus Livius", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Tacitus", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Strada", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Jornandes", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Dante", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Mantaigne", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Skaespeare", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Spinoza", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Tacitus", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Bossuet", "status": "pending", "persona_mode": "Authority", "notes": [] },
 ]

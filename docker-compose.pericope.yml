@@ -35,6 +35,7 @@ volumes:
   corpus_letter_of_jeremiah_index:
   corpus_luke_index:
   corpus_malachi_index:
+  corpus_marcus_aurelius_index:
   corpus_mark_index:
   corpus_matthew_index:
   corpus_micah_index:
@@ -130,6 +131,7 @@ services:
       - ../AugustineCorpus/texts/letter_of_jeremiah_texts:/app/texts/letter_of_jeremiah_texts:ro
       - ../AugustineCorpus/texts/luke_texts:/app/texts/luke_texts:ro
       - ../AugustineCorpus/texts/malachi_texts:/app/texts/malachi_texts:ro
+      - ../AugustineCorpus/texts/marcus_aurelius_texts:/app/texts/marcus_aurelius_texts:ro
       - ../AugustineCorpus/texts/mark_texts:/app/texts/mark_texts:ro
       - ../AugustineCorpus/texts/matthew_texts:/app/texts/matthew_texts:ro
       - ../AugustineCorpus/texts/micah_texts:/app/texts/micah_texts:ro
@@ -182,6 +184,7 @@ services:
       - corpus_letter_of_jeremiah_index:/app/indexes/letter_of_jeremiah
       - corpus_luke_index:/app/indexes/luke
       - corpus_malachi_index:/app/indexes/malachi
+      - corpus_marcus_aurelius_index:/app/indexes/marcus_aurelius
       - corpus_mark_index:/app/indexes/mark
       - corpus_matthew_index:/app/indexes/matthew
       - corpus_micah_index:/app/indexes/micah
@@ -254,6 +257,7 @@ services:
       - ../AugustineCorpus/texts/letter_of_jeremiah_texts:/app/texts/letter_of_jeremiah_texts:ro
       - ../AugustineCorpus/texts/luke_texts:/app/texts/luke_texts:ro
       - ../AugustineCorpus/texts/malachi_texts:/app/texts/malachi_texts:ro
+      - ../AugustineCorpus/texts/marcus_aurelius_texts:/app/texts/marcus_aurelius_texts:ro
       - ../AugustineCorpus/texts/mark_texts:/app/texts/mark_texts:ro
       - ../AugustineCorpus/texts/matthew_texts:/app/texts/matthew_texts:ro
       - ../AugustineCorpus/texts/micah_texts:/app/texts/micah_texts:ro
@@ -306,6 +310,7 @@ services:
       - corpus_letter_of_jeremiah_index:/app/indexes/letter_of_jeremiah
       - corpus_luke_index:/app/indexes/luke
       - corpus_malachi_index:/app/indexes/malachi
+      - corpus_marcus_aurelius_index:/app/indexes/marcus_aurelius
       - corpus_mark_index:/app/indexes/mark
       - corpus_matthew_index:/app/indexes/matthew
       - corpus_micah_index:/app/indexes/micah
