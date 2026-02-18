@@ -71,7 +71,7 @@ services:
       - CORPUS_VERSION=${CORPUS_VERSION:-dev}
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
-      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP}
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-}
       - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-3}
       - TEXTS_ROOT=/app/texts
     expose:
@@ -202,7 +202,7 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - ENV=${ENV:-dev}
       - RUN_INDEXING_ON_START=1
-      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP}
+      - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-}
       - TEXTS_ROOT=/app/texts
     command: ["python", "preprocess_and_index.py"]
     profiles: ["index"]

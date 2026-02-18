@@ -27,6 +27,65 @@ pull_repo() {
   git -C "${path}" pull --ff-only || true
 }
 
+compose_pericope() {
+  COMPOSE_IGNORE_ORPHANS=1 docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" "$@"
+}
+
+wait_for_http_ok() {
+  local label="$1"
+  local url="$2"
+  local attempts="${3:-20}"
+  local sleep_seconds="${4:-2}"
+  local i
+  for ((i=1; i<=attempts; i++)); do
+    if curl -fsS "${url}" >/dev/null 2>&1; then
+      echo "==> ${label} is ready (${url})"
+      return 0
+    fi
+    sleep "${sleep_seconds}"
+  done
+  echo "ERROR: ${label} did not become ready after ${attempts} attempts: ${url}" >&2
+  return 1
+}
+
+bootstrap_db_with_retry() {
+  local mysql_attempts="${MYSQL_READY_ATTEMPTS:-30}"
+  local mysql_sleep_seconds="${MYSQL_READY_SLEEP_SECONDS:-2}"
+  local attempts="${DB_BOOTSTRAP_ATTEMPTS:-20}"
+  local sleep_seconds="${DB_BOOTSTRAP_SLEEP_SECONDS:-3}"
+  local ready=0
+  local i
+
+  for ((i=1; i<=mysql_attempts; i++)); do
+    if compose_pericope exec -T mysql sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1; then
+      ready=1
+      echo "==> MySQL is ready"
+      break
+    fi
+    sleep "${mysql_sleep_seconds}"
+  done
+
+  if [[ "${ready}" -ne 1 ]]; then
+    echo "ERROR: MySQL did not become ready after ${mysql_attempts} attempts" >&2
+    return 1
+  fi
+
+  for ((i=1; i<=attempts; i++)); do
+    local output
+    output="$(compose_pericope exec -T pericopeai-api python create_tables.py 2>&1 || true)"
+    echo "${output}"
+    if grep -q "Database setup completed successfully!" <<<"${output}"; then
+      echo "==> DB bootstrap succeeded"
+      return 0
+    fi
+    echo "==> DB bootstrap not ready yet (${i}/${attempts}); retrying in ${sleep_seconds}s"
+    sleep "${sleep_seconds}"
+  done
+
+  echo "ERROR: DB bootstrap failed after ${attempts} attempts" >&2
+  return 1
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FPR_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(cd "${FPR_ROOT}/.." && pwd)}"
@@ -34,7 +93,17 @@ WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(cd "${FPR_ROOT}/.." && pwd)}"
 API_REPO="${API_REPO:-${WORKSPACE_ROOT}/AugustineService}"
 FE_REPO="${FE_REPO:-${WORKSPACE_ROOT}/AugustineFE}"
 CORPUS_REPO="${CORPUS_REPO:-${WORKSPACE_ROOT}/AugustineCorpus}"
-GATEWAY_REPO_DIR="${GATEWAY_REPO_DIR:-${WORKSPACE_ROOT}/CorpusGateway}"
+
+if [[ -n "${GATEWAY_REPO_DIR:-}" ]]; then
+  GATEWAY_REPO_DIR="${GATEWAY_REPO_DIR}"
+elif [[ -d "${WORKSPACE_ROOT}/CorpusGateway" ]]; then
+  GATEWAY_REPO_DIR="${WORKSPACE_ROOT}/CorpusGateway"
+elif [[ -d "${WORKSPACE_ROOT}/AugustineCorpusGateway" ]]; then
+  GATEWAY_REPO_DIR="${WORKSPACE_ROOT}/AugustineCorpusGateway"
+else
+  GATEWAY_REPO_DIR="${WORKSPACE_ROOT}/CorpusGateway"
+fi
+
 GATEWAY_REPO_NAME="${GATEWAY_REPO_NAME:-$(basename "${GATEWAY_REPO_DIR}")}"
 
 COMPOSE_FILE="${COMPOSE_FILE:-${FPR_ROOT}/docker-compose.pericope.yml}"
@@ -72,12 +141,11 @@ else
 fi
 
 echo "==> Deploying core containers"
-docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" up -d --build \
+compose_pericope up -d --build \
   augustine-corpus-live pericopeai-api pericopeai-frontend
 
 echo "==> Applying DB bootstrap in API container"
-docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" exec -T pericopeai-api \
-  python create_tables.py
+bootstrap_db_with_retry
 
 GATEWAY_ENABLED=0
 if [[ -f "${GATEWAY_COMPOSE_FILE}" && -d "${GATEWAY_REPO_DIR}" ]]; then
@@ -92,11 +160,11 @@ else
 fi
 
 echo "==> Verifying services"
-docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" ps
-curl -fsS http://127.0.0.1:18000/api/healthz && echo
-curl -fsSI http://127.0.0.1:13080 >/dev/null
+compose_pericope ps
+wait_for_http_ok "API" "http://127.0.0.1:18000/api/healthz"
+wait_for_http_ok "Frontend" "http://127.0.0.1:13080"
 if [[ "${GATEWAY_ENABLED}" -eq 1 ]]; then
-  curl -fsS http://127.0.0.1:18002/healthz && echo
+  wait_for_http_ok "Gateway" "http://127.0.0.1:18002/healthz"
 fi
 
 echo "==> Done."
