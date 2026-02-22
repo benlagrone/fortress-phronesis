@@ -3,6 +3,62 @@
 Purpose: keep prod/dev/local straight and avoid accidental drift or
 cross-environment changes.
 
+## Sacred Rules
+
+1. `.env` files are authoritative. Do not override deployment values with ad-hoc shell exports.
+2. Per-repo `.env` ownership is fixed:
+   - `AugustineService/.env`
+   - `AugustineCorpus/.env`
+   - `AugustineFE/.env`
+3. Do not introduce a top-level `fortress-phronesis/.env` as a deployment control plane.
+4. Do not change architecture during deployment execution (project name, network name, service topology, live container edits).
+5. Frontend `REACT_APP_*` values are build-time; use compose `--env-file` when building frontend.
+
+## Canonical Paths (Do Not Guess)
+
+Use these exact roots by environment:
+
+Prod (vmi2669159)
+- Workspace root: `/root/workspace`
+- Stack root: `/root/workspace/fortress-phronesis`
+- Compose file: `/root/workspace/fortress-phronesis/docker-compose.pericope.yml`
+- Corpus repo: `/root/workspace/AugustineCorpus`
+- API repo: `/root/workspace/AugustineService`
+- FE repo: `/root/workspace/AugustineFE`
+
+Dev (fortress-phronesis / 192.168.86.23)
+- Workspace root: `/home/master-benjamin/Projects/pericopeai.com`
+- Stack root: `/home/master-benjamin/Projects/pericopeai.com/fortress-phronesis`
+- Compose file: `/home/master-benjamin/Projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml`
+- Corpus repo: `/home/master-benjamin/Projects/pericopeai.com/AugustineCorpus`
+- API repo: `/home/master-benjamin/Projects/pericopeai.com/AugustineService`
+- FE repo: `/home/master-benjamin/Projects/pericopeai.com/AugustineFE`
+
+Local (macOS)
+- Workspace root: `/Users/benjaminlagrone/Documents/projects/pericopeai.com`
+- Stack root: `/Users/benjaminlagrone/Documents/projects/pericopeai.com/fortress-phronesis`
+- Compose file: `/Users/benjaminlagrone/Documents/projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml`
+
+## Session Path Guard (Run First In Every Shell)
+
+```bash
+if [ -f ~/workspace/fortress-phronesis/docker-compose.pericope.yml ]; then
+  FPR_ROOT=~/workspace/fortress-phronesis
+elif [ -f ~/Projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml ]; then
+  FPR_ROOT=~/Projects/pericopeai.com/fortress-phronesis
+else
+  FPR_ROOT="$(dirname "$(find ~ -maxdepth 5 -name docker-compose.pericope.yml 2>/dev/null | head -n1)")"
+fi
+
+FPR_ROOT="$(cd "$FPR_ROOT" && pwd)"
+COMPOSE="docker compose -p fortress-phronesis -f $FPR_ROOT/docker-compose.pericope.yml"
+
+echo "FPR_ROOT=$FPR_ROOT"
+echo "COMPOSE_FILE=$FPR_ROOT/docker-compose.pericope.yml"
+```
+
+Never run deployment commands until `FPR_ROOT` and `COMPOSE_FILE` match the expected environment.
+
 ## Environments
 
 Prod (vmi2669159)
