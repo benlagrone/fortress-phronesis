@@ -2,56 +2,61 @@
 
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
-Services: `mysql` (host port `${MYSQL_HOST_PORT:-3307}` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
+Services: `mysql` (host port `3307` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 3000 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
 Network: external `fortress-phronesis-net`
+
+Deployment lock check:
+```bash
+bash scripts/verify-pericope-deploy-lock.sh
+```
 
 ## Update & Rebuild
 - Backend only (after pulling AugustineService code):
   ```bash
-  docker compose -f docker-compose.pericope.yml up -d --build pericopeai-api
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-api
   ```
 - Frontend only (after pulling AugustineFE code):
   ```bash
-  docker compose -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-frontend
   ```
 - Restart without rebuild (config-only):
   ```bash
-  docker compose -f docker-compose.pericope.yml restart pericopeai-api
-  docker compose -f docker-compose.pericope.yml restart pericopeai-frontend
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml restart pericopeai-api
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml restart pericopeai-frontend
   ```
 
 ## Full Stack Up/Down
 - Bring up the whole stack (build if needed):
   ```bash
-  docker compose -f docker-compose.pericope.yml up -d --build
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build
   ```
 - Stop and remove containers/volumes:
   ```bash
-  docker compose -f docker-compose.pericope.yml down
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml down
   ```
 
 ## Status & Logs
-- Status: `docker compose -f docker-compose.pericope.yml ps`
+- Status: `docker compose -p fortress-phronesis -f docker-compose.pericope.yml ps`
 - Logs: 
   ```bash
-  docker compose -f docker-compose.pericope.yml logs -f mysql
-  docker compose -f docker-compose.pericope.yml logs -f pericopeai-api
-  docker compose -f docker-compose.pericope.yml logs -f pericopeai-frontend
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f mysql
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f pericopeai-api
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f pericopeai-frontend
   ```
 
 ## Run Locally for Testing (optional)
 - Build and start both services locally (adjust paths/ports as needed):
   ```bash
-  docker compose -f docker-compose.pericope.yml up -d --build
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build
   ```
 - Hit locally:
   ```bash
   curl -I http://127.0.0.1:18000/api/docs   # API
-  curl -I http://127.0.0.1:13080            # Frontend
+  curl -I http://127.0.0.1:3000            # Frontend
   ```
 - Stop:
   ```bash
-  docker compose -f docker-compose.pericope.yml down
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml down
   ```
 
 ## Corpus Service (AugustineCorpus)
@@ -100,14 +105,14 @@ Network: external `fortress-phronesis-net`
 
 ## Nginx Routing (host)
 - `/api` → 127.0.0.1:18000
-- `/` → 127.0.0.1:13080
+- `/` → 127.0.0.1:3000
 - Config: `/etc/nginx/sites-available/pericopeai.com` (symlinked in sites-enabled)
 - Reload after changes: `nginx -t && nginx -s reload`
 
 ## Verification
 - API: `curl -I http://127.0.0.1:18000/api/docs` and `curl -I https://pericopeai.com/api/docs`
-- FE: `curl -I http://127.0.0.1:13080` and `curl -I https://pericopeai.com`
-- DB: `mysql -h 127.0.0.1 -P ${MYSQL_HOST_PORT:-3307} -u${MYSQL_USER:-augustine} -p` (requires local MySQL client)
+- FE: `curl -I http://127.0.0.1:3000` and `curl -I https://pericopeai.com`
+- DB: `mysql -h 127.0.0.1 -P 3307 -u${MYSQL_USER:-augustine} -p` (requires local MySQL client)
 
 ## Services to Keep
 - Host chat API stays on 127.0.0.1:8000 (`chat-api.service`); do not stop it.
@@ -116,7 +121,7 @@ Network: external `fortress-phronesis-net`
 ## Notes
 - Compose network `fortress-phronesis-net` is external; leave it in place (Keycloak containers attached).
 - If you see the `version` warning in compose, remove the `version:` line to silence it.
-- MySQL data persists to `mysql_data`. Defaults come from env vars (`MYSQL_ROOT_PASSWORD`, `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASS`, `MYSQL_HOST_PORT`); override in `.env` before starting.
+- MySQL data persists to `mysql_data`. Defaults come from env vars (`MYSQL_ROOT_PASSWORD`, `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASS`); override in `.env` before starting.
 
 ## WordPress (containerized)
 - Compose file: `docker-compose.wordpress.yml` (builds `ama-wordpress:local` from `/root/workspace/askmortgageauthority.com`, runs nginx on host 18020).

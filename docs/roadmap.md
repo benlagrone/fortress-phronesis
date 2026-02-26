@@ -93,6 +93,38 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Performance improvements
 - Bug fixes only
 
+### v1.1.2 — Author Context Header (DB-Backed)
+**Goal:** Show grounded author context immediately when a persona is selected.
+
+- Add a top-of-chat UI element that updates on persona selection
+- Display:
+  - selected author name
+  - author summary/description
+  - authoritative books/works list
+- Data source requirements:
+  - author identity and summary from author info in DB
+  - books/works list from book metadata in DB
+  - no hardcoded FE author/book lists
+- API support:
+  - endpoint (or extension) that returns author profile + books metadata in one payload
+  - stable ordering for books list
+  - caching headers for read performance
+- Technical requirements:
+  - add relational catalog tables for authors and author_books (or equivalent normalized model)
+  - add migration/seed job to populate catalog tables from canonical corpus sources
+  - runtime reads for this header must come from DB-backed catalog queries
+  - file-only runtime sources (`author_index.json`, `book_metadata.json`) are not compliant for this feature
+  - add contract tests that fail if API returns empty books for a valid production-visible author
+- UX behavior:
+  - updates instantly when dropdown selection changes
+  - loading and empty-state handling
+  - hidden for invalid/unknown author selections
+
+**Definition of Done**
+- Selecting an author updates the header with DB-backed author + books data.
+- Header data matches backend metadata for the selected author.
+- Works for all production-visible authors (including newly added authors) without FE code changes.
+
 ---
 
 ## v1.2.x — Memory (Scoped and Explicit)
@@ -110,6 +142,39 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 
 **Constraint**
 - No silent or implicit long-term memory
+
+---
+
+## v1.3.x — Cross-Reference Intelligence (Backward Compatible)
+
+### v1.3.0
+**Goal:** Cross-reference scripture, Church Fathers, and works as first-class data.
+
+- Canonical reference normalization:
+  - Bible refs (book/chapter/verse)
+  - Author/work IDs
+  - Segment IDs (`author/source/chapter/position`)
+- Cross-reference index/graph:
+  - author -> Bible passage
+  - author -> author
+  - author -> work
+  - Bible passage -> Bible passage
+- Reference types:
+  - explicit citation
+  - quoted text
+  - mention
+  - allusion (confidence-scored)
+- Query surfaces:
+  - API endpoints for forward and reverse lookup
+  - UI panel for "Referenced Scripture" and "Related Authors/Works"
+- Governance:
+  - evidence snippet and confidence on every derived reference
+  - versioned extraction runs for reproducibility
+
+**Definition of Done**
+- A user can open a response and see indexed cross-references.
+- A user can query reverse links (for example: who references Genesis).
+- References are exportable and traceable to source segments.
 
 ---
 

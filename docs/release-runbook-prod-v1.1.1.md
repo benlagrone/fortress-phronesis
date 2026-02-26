@@ -102,9 +102,14 @@ ls -lh ../AugustineCorpus/texts/marcus_aurelius_texts/*.txt
 ```bash
 cd "$FPR_ROOT"
 
-$COMPOSE up -d --build mysql augustine-corpus-live pericopeai-api pericopeai-frontend
+$COMPOSE up -d --build mysql augustine-corpus-live pericopeai-api
+$COMPOSE up -d --build pericopeai-frontend
 $COMPOSE ps
 ```
+
+Why this order:
+1. Frontend Nginx depends on DNS resolution of upstream `pericopeai-api` at startup.
+2. Starting API first avoids frontend restart loops caused by transient `host not found in upstream "pericopeai-api"` errors.
 
 ## Step 3: MySQL Readiness and Schema Bootstrap
 
@@ -189,6 +194,11 @@ until curl -fsS http://localhost:18000/api/v1/authors >/dev/null; do
   echo "waiting for authors endpoint..."
   sleep 2
 done
+
+until curl -fsS http://localhost:3000 >/dev/null; do
+  echo "waiting for frontend..."
+  sleep 2
+done
 ```
 
 ## Step 6: Regression Tests
@@ -225,6 +235,19 @@ Pass gate:
 1. `ok` equals expected author count.
 2. No `HTTPError 500`.
 3. No systemic `citations<1` failures.
+
+Lock-in smoke command (run every deployment):
+
+```bash
+cd "$FPR_ROOT"
+python3 scripts/test-authors.py \
+  --base-url http://localhost:18000 \
+  --question "Summarize the main themes in 3-5 sentences and include citations." \
+  --exclude-local-only \
+  --authors augustine,marcus_aurelius \
+  --timeout 240 \
+  --out tests/author-chat-lockin-v1.1.1.jsonl
+```
 
 ## Step 7: Rollback
 

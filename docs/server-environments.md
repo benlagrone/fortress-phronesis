@@ -10,9 +10,10 @@ cross-environment changes.
    - `AugustineService/.env`
    - `AugustineCorpus/.env`
    - `AugustineFE/.env`
-3. Do not introduce a top-level `fortress-phronesis/.env` as a deployment control plane.
+3. Do not add a top-level `fortress-phronesis/.env` deployment control file.
 4. Do not change architecture during deployment execution (project name, network name, service topology, live container edits).
 5. Frontend `REACT_APP_*` values are build-time; use compose `--env-file` when building frontend.
+6. Use direct `docker compose` commands for deploy/update; no wrapper deployment scripts.
 
 ## Canonical Paths (Do Not Guess)
 
@@ -65,20 +66,22 @@ Prod (vmi2669159)
 - Workspace: `/root/workspace`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis`
-- Ports: API `18000`, FE `13080`, MySQL `3307`
+- Ports: API `18000`, FE `3000`, MySQL `3307`
 - Network: `fortress-phronesis-net` (shared external)
 
 Dev (fortress-phronesis / 192.168.86.23)
 - Workspace: `/home/master-benjamin/Projects/pericopeai.com`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis` (match prod by default)
-- Ports: API `18000`, FE `13080`, MySQL `3307`
+- Ports: API `18000`, FE `3000`, MySQL `3307`
 - Network: `fortress-phronesis-net` (shared external)
 
 Local (macOS)
 - Workspace: `/Users/benjaminlagrone/Documents/projects/pericopeai.com`
-- API port: typically `8080` (check `docker ps`)
-- FE port: `3000` (dev server) or `13080` (compose)
+- Default ports come from `docker-compose.pericope.yml`:
+  - API `18000`
+  - FE `3000`
+  - MySQL `3307`
 
 ## Repo layout
 
@@ -87,7 +90,6 @@ Each repo has its own `.env`:
 - `AugustineService/.env`
 - `AugustineFE/.env`
 
-There is no top-level `.env` in `fortress-phronesis`.
 For prod, set `ENVIRONMENT=prd` (or `ENV=prd`) in both
 `AugustineCorpus/.env` and `AugustineService/.env` to hide `local_only`
 authors like "Alpha (Dev)".
@@ -106,8 +108,13 @@ Location: `fortress-phronesis/docker-compose.pericope.yml`
 Start/stop
 ```bash
 cd <workspace>/fortress-phronesis
-bash scripts/apply-updates.sh
+docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build mysql augustine-corpus-live pericopeai-api
+docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+docker compose -p fortress-phronesis -f docker-compose.pericope.yml ps
 ```
+
+If MySQL fails with `Bind for 0.0.0.0:3307 failed: port is already allocated`,
+stop the conflicting container first (commonly `pericope-local-mysql-1`) and retry.
 
 ## Reindex workflow (prod/dev)
 
@@ -152,7 +159,7 @@ python3 AugustineCorpus/scripts/split_gutenberg_kjv_apocrypha.py \
 Local:
 ```bash
 fortress-phronesis/scripts/test-authors.py \
-  --base-url http://localhost:8080 \
+  --base-url http://localhost:18000 \
   --question "Summarize the main themes in 3-5 sentences and include citations." \
   --out tests/author-chat-test.jsonl
 ```

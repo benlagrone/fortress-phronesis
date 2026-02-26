@@ -43,7 +43,7 @@
   },
   {
     "name": "Irenaeus of Lyons",
-    "status": "texts downloaded; pending index",
+    "status": "texts present; index volume wired",
     "acquired_date": "2026-02-17",
     "about": "Bishop of Lyons; Asia Minor-born (c. 130–142), disciple of Polycarp; priest in Lyons during Marcus Aurelius’ persecution; succeeded Pothinus as bishop; wrote chiefly against Gnosticism (Against Heresies) and the Demonstration of the Apostolic Preaching; advocated for Quartodecimans’ reconciliation; died late 2nd/early 3rd century; feast 28 June (Latin), 23 August (Greek).",
     "persona_mode": "Authority",
@@ -75,8 +75,19 @@
   },
   {
     "name": "John Chrysostom",
-    "status": "pending",
+    "status": "texts downloaded; index built; pending runtime wiring",
+    "acquired_date": "2026-02-25",
     "persona_mode": "Authority",
+    "works": [
+      "https://www.newadvent.org/fathers/1901.htm",
+      "https://www.newadvent.org/fathers/1919.htm",
+      "https://www.newadvent.org/fathers/2101.htm",
+      "https://www.newadvent.org/fathers/2301.htm",
+      "https://www.newadvent.org/fathers/2302.htm",
+      "https://www.newadvent.org/fathers/2303.htm",
+      "https://www.newadvent.org/fathers/2401.htm",
+      "https://www.newadvent.org/fathers/2402.htm"
+    ],
     "notes": [
       "Time: c. 347–407 AD; Origin: Antioch; later Constantinople",
       "Role: Archbishop, preacher",
@@ -329,5 +340,5 @@
   { "name": "Skaespeare", "status": "pending", "persona_mode": "Authority", "notes": [] },
   { "name": "Spinoza", "status": "pending", "persona_mode": "Authority", "notes": [] },
   { "name": "Tacitus", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Bossuet", "status": "pending", "persona_mode": "Authority", "notes": [] },
+  { "name": "Bossuet", "status": "pending", "persona_mode": "Authority", "notes": [] }
 ]

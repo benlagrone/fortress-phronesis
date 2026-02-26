@@ -31,6 +31,27 @@ fortress-phronesis/scripts/test-authors.py \
   --out /tmp/author-chat-test.jsonl
 ```
 
+Lock-in smoke (recommended after every deploy):
+```bash
+python3 fortress-phronesis/scripts/test-authors.py \
+  --base-url http://localhost:18000 \
+  --question "Summarize the main themes in 3-5 sentences and include citations." \
+  --exclude-local-only \
+  --authors augustine,marcus_aurelius \
+  --timeout 240 \
+  --out tests/author-chat-lockin.jsonl
+```
+
+Visible terminal smoke (recommended default):
+```bash
+cd fortress-phronesis
+python3 scripts/smoke-tests.py \
+  --base-url http://localhost:18000 \
+  --out tests/author-chat-smoke-visible.jsonl
+```
+
+This prints live progress plus a final PASS/FAIL summary table in terminal.
+
 Dev server example:
 ```bash
 fortress-phronesis/scripts/test-authors.py \

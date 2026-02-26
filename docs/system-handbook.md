@@ -9,7 +9,7 @@
 - **Apache:** PHP for WordPress on 8080.
 - **WordPress:** `/var/www/askmortgageauthority/`; DB_HOST=localhost; DB `wordpress` (WooCommerce tables present).
 - **Chat API (host):** `/var/www/chat-api/app/main.py` (FastAPI on 9001); systemd `chat-api.service` runs uvicorn on 127.0.0.1:8000 (keep running).
-- **PericopeAI frontend+API (containerized):** `docker-compose.pericope.yml` → pericopeai-api (host port 18000 -> container 8080), pericopeai-frontend (host port 13080 -> container 80). Nginx proxies `/api` to 127.0.0.1:18000 and `/` to 127.0.0.1:13080. `.env` points to HostGator MySQL (`gator4416.hostgator.com`, DB `cwrihote_chatbook`).
+- **PericopeAI frontend+API (containerized):** `docker-compose.pericope.yml` → pericopeai-api (host port 18000 -> container 8080), pericopeai-frontend (host port 3000 -> container 80). Nginx proxies `/api` to 127.0.0.1:18000 and `/` to 127.0.0.1:3000. `.env` points to HostGator MySQL (`gator4416.hostgator.com`, DB `cwrihote_chatbook`).
 - **Keycloak:** two instances — host Java on 8080; Docker `auth-keycloak-1` on 8081 with Postgres DB (kc-db container).
 - **MariaDB:** 127.0.0.1:3306; only database present is `wordpress`.
 

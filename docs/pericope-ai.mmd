@@ -6,7 +6,7 @@ A2["🔐 auth.pericopeai.com (Keycloak realm)"]
 
 %% ─── NGINX CONFIGURATION ─────────────────────
 subgraph S1["🧭 /etc/nginx/sites-available/pericopeai.conf (host)"]
-  S1a["location / → proxy_pass 127.0.0.1:13080 (FE container)"]
+  S1a["location / → proxy_pass 127.0.0.1:3000 (FE container)"]
   S1b["location /api → proxy_pass 127.0.0.1:18000 (API container)"]
 end
 
@@ -16,7 +16,7 @@ A2 -->|OIDC authority| S1
 %% ─── FRONTEND (CONTAINER) ─────────────────────
 subgraph S2["🎨 pericopeai-frontend container"]
   S2a["build from /root/workspace/AugustineFE"]
-  S2b["nginx in-container on :80 → mapped to host :13080"]
+  S2b["nginx in-container on :80 → mapped to host :3000"]
 end
 
 S1a --> S2a
@@ -41,7 +41,7 @@ end
 
 %% ─── DATABASE ────────────────────────────────
 subgraph S5["🗄️ MySQL (container)"]
-  S5a["mysql:8.0 → port 3306 (host-mapped as ${MYSQL_HOST_PORT:-3307})"]
+  S5a["mysql:8.0 → port 3306 (host-mapped as 3307)"]
   S5b["Volume: mysql_data"]
 end
 

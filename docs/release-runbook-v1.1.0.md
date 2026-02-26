@@ -22,7 +22,7 @@
 1. **Local dev (mac):**
    - Compose project: `pericope-local`
    - API: `http://localhost:18000`
-   - FE: `http://localhost:13080`
+   - FE: `http://localhost:3000`
 2. **QA server:**
    - Compose project: `fortress-phronesis` (same as prod contract)
    - Profile: `CLIENT_ACCESS_PROFILE=p-qa` (or `mde-qa` for MDE interface)
@@ -138,7 +138,7 @@ docker compose -p fortress-phronesis -f docker-compose.pericope.yml restart augu
 
 ```bash
 curl -fsS http://localhost:18000/api/healthz
-curl -fsS http://localhost:13080 >/dev/null
+curl -fsS http://localhost:3000 >/dev/null
 docker compose -p fortress-phronesis -f docker-compose.pericope.yml exec -T augustine-corpus-live \
   python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8001/healthz', timeout=5).read().decode())"
 ```

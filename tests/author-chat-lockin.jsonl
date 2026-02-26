@@ -1,0 +1,2 @@
+{"author": "augustine", "status": 200, "elapsed_ms": 36990, "answer_chars": 1098, "answer_words": 192, "citations": 3, "books": 3, "metadata": 3, "position_min": 1, "position_max": 2984, "error": null, "pass": true, "fail_reasons": [], "response_bytes": 2651}
+{"author": "marcus_aurelius", "status": 500, "elapsed_ms": 17, "answer_chars": 0, "answer_words": 0, "citations": 0, "books": 0, "metadata": 0, "position_min": null, "position_max": null, "error": "HTTPError 500", "pass": false, "fail_reasons": ["HTTPError 500"], "response_bytes": 213}
