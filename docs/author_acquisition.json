@@ -74,6 +74,26 @@
     ]
   },
   {
+    "name": "Eusebius Pamphilus",
+    "status": "texts downloaded; metadata generated; pending index/runtime wiring",
+    "persona_mode": "Authority",
+    "notes": [
+      "Also known as Eusebius of Caesarea (Caesaria spelling variant)",
+      "Time: c. 260–339 AD; Origin: Caesarea Maritima",
+      "Role: Bishop, historian, biblical scholar",
+      "Key Work: The History of the Church (Ecclesiastical History)",
+      "Priority: Acquire The History of the Church first",
+      "Acquisition priority: Church History (Eusebius) from New Advent canonical translation.",
+      "Automation note (2026-02-27): download attempted from local sandbox but blocked by DNS/network restrictions; run acquisition on server environment."
+    ],
+    "works": [
+      "https://www.newadvent.org/fathers/2501.htm",
+      "https://www.newadvent.org/fathers/2502.htm",
+      "https://www.newadvent.org/fathers/2503.htm"
+    ],
+    "acquired_date": "2026-02-27"
+  },
+  {
     "name": "John Chrysostom",
     "status": "texts downloaded; index built; pending runtime wiring",
     "acquired_date": "2026-02-25",
@@ -97,30 +117,40 @@
   },
   {
     "name": "Solomon",
-    "status": "pending",
+    "status": "next-up queued (1 of 2); pending text acquisition/index/runtime wiring",
+    "queue_date": "2026-02-28",
     "persona_mode": "Aphoristic",
     "notes": [
       "Time: c. 10th century BC (traditional); Origin: United Kingdom of Israel",
       "Role: King, wisdom figure",
       "Key Texts: Proverbs; Ecclesiastes; Song of Songs",
-      "Contribution: Biblical wisdom tradition, order, discernment"
+      "Contribution: Biblical wisdom tradition, order, discernment",
+      "Queue note (2026-02-28): selected as one of the next two acquisition targets for the v1.1.3 release train."
     ]
   },
   {
     "name": "Aristotle",
-    "status": "pending",
+    "status": "next-up queued (2 of 2); pending text acquisition/index/runtime wiring",
+    "queue_date": "2026-02-28",
     "persona_mode": "Authority",
     "notes": [
       "Time: 384–322 BC; Origin: Stagira",
       "Role: Philosopher, systematizer",
       "Key Works: Ethics; Metaphysics; Politics",
-      "Contribution: Logic, causality, practical ethics"
+      "Contribution: Logic, causality, practical ethics",
+      "Queue note (2026-02-28): selected as one of the next two acquisition targets for the v1.1.3 release train."
     ]
   },
   {
     "name": "Niccolò Machiavelli",
-    "status": "pending",
+    "status": "texts downloaded; pending index",
+    "acquired_date": "2026-03-01",
     "persona_mode": "Political",
+    "works": [
+      "https://www.gutenberg.org/ebooks/1232.txt.utf-8",
+      "https://www.gutenberg.org/ebooks/10827.txt.utf-8",
+      "https://www.gutenberg.org/ebooks/2464.txt.utf-8"
+    ],
     "notes": [
       "Time: 1469–1527; Origin: Florence",
       "Role: Political theorist",
@@ -227,20 +257,90 @@
       "Contribution: Transmission of Eastern monastic wisdom to the West"
     ]
   },
-  { "name": "Clement of Rome", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Ignatius of Antioch", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Polycarp of Smyrna", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Gregory of Nyssa", "status": "pending", "persona_mode": "Ascetic", "notes": [] },
-  { "name": "Tertullian", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Cyprian of Carthage", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Boethius", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Anselm of Canterbury", "status": "pending", "persona_mode": "Interior", "notes": [] },
-  { "name": "Bernard of Clairvaux", "status": "pending", "persona_mode": "Ascetic", "notes": [] },
-  { "name": "Thomas Aquinas", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Martin Luther", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "John Calvin", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Blaise Pascal", "status": "pending", "persona_mode": "Aphoristic", "notes": [] },
-  { "name": "John Locke", "status": "pending", "persona_mode": "Political", "notes": [] },
+  {
+    "name": "Clement of Rome",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Ignatius of Antioch",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Polycarp of Smyrna",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Gregory of Nyssa",
+    "status": "pending",
+    "persona_mode": "Ascetic",
+    "notes": []
+  },
+  {
+    "name": "Tertullian",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Cyprian of Carthage",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Boethius",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Anselm of Canterbury",
+    "status": "pending",
+    "persona_mode": "Interior",
+    "notes": []
+  },
+  {
+    "name": "Bernard of Clairvaux",
+    "status": "pending",
+    "persona_mode": "Ascetic",
+    "notes": []
+  },
+  {
+    "name": "Thomas Aquinas",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Martin Luther",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "John Calvin",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Blaise Pascal",
+    "status": "pending",
+    "persona_mode": "Aphoristic",
+    "notes": []
+  },
+  {
+    "name": "John Locke",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": []
+  },
   {
     "name": "Epictetus",
     "status": "texts downloaded; pending index",
@@ -314,7 +414,7 @@
   },
   {
     "name": "Marcus Aurelius",
-    "status": "texts downloaded; pending index",
+    "status": "texts present; index volume wired",
     "acquired_date": "2026-02-17",
     "persona_mode": "Authority",
     "works": [
@@ -327,18 +427,311 @@
       "Contribution: Stoic ethics, discipline of judgment, duty and civic virtue"
     ]
   },
-  { "name": "Maximus the Confessor", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Thucydides", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Xenophon", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Plutarch", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Titus Livius", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Tacitus", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Strada", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Jornandes", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Dante", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Mantaigne", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Skaespeare", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Spinoza", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Tacitus", "status": "pending", "persona_mode": "Authority", "notes": [] },
-  { "name": "Bossuet", "status": "pending", "persona_mode": "Authority", "notes": [] }
+  {
+    "name": "Frithigern",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 2:38",
+      "Gothic leader associated with a 376 AD arrangement with the Roman Emperor",
+      "Contribution target: Late Roman-Gothic negotiation and frontier politics"
+    ]
+  },
+  {
+    "name": "Athanaric",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 6:38",
+      "Visigothic chief referenced as leading his people after victory",
+      "Contribution target: Gothic leadership under Roman pressure"
+    ]
+  },
+  {
+    "name": "Hermanric",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Video extract timestamp: 8:25",
+      "Described as the \"Gothic Alexander\"; likely associated with Ermanaric traditions",
+      "Contribution target: Early Gothic imperial memory and identity"
+    ]
+  },
+  {
+    "name": "John Paul Sigmarsson",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Video extract timestamp: 9:48",
+      "Modern strongman figure included as a Germanic-nation reference in source material",
+      "Contribution target: Modern comparative cultural archetype"
+    ]
+  },
+  {
+    "name": "Alaric",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 14:48",
+      "Germanic military leader associated with major assaults on Rome",
+      "Contribution target: Roman collapse dynamics and Gothic strategy"
+    ]
+  },
+  {
+    "name": "Stilicho",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 15:25",
+      "Half-German statesman-general in the Western Roman Empire; opponent of Alaric",
+      "Contribution target: Hybrid Roman-barbarian command politics"
+    ]
+  },
+  {
+    "name": "Ricimer",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 16:01",
+      "Late Western Roman power broker and \"kingmaker\" general",
+      "Contribution target: Post-imperial military patronage governance"
+    ]
+  },
+  {
+    "name": "Attila",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 22:39",
+      "Leader of the Huns, portrayed as consistently expansionist and martial",
+      "Contribution target: Steppe pressure on late antique Europe"
+    ]
+  },
+  {
+    "name": "Theodor",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 26:24",
+      "Visigothic king allied with Romans against Attila (likely Theodoric I context)",
+      "Contribution target: Coalition warfare in late antiquity"
+    ]
+  },
+  {
+    "name": "Odoacer",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 39:52",
+      "Figure who became king after Gothic mercenary demands were rejected",
+      "Contribution target: Transition from imperial office to post-imperial kingship"
+    ]
+  },
+  {
+    "name": "Theodoric",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 40:35",
+      "Born in 455 AD; associated with unifying Gothic realms and stabilizing Italy",
+      "Contribution target: Governance synthesis between Roman administration and Gothic rule"
+    ]
+  },
+  {
+    "name": "Tufa",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Video extract timestamp: 49:01",
+      "Commander elevated by Theodoric and later described as a betrayer",
+      "Contribution target: Loyalty fracture and command risk in Gothic wars"
+    ]
+  },
+  {
+    "name": "Alfred",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Video extract timestamp: 58:51",
+      "Referenced comparatively regarding secure conditions under strong rule",
+      "Contribution target: Law-order legitimacy comparison with Theodoric-era stability"
+    ]
+  },
+  {
+    "name": "Maximus the Confessor",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Thucydides",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Xenophon",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Plutarch",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Titus Livius",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Tacitus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Video extract timestamp: 15:09",
+      "Roman historian cited for observing imperial decline dynamics",
+      "Key Work: Germania",
+      "Contribution target: Early ethnographic framing of Germanic tribes"
+    ]
+  },
+  {
+    "name": "Jordanes",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Also known as Jornandes (spelling variant)",
+      "Video extract timestamps: 4:57, 14:27, 20:28, 33:17",
+      "Key Work: Getica",
+      "Contribution target: Primary Latin source for Gothic historical memory and leadership narratives"
+    ]
+  },
+  {
+    "name": "Tatian",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 120–180 AD; Origin: Assyria/Mesopotamia",
+      "Role: Early Christian apologist and compiler",
+      "Key Works: Oratio ad Graecos (Address to the Greeks); Diatessaron",
+      "Contribution: Early Gospel harmony and anti-pagan apologetics"
+    ]
+  },
+  {
+    "name": "Flavius Josephus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 37–100 AD; Origin: Judea",
+      "Role: Jewish historian",
+      "Key Works: The Jewish War; Antiquities of the Jews",
+      "Contribution: Core historical context for Second Temple Judaism and early Christianity"
+    ]
+  },
+  {
+    "name": "Tiberius",
+    "status": "pending",
+    "persona_mode": "Political",
+    "notes": [
+      "Time: 42 BC–37 AD; Origin: Rome",
+      "Role: Roman emperor",
+      "Sources: Primarily reconstructed through Tacitus, Suetonius, and Josephus",
+      "Contribution: Political and imperial context for early first-century Christianity"
+    ]
+  },
+  {
+    "name": "Gregory of Tours",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 538–594 AD; Origin: Gaul",
+      "Role: Gallo-Roman bishop and historian",
+      "Key Work: History of the Franks",
+      "Contribution target: Early Frankish political-religious history"
+    ]
+  },
+  {
+    "name": "Paul the Deacon",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 720–799 AD; Origin: Lombard Italy",
+      "Role: Lombard monk and historian",
+      "Key Work: History of the Lombards",
+      "Contribution target: Lombard and post-Roman political continuity"
+    ]
+  },
+  {
+    "name": "Saxo Grammaticus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 1150–1220 AD; Origin: Denmark",
+      "Role: Historian and chronicler",
+      "Key Work: Gesta Danorum",
+      "Contribution target: Early Danish historical traditions and Norse-era memory"
+    ]
+  },
+  {
+    "name": "Herodotus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 484–425 BC; Origin: Halicarnassus",
+      "Role: Greek historian",
+      "Key Work: Histories (especially Book IV on Scythians)",
+      "Contribution target: Foundational non-Scythian narrative on Scythian peoples"
+    ]
+  },
+  {
+    "name": "Priscus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Video extract timestamp: 23:51-25:27",
+      "Time: 5th century AD; Origin: Byzantine Greek sphere",
+      "Role: Diplomat and historian",
+      "Known for eyewitness accounts of Attila's court",
+      "Contribution target: High-value primary witness material for late Hunnic context"
+    ]
+  },
+  {
+    "name": "Strada",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Dante",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Mantaigne",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Skaespeare",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Spinoza",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  },
+  {
+    "name": "Bossuet",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": []
+  }
 ]

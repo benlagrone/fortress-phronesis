@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.pericope.yml"
+SERVICE_ENV_FILE="$ROOT_DIR/../AugustineService/.env"
+FE_ENV_FILE="$ROOT_DIR/../AugustineFE/.env"
 
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "FAIL: compose file not found: $COMPOSE_FILE"
@@ -46,7 +48,7 @@ echo "Compose file: $COMPOSE_FILE"
 require_pattern "name: fortress-phronesis-net" "Network name is locked"
 require_pattern "\"3307:3306\"" "MySQL host port is locked to 3307"
 require_pattern "\"18000:8080\"" "API host port is locked to 18000"
-require_pattern "\"3000:80\"" "Frontend host port is locked to 3000"
+require_pattern "\"13080:80\"" "Frontend host port is locked to 13080"
 require_pattern "ENVIRONMENT=\${ENVIRONMENT:-dev}" "Corpus ENVIRONMENT wiring is locked"
 require_pattern "ENV=\${ENV:-dev}" "Corpus ENV wiring is locked"
 require_pattern "CORPUS_API_URL=\${CORPUS_API_URL:-http://augustine-corpus-live:8001}" "API corpus URL wiring is locked"
@@ -56,6 +58,17 @@ forbid_pattern "\\$\\{PERICOPE_NET_NAME" "Network override is disabled"
 forbid_pattern "\\$\\{MYSQL_HOST_PORT" "MySQL port override is disabled"
 forbid_pattern "\\$\\{API_HOST_PORT" "API port override is disabled"
 forbid_pattern "\\$\\{FE_HOST_PORT" "Frontend port override is disabled"
+
+# In production, frontend API key must be present in FE env because it is a build-time arg.
+if [[ -f "$SERVICE_ENV_FILE" && -f "$FE_ENV_FILE" ]]; then
+  if grep -Eq '^(ENV|ENVIRONMENT)=prd$' "$SERVICE_ENV_FILE"; then
+    if grep -Eq '^REACT_APP_AUGUSTINE_API_KEY=.+$' "$FE_ENV_FILE"; then
+      pass "Prod FE API key is present in AugustineFE/.env"
+    else
+      fail "Prod FE API key missing/empty in AugustineFE/.env (REACT_APP_AUGUSTINE_API_KEY)"
+    fi
+  fi
+fi
 
 if [[ "$failures" -gt 0 ]]; then
   echo

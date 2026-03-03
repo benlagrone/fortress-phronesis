@@ -14,7 +14,7 @@ These rules are mandatory for this repo unless the user explicitly asks to chang
 - Host ports:
   - MySQL `3307`
   - API `18000`
-  - Frontend `3000`
+  - Frontend `13080`
 - Environment wiring and profiles used by the PericopeAI stack.
 
 ## Change Control

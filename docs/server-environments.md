@@ -66,21 +66,21 @@ Prod (vmi2669159)
 - Workspace: `/root/workspace`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis`
-- Ports: API `18000`, FE `3000`, MySQL `3307`
+- Ports: API `18000`, FE `13080`, MySQL `3307`
 - Network: `fortress-phronesis-net` (shared external)
 
 Dev (fortress-phronesis / 192.168.86.23)
 - Workspace: `/home/master-benjamin/Projects/pericopeai.com`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis` (match prod by default)
-- Ports: API `18000`, FE `3000`, MySQL `3307`
+- Ports: API `18000`, FE `13080`, MySQL `3307`
 - Network: `fortress-phronesis-net` (shared external)
 
 Local (macOS)
 - Workspace: `/Users/benjaminlagrone/Documents/projects/pericopeai.com`
 - Default ports come from `docker-compose.pericope.yml`:
   - API `18000`
-  - FE `3000`
+  - FE `13080`
   - MySQL `3307`
 
 ## Repo layout

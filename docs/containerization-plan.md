@@ -11,8 +11,8 @@
 - Host mappings:
   - DB container port 3306 → host `3307` (override in `.env` if 3306 is free).
   - API container port 8000 → host 18000.
-  - FE container port 80 → host 3000.
-  - Nginx host upstreams: `/api` → 127.0.0.1:18000; `/` → 127.0.0.1:3000 (after cutover).
+  - FE container port 80 → host 13080.
+  - Nginx host upstreams: `/api` → 127.0.0.1:18000; `/` → 127.0.0.1:13080 (after cutover).
 - DB:
   - Default to bundled MySQL container (init via `MYSQL_*` env vars).
   - If staying on HostGator, override `MYSQL_HOST`/creds in `.env` and ensure outbound 3306 is allowed.

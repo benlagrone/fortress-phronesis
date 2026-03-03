@@ -1,0 +1,4 @@
+.rag/
+venv/
+scripts/*
+!scripts/smoke-crossrefs.py

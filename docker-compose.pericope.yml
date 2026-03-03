@@ -367,7 +367,7 @@ services:
         REACT_APP_KEYCLOAK_CLIENT_ID: ${REACT_APP_KEYCLOAK_CLIENT_ID:-pericope-web}
         REACT_APP_DISABLE_AUTH: ${REACT_APP_DISABLE_AUTH:-false}
     ports:
-      - "3000:80"                                               # host:container
+      - "13080:80"                                              # host:container
     networks:
       - pericope_net
     restart: unless-stopped

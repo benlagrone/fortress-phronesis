@@ -2,7 +2,7 @@
 
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
-Services: `mysql` (host port `3307` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 3000 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
+Services: `mysql` (host port `3307` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
 Network: external `fortress-phronesis-net`
 
 Deployment lock check:
@@ -52,7 +52,7 @@ bash scripts/verify-pericope-deploy-lock.sh
 - Hit locally:
   ```bash
   curl -I http://127.0.0.1:18000/api/docs   # API
-  curl -I http://127.0.0.1:3000            # Frontend
+  curl -I http://127.0.0.1:13080           # Frontend
   ```
 - Stop:
   ```bash
@@ -105,13 +105,13 @@ bash scripts/verify-pericope-deploy-lock.sh
 
 ## Nginx Routing (host)
 - `/api` → 127.0.0.1:18000
-- `/` → 127.0.0.1:3000
+- `/` → 127.0.0.1:13080
 - Config: `/etc/nginx/sites-available/pericopeai.com` (symlinked in sites-enabled)
 - Reload after changes: `nginx -t && nginx -s reload`
 
 ## Verification
 - API: `curl -I http://127.0.0.1:18000/api/docs` and `curl -I https://pericopeai.com/api/docs`
-- FE: `curl -I http://127.0.0.1:3000` and `curl -I https://pericopeai.com`
+- FE: `curl -I http://127.0.0.1:13080` and `curl -I https://pericopeai.com`
 - DB: `mysql -h 127.0.0.1 -P 3307 -u${MYSQL_USER:-augustine} -p` (requires local MySQL client)
 
 ## Services to Keep

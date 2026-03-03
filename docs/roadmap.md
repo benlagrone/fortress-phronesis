@@ -3,6 +3,7 @@
 **Status:** Strawman  
 **Purpose:** Planning, alignment, and sequencing  
 **Note:** This roadmap is provisional and intended to evolve.
+**Linked Backlog:** [Roadmap Recovery Ledger](roadmap-recovery-ledger.md)
 
 ---
 
@@ -125,6 +126,62 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Header data matches backend metadata for the selected author.
 - Works for all production-visible authors (including newly added authors) without FE code changes.
 
+### v1.1.3 — Augustine Frontend Control Simplification
+**Goal:** Reduce top-of-chat UI complexity while preserving author grounding visibility.
+
+- Remove the `Mode` selector from the chat controls
+- Remove the `Test Memory` control from the chat controls
+- Combine the remaining top control element (persona selector) directly into the author context element as one unified panel
+- Keep author profile visibility in the merged panel (name, summary, key works)
+- Preserve current persona-selection behavior while simplifying layout
+- Improve mobile viewport behavior so chat message area fills remaining screen height and keeps the input/send row visible without page over-scroll
+- Add a conversation tuning guardrail for New Testament personas: the assistant must never adopt Jesus' first-person persona; it must respond as the selected author (e.g., Luke, John, Paul) and refer to Jesus in third person
+
+**Definition of Done**
+- The top chat area no longer shows `Mode` or `Test Memory`.
+- Users can select persona from within the author context element (single combined panel).
+- Existing author-context data flow remains DB-backed and functional.
+- On mobile, the chat window fits within viewport height minus controls, with message list scrolling independently while input/send remains visible at the bottom.
+- New Testament persona responses are validated to avoid first-person Jesus identity drift and remain in the selected author voice.
+
+### v1.1.4 — Immediate UI Hardening and Operator Clarity
+**Goal:** Ship the next UI updates directly after control simplification, focused on reliability signals, error clarity, and author onboarding readiness.
+
+- Responsive layout behavior by viewport:
+  - mobile keeps the current single-column format (chat-first)
+  - large desktop moves author context and references/citations into a right-side panel while chat remains primary
+- Add explicit request-state UI for chat:
+  - sending
+  - retryable error
+  - timeout state
+  - recovered/success state
+- Standardize API/auth error banners with actionable copy:
+  - `401` (invalid/missing key or token)
+  - `403` (insufficient access profile)
+  - `504` (upstream timeout / retry guidance)
+- Add a lightweight environment/build badge in UI footer/header:
+  - environment (`prd`/`qa`/`dev`)
+  - app build version
+  - generated-at timestamp (if available)
+- Improve session usability in chat history:
+  - clearer persona label in each session row
+  - last-updated timestamp formatting consistency
+  - explicit "resume session" affordance
+- Add "new author readiness" UI guardrails:
+  - empty author profile handling with non-breaking fallback state
+  - books/works panel handles zero-book metadata without layout shift
+  - unknown author slug routing returns controlled UI state (not blank screen)
+
+**Definition of Done**
+- On large desktop, author context and references are rendered in a persistent right panel; chat remains the main reading/writing column.
+- On mobile, chat uses viewport-aware height so message area is focused and the input + send controls remain visible at the bottom.
+- On mobile, users can still scroll the page to review additional citations/references without losing access to message entry controls.
+- Users can distinguish auth failure vs timeout vs generic failure from UI alone.
+- Chat request lifecycle is visible and recoverable without page refresh.
+- Build/environment indicators are visible for support and incident triage.
+- History/session UI allows predictable resume behavior across personas.
+- Newly promoted authors render safely even when metadata is partial.
+
 ---
 
 ## v1.2.x — Memory (Scoped and Explicit)
@@ -150,6 +207,10 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 ### v1.3.0
 **Goal:** Cross-reference scripture, Church Fathers, and works as first-class data.
 
+- Kickoff milestone (bootstrap): ship deterministic cross-reference API surfaces backed by canonical metadata map:
+  - `GET /api/v1/crossrefs/books`
+  - `GET /api/v1/crossrefs/books/{book_id}`
+  - `GET /api/v1/crossrefs/authors/{author_slug}`
 - Canonical reference normalization:
   - Bible refs (book/chapter/verse)
   - Author/work IDs
@@ -175,6 +236,79 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - A user can open a response and see indexed cross-references.
 - A user can query reverse links (for example: who references Genesis).
 - References are exportable and traceable to source segments.
+
+### v1.3.1 — Serviceized Persona Deployment ("X as a Service")
+**Goal:** Treat each author/work corpus as a first-class service with independent versioning, deploys, and rollback; use MDE as promotion gate.
+
+- Introduce canonical service identity (not tied to UI labels):
+  - `service_id` examples:
+    - `augustine.en`
+    - `solomon.expanded.en`
+    - `psalms.masoretic.en`
+    - `psalms.vulgate.la`
+    - `grimoire.<tradition>.<lang>`
+  - `service_version` for active package pointer
+- Define service package ("model pack") contract:
+  - retrieval index artifact(s)
+  - corpus metadata (books/works/provenance/visibility)
+  - persona prompt/policy config
+  - compatibility metadata (`schema_version`, `built_at`, `checksum`)
+- Separate release types:
+  - **code release** (API/FE/runtime)
+  - **data/service release** (new author/work, index refresh, pack promotion)
+- Deployment strategy for frequent author additions:
+  - author/service-scoped indexing by default (no implicit full reindex)
+  - additive pack publishing and activation via version pointer switch
+  - deterministic rollback to prior service pointer
+- API evolution (backward compatible):
+  - preserve existing `/api/v2/chat`
+  - add service-scoped surfaces:
+    - `POST /api/v1/services/{service_id}/chat`
+    - `POST /api/v1/services/{service_id}/context`
+    - `GET /api/v1/services/{service_id}/metadata`
+    - `GET /api/v1/services/{service_id}/version`
+    - `GET /api/v1/services`
+- Warehouse integration (hybrid model):
+  - keep APIs for online serving/auth/rate limiting
+  - add warehouse-friendly tables for batch/eval workflows:
+    - `service_catalog`
+    - `service_versions`
+    - `eval_runs`
+    - `eval_results`
+    - `promotion_decisions`
+- MDE promotion gate requirements (mandatory for production promotions):
+  - required run tags:
+    - `run_id`, `service_id`, `service_version`
+    - `llm_provider`, `llm_model`
+    - `prompt_version`, `dataset_version`, `timestamp`
+  - thresholded metrics:
+    - grounding/citation accuracy
+    - persona fidelity
+    - theological consistency
+    - safety/policy compliance
+    - latency/cost ceilings
+  - promotion blocked on hard-threshold failure or critical non-regression failure
+- Operational controls:
+  - signed evaluation artifact required for promotion
+  - post-deploy smoke + MDE canary check before final promotion
+  - automatic rollback trigger on critical regression
+
+**Definition of Done**
+- New author/service can be deployed without full-system reindex.
+- Each `service_id` has independent `service_version` promotion and rollback.
+- MDE gate runs are attached to every production promotion decision.
+- Operators can query active version, baseline, and promotion history per service.
+- Existing clients using `/api/v2/chat` continue to work unchanged.
+
+**Implementation Phasing**
+- Phase A (service identity + additive data deploy):
+  - `service_id/service_version` model, service registry, author-scoped indexing default
+- Phase B (API + control plane):
+  - service-scoped API endpoints + version pointer promotion/rollback workflow
+- Phase C (MDE gate enforcement):
+  - required eval schema, baseline diffing, promotion block rules
+- Phase D (warehouse + audit hardening):
+  - warehouse integration tables, dashboard views, exportable audit trail
 
 ---
 

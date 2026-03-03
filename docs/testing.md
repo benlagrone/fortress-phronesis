@@ -52,6 +52,23 @@ python3 scripts/smoke-tests.py \
 
 This prints live progress plus a final PASS/FAIL summary table in terminal.
 
+Cross-reference API smoke (v1.3.0 bootstrap):
+```bash
+cd fortress-phronesis
+python3 scripts/smoke-crossrefs.py \
+  --base-url http://localhost:18000 \
+  --out tests/crossref-smoke-visible.json
+```
+
+Optional scoped author check:
+```bash
+python3 scripts/smoke-crossrefs.py \
+  --base-url http://localhost:18000 \
+  --author moses
+```
+
+Note: for bootstrap crossref validation, use an author slug that currently has mapped crossref entries (for example `moses`).
+
 Dev server example:
 ```bash
 fortress-phronesis/scripts/test-authors.py \

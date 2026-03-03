@@ -8,7 +8,7 @@ subgraph NGINX["🧭 NGINX Reverse Proxy (Host, Contabo)"]
     N1["Ports 80/443 on 89.117.151.145"]
     N2["/etc/nginx/sites-available/pericopeai.conf → routing"]
     N3["/etc/letsencrypt/ → SSL certificates"]
-    N4["location / → proxy_pass http://127.0.0.1:3000 (FE container)"]
+    N4["location / → proxy_pass http://127.0.0.1:13080 (FE container)"]
     N5["location /api → proxy_pass http://127.0.0.1:18000 (API container)"]
     N6["location /auth → proxy_pass https://auth.pericopeai.com"]
 end
@@ -16,7 +16,7 @@ end
 %% ─── FRONTEND (CONTAINER) ─────────────────────────
 subgraph FRONTEND["🎨 pericopeai-frontend (container)"]
     F1["Build from /root/workspace/AugustineFE"]
-    F2["nginx inside container on :80 → host :3000"]
+    F2["nginx inside container on :80 → host :13080"]
 end
 
 NGINX -->|proxies / to FE| F1

@@ -27,13 +27,13 @@ This repo expects service code in sibling paths on the host:
 PericopeAI stack (`docker-compose.pericope.yml`):
 - MySQL: host `3307` -> container 3306
 - API: host 18000 -> container 8080
-- Frontend: host 3000 -> container 80
+- Frontend: host 13080 -> container 80
 - Corpus: internal 8001 (no host mapping)
 
 Port mappings are fixed:
 - MySQL `3307`
 - API `18000`
-- Frontend `3000`
+- Frontend `13080`
 
 ## Immutable deployment lock
 - Canonical command form:
@@ -54,7 +54,7 @@ PericopeAI full stack bring-up:
 - `docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build`
 - Verify:
   - `curl -I http://127.0.0.1:18000/api/docs`
-  - `curl -I http://127.0.0.1:3000`
+  - `curl -I http://127.0.0.1:13080`
 
 Corpus-only:
 - `docker compose -f docker-compose.corpus.yml up -d --build augustine-corpus-live`
@@ -74,7 +74,7 @@ WordPress content pulls (requires `scripts/.env`):
 ## Nginx routing expectations (host)
 The host Nginx terminates TLS and proxies to container ports:
 - `location /api` -> `127.0.0.1:18000`
-- `location /` -> `127.0.0.1:3000`
+- `location /` -> `127.0.0.1:13080`
 
 AMA chat and WordPress routing should avoid conflicting vhosts
 and duplicate `server_name` blocks. See `docs/system-handbook.md`.
