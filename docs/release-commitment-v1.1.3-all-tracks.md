@@ -24,6 +24,7 @@ This document is binding for scope control, release gates, and sign-off.
 - [Roadmap Recovery Ledger](roadmap-recovery-ledger.md)
 - [Pericope Deployment Guide](pericopeai-deployment.md)
 - [Developer Guide (Rules)](developer-guide.md)
+- [Acceptance Test + Demo Guide v1.1.3](acceptance-demo-guide-v1.1.3.md)
 
 ## Global Non-Negotiables
 
@@ -121,6 +122,36 @@ Evidence required:
 2. Full `v1.3.1` service API rollout.
 3. Full mobile app build/release program.
 4. Multi-tenant/platform marketplace features.
+
+## Next Feature Commitment (Queued for Next Train)
+
+### Pericope Core: Reference Fidelity and Cross-Author Linking
+
+Committed for next feature train (post-`v1.1.3`):
+
+1. Add inferred Bible references to the References panel when answer text cites scripture not present in retrieval metadata.
+   - Example target behavior: Augustine answer mentioning `Genesis 2:16-17` shows `Genesis 2:16-17` as a reference row.
+2. Add non-Bible cross-author/work inference from answer text and retrieval excerpts.
+   - Example target behavior: if Socrates answer references Plato/Republic, a reference entry is created and can be opened.
+3. Unify open behavior for inferred references:
+   - `Open` resolves through local author/work catalog and loads `book` or `book_partial` content where available.
+4. Add reference provenance labels in UI:
+   - `retrieved` (from corpus metadata)
+   - `inferred_from_answer`
+   - `inferred_from_excerpt`
+5. Add deterministic demo prompts and examples for non-Bible -> Bible and cross-author scenarios.
+
+Evidence required:
+
+- screenshot showing inferred scripture reference present in References panel for a non-Bible persona response.
+- screenshot showing cross-author inferred reference (e.g., Socrates -> Plato) and successful `Open`.
+- sample JSON artifact with extracted inferred references and provenance labels.
+- updated acceptance/demo guide checklist covering inferred-reference cases.
+
+External dependency policy:
+
+1. Baseline implementation must use only internal corpus/catalog data (no external API required).
+2. Optional external normalization sources (abbreviation/alias tables) are allowed only as additive enhancement after baseline passes.
 
 ## Release Gates (All Tracks Must Pass)
 

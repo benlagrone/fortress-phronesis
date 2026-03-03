@@ -1,0 +1,43 @@
+{
+  "base_url": "http://localhost:18000",
+  "author": "moses",
+  "book_id": "GEN",
+  "checks": [
+    {
+      "name": "healthz",
+      "pass": true,
+      "detail": "status=200",
+      "payload": {
+        "ok": true
+      }
+    },
+    {
+      "name": "crossrefs/books",
+      "pass": true,
+      "detail": "status=200, items=6",
+      "payload": {
+        "count": 6
+      }
+    },
+    {
+      "name": "crossrefs/authors/{author_slug}",
+      "pass": true,
+      "detail": "status=200, books=6",
+      "payload": {
+        "author": "moses",
+        "books": 6
+      }
+    },
+    {
+      "name": "crossrefs/books/{book_id}",
+      "pass": true,
+      "detail": "status=200, related_books=5",
+      "payload": {
+        "book_id": "GEN",
+        "related_books": 5
+      }
+    }
+  ],
+  "pass": true,
+  "failures": 0
+}

@@ -171,6 +171,10 @@ PericopeAI is treated as a **platform and framework**, not just a website.
   - empty author profile handling with non-breaking fallback state
   - books/works panel handles zero-book metadata without layout shift
   - unknown author slug routing returns controlled UI state (not blank screen)
+- Add immediate reference-completeness guardrail (small fix):
+  - infer Bible-style citations from answer text and render them in References when retrieval metadata is incomplete
+  - example target: Augustine answer mentions `Genesis 2:16-17` -> References includes `Genesis 2:16-17`
+  - inferred rows are non-destructive additions and do not replace corpus-native references
 
 **Definition of Done**
 - On large desktop, author context and references are rendered in a persistent right panel; chat remains the main reading/writing column.
@@ -181,6 +185,7 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Build/environment indicators are visible for support and incident triage.
 - History/session UI allows predictable resume behavior across personas.
 - Newly promoted authors render safely even when metadata is partial.
+- Bible citations present in answer text are surfaced in References even when not returned in metadata.
 
 ---
 
@@ -309,6 +314,33 @@ PericopeAI is treated as a **platform and framework**, not just a website.
   - required eval schema, baseline diffing, promotion block rules
 - Phase D (warehouse + audit hardening):
   - warehouse integration tables, dashboard views, exportable audit trail
+
+### v1.3.2 — Reference Inference Engine (Cross-Author / Cross-Work)
+**Goal:** Make inferred references first-class and traceable across Bible and non-Bible corpora.
+
+- Build a deterministic inference pipeline for references across:
+  - scripture citations
+  - author -> author mentions
+  - author -> work mentions (for example: Socrates -> Plato -> Republic)
+- Source inputs for inference:
+  - answer text
+  - retrieved excerpt text (`metadata.excerpt`)
+  - canonical author/work catalogs
+- Reference provenance model in API/UI:
+  - `retrieved`
+  - `inferred_from_answer`
+  - `inferred_from_excerpt`
+- Open behavior:
+  - inferred references resolve through canonical author/work mapping and open via `book`/`book_partial` where available
+- Evaluation and quality gates:
+  - precision/recall samples for inferred references
+  - false-positive controls (name collisions, ambiguous work titles)
+  - reproducible extraction test fixtures
+
+**Definition of Done**
+- Non-Bible personas can surface Bible references and cross-author/work references in References.
+- Users can open inferred references to concrete source content when mappings exist.
+- Every inferred reference row includes provenance and is auditable.
 
 ---
 
