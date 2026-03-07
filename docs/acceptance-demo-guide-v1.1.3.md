@@ -28,6 +28,10 @@ mkdir -p "$FPR_ROOT/tests/acceptance-v1.1.3"
 
 ## A) Pericope Core Acceptance + Demo
 
+Reference inference test cards:
+
+- [Reference Inference Test Cases (v1.1.3)](reference-inference-test-cases-v1.1.3.md)
+
 ### A1. Deploy and lock-check (dev)
 
 ```bash
@@ -113,7 +117,7 @@ Open `http://localhost:13080` and verify:
 3. Persona selector is integrated in the author context panel.
 4. On desktop (>=1100px), chat is primary and context/references render in right panel.
 5. In `Related Authors / Works`, clicking `Open` on a matched work loads a referenced work excerpt (book partial) in-place.
-6. `Switch to ...` action is not shown in matched-work detail view.
+6. Reference interactions do not switch persona; `Open` loads reference/work detail in-place.
 7. If answer text includes Bible citations (for example `Genesis 2:16-17`), those citations appear in `References` even when not present in retrieval metadata.
 8. On mobile viewport, input row remains visible at bottom during chat.
 
@@ -145,14 +149,28 @@ python3 scripts/validate_psalms.py --fail-on-warnings
 
 ```bash
 cd /Users/benjaminlagrone/Documents/projects/pericopeai.com/Solomonic_Seals
-PORT=8080 python3 src/webserver.py
+docker network create fortress-phronesis-net 2>/dev/null || true
+docker compose up -d --build
+docker compose ps
+
+# Wait for API readiness (container rebuilds dataset before serving).
+until curl -fsS http://localhost:8086/api/clock >/tmp/solomonic-clock.json; do
+  echo "waiting for solomonic-clock..."
+  sleep 2
+done
 ```
 
-In another shell:
+In another shell (default host port is `8086` for this container):
 
 ```bash
-curl -fsS http://localhost:8080/api/clock >/tmp/solomonic-clock.json
 python3 -c "import json; d=json.load(open('/tmp/solomonic-clock.json')); print(type(d).__name__, len(d) if isinstance(d, list) else len(d.keys()))"
+```
+
+Optional host port override (if you specifically want `8080`):
+
+```bash
+SOLOMONIC_HOST_PORT=8080 docker compose up -d --build
+curl -fsS http://localhost:8080/api/clock >/tmp/solomonic-clock.json
 ```
 
 Pass criteria:
@@ -162,7 +180,7 @@ Pass criteria:
 
 ### B3. Solomonic demo script
 
-1. Open `http://localhost:8080/web/clock_visualizer.html`.
+1. Open `http://localhost:8086/web/clock_visualizer.html`.
 2. Show loaded clock dataset.
 3. Show one mapped scripture segment and reference metadata.
 
