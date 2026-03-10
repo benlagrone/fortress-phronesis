@@ -23,6 +23,12 @@ volumes:
   corpus_haggai_index:
   corpus_hosea_index:
   corpus_irenaeus_index:
+  corpus_musonius_rufus_index:
+  corpus_seneca_index:
+  corpus_epictetus_index:
+  corpus_machiavelli_index:
+  corpus_john_chrysostom_index:
+  corpus_eusebius_pamphilus_index:
   corpus_isaiah_index:
   corpus_james_index:
   corpus_jeremiah_index:
@@ -118,6 +124,12 @@ services:
       - ../AugustineCorpus/texts/haggai_texts:/app/texts/haggai_texts:ro
       - ../AugustineCorpus/texts/hosea_texts:/app/texts/hosea_texts:ro
       - ../AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
+      - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
+      - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
+      - ../AugustineCorpus/texts/epictetus_texts:/app/texts/epictetus_texts:ro
+      - ../AugustineCorpus/texts/seneca_texts:/app/texts/seneca_texts:ro
+      - ../AugustineCorpus/texts/musonius_rufus_texts:/app/texts/musonius_rufus_texts:ro
       - ../AugustineCorpus/texts/isaiah_texts:/app/texts/isaiah_texts:ro
       - ../AugustineCorpus/texts/james_texts:/app/texts/james_texts:ro
       - ../AugustineCorpus/texts/jeremiah_texts:/app/texts/jeremiah_texts:ro
@@ -171,6 +183,12 @@ services:
       - corpus_haggai_index:/app/indexes/haggai
       - corpus_hosea_index:/app/indexes/hosea
       - corpus_irenaeus_index:/app/indexes/irenaeus
+      - corpus_musonius_rufus_index:/app/indexes/musonius_rufus
+      - corpus_seneca_index:/app/indexes/seneca
+      - corpus_epictetus_index:/app/indexes/epictetus
+      - corpus_machiavelli_index:/app/indexes/machiavelli
+      - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
+      - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
       - corpus_isaiah_index:/app/indexes/isaiah
       - corpus_james_index:/app/indexes/james
       - corpus_jeremiah_index:/app/indexes/jeremiah
@@ -244,6 +262,12 @@ services:
       - ../AugustineCorpus/texts/haggai_texts:/app/texts/haggai_texts:ro
       - ../AugustineCorpus/texts/hosea_texts:/app/texts/hosea_texts:ro
       - ../AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
+      - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
+      - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
+      - ../AugustineCorpus/texts/epictetus_texts:/app/texts/epictetus_texts:ro
+      - ../AugustineCorpus/texts/seneca_texts:/app/texts/seneca_texts:ro
+      - ../AugustineCorpus/texts/musonius_rufus_texts:/app/texts/musonius_rufus_texts:ro
       - ../AugustineCorpus/texts/isaiah_texts:/app/texts/isaiah_texts:ro
       - ../AugustineCorpus/texts/james_texts:/app/texts/james_texts:ro
       - ../AugustineCorpus/texts/jeremiah_texts:/app/texts/jeremiah_texts:ro
@@ -297,6 +321,12 @@ services:
       - corpus_haggai_index:/app/indexes/haggai
       - corpus_hosea_index:/app/indexes/hosea
       - corpus_irenaeus_index:/app/indexes/irenaeus
+      - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
+      - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
+      - corpus_machiavelli_index:/app/indexes/machiavelli
+      - corpus_epictetus_index:/app/indexes/epictetus
+      - corpus_seneca_index:/app/indexes/seneca
+      - corpus_musonius_rufus_index:/app/indexes/musonius_rufus
       - corpus_isaiah_index:/app/indexes/isaiah
       - corpus_james_index:/app/indexes/james
       - corpus_jeremiah_index:/app/indexes/jeremiah

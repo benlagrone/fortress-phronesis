@@ -342,6 +342,88 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Users can open inferred references to concrete source content when mappings exist.
 - Every inferred reference row includes provenance and is auditable.
 
+### v1.3.3 — Graph Exposure Boundary (Infrastructure Private, Insights Public)
+**Goal:** Keep the cross-reference graph as internal infrastructure while exposing user-facing evidence and relationships.
+
+- Treat the graph as internal system infrastructure, not a default product surface.
+- Keep private:
+  - ontology definitions
+  - full graph model/adjacency structure
+  - internal corpus linkage strategy
+- Expose to users:
+  - grounded insights
+  - citations
+  - related author/work/scripture references
+- UI contract:
+  - default UX shows "Related Passages/Authors/Works" and evidence snippets, not node-network diagrams
+  - references remain traceable to source passages
+- Optional graph-view support is role-gated (research/admin only) and returns constrained/derived views, not raw internal topology.
+- Any public/marketing graph visual must be illustrative only and decoupled from production graph internals.
+
+**Definition of Done**
+- Standard user flows return references and relationship summaries without exposing raw graph internals.
+- No production public endpoint exposes ontology internals or full graph export by default.
+- Role-gated research views are audited and enforce scope, rate, and access controls.
+
+### v1.3.4 — Text-First Graph Construction Pipeline
+**Goal:** Build the cross-reference graph from structured passages and automated extraction instead of manual link authoring.
+
+- Stage 1: structured passage foundation (passage is primary key):
+  - required normalized fields: `passage_id`, `author`, `work`, `location`, `text`
+  - optional enrichment fields: `biblical_refs`, `topics`, `source_edition`, `language`
+- Stage 2: automated reference extraction into explicit edges:
+  - Bible reference detection (regex + canonical book/verse normalization)
+  - author mention detection (canonical author catalog)
+  - work-title detection (canonical work catalog)
+  - optional LLM-assisted extraction with confidence scoring
+- Persist extracted links in a relational reference table (graph-ready, no graph DB requirement):
+  - `source_passage_id`
+  - `target_type` (`bible`, `author`, `work`)
+  - `target_value`
+  - `confidence`
+  - `provenance` (`regex`, `catalog_match`, `llm`)
+- Stage 3: semantic expansion:
+  - embeddings over passages
+  - similarity edges persisted as `semantic_similarity` with score/version metadata
+- Retrieval behavior:
+  - query returns primary passages + explicit references + semantic neighbors
+  - prompt assembly surfaces related passages as citations/references, not opaque latent links
+
+**Definition of Done**
+- Ingested corpora produce normalized passage records across authors/works.
+- Extraction jobs generate auditable explicit-reference edges with measurable quality gates.
+- Similarity edges are versioned and queryable without blocking core explicit-reference flows.
+- Runtime retrieval can return: primary passage, explicit related references, and semantic related passages in one response contract.
+
+### v1.3.5 — Committed Expansion Scope (Snapshot: 2026-03-09)
+**Goal:** Convert v1.3 roadmap intent into explicit committed deliverables for features and author rollout.
+
+- Feature commitments (backward compatible):
+  - enforce v1.3.3 graph boundary in public UX/API (insights/citations exposed; raw internal topology not exposed by default)
+  - deliver v1.3.4 Stage 1 and Stage 2 in production (normalized passage records + explicit reference extraction tables)
+  - complete v1.3.2 provenance surfacing end-to-end in API/UI (`retrieved`, `inferred_from_answer`, `inferred_from_excerpt`)
+  - ship v1.3.4 Stage 3 semantic-similarity references as supplemental signals (non-destructive to explicit grounding)
+  - complete v1.3.1 Phase A for author/service-scoped additive deploys (no implicit full-system reindex per author addition)
+- Author commitments:
+  - maintain support for the current production-visible author set (52 authors at snapshot time)
+  - promote near-ready authors:
+    - Eusebius Pamphilus
+    - John Chrysostom
+  - promote downloaded-but-not-indexed authors:
+    - Niccolò Machiavelli
+    - Epictetus
+    - Seneca
+    - Musonius Rufus
+  - keep Aristotle as next acquisition target after the committed promotions above
+  - treat Solomon coverage as satisfied by existing `solomon` and `solomon_expanded` personas
+- Deferred (not committed in this release train):
+  - bulk promotion of the remaining pending acquisition backlog until extraction quality gates and serviceized deploy gates are stable
+
+**Definition of Done**
+- v1.3.2/v1.3.3/v1.3.4 feature commitments above are implemented and validated in smoke + contract checks.
+- Author onboarding flow can add committed authors without full-system reindex.
+- The six committed non-live authors above are production-visible with profile metadata and passing author/profile and chat smokes.
+
 ---
 
 ## v2.0.0 — Governance & Auditability (Breaking)
@@ -390,3 +472,12 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Opaque or persuasive AI behavior
 
 PericopeAI prioritizes **intellectual integrity, transparency, and control**.
+
+---
+
+## Execution Pattern (Codex-First Delivery)
+
+- Define architecture and behavior first; implement through concrete backlog tasks.
+- Prefer task specs with explicit inputs/outputs, schema, and acceptance criteria over ad hoc snippet requests.
+- Use Codex to implement across files, run validations, and produce integrated repo changes.
+- Keep architecture/design discussion in planning docs; keep code generation and refactors in Codex execution loops.

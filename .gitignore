@@ -3,3 +3,4 @@ venv/
 scripts/*
 !scripts/smoke-crossrefs.py
 .env
+scripts/.env
