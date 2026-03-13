@@ -424,6 +424,49 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Author onboarding flow can add committed authors without full-system reindex.
 - The six committed non-live authors above are production-visible with profile metadata and passing author/profile and chat smokes.
 
+### v1.3.6 — Verse Bundle and Original-Language Insight
+**Goal:** Let a user open cited scripture at the verse level and inspect the original-language witness, real translation witnesses, lexical meaning, and explicit commentary layers without collapsing them into one opaque AI answer.
+
+- Canonical verse bundle keyed by normalized scripture reference (`book_id/chapter/verse`):
+  - source witness metadata (`masoretic`, `critical_greek`, `vulgate`, or other supported witness IDs)
+  - original-language verse text
+  - transliteration when available
+  - one or more canonical English translation witnesses (`kjv`, `drc`, and other licensed/available translations)
+  - derived artifacts stored separately from canonical text:
+    - `literal_gloss`
+    - `expanded_translation`
+    - `key_term_notes`
+- User interaction contract:
+  - References panel adds `See original language` for Bible citations with normalized verse metadata
+  - default open behavior is one verse
+  - optional contiguous expansion is capped at three verses
+  - `book_partial` remains the reading-context surface; it is not the default translation unit for original-language rendering
+  - panel keeps `Open chapter` / `Open book` as a separate reading action
+- Service/API contract:
+  - add verse-focused scripture endpoint (for example `GET/POST /api/v1/scripture/verse`)
+  - request resolves by canonical reference, not paragraph position
+  - response returns a structured verse bundle that can be rendered directly in UI and optionally injected into chat context
+- Data and trust model:
+  - persist authoritative source verses and real translation witnesses as source-of-truth data
+  - do not present model output as canonical translation
+  - cache/persist generated glosses and expanded renderings only as derived artifacts with `model_version` and `prompt_version`
+- Lexical and commentary layering:
+  - keep lexical facts separate from interpretive commentary
+  - expose key-word insight at the word/lemma level, not only at paragraph level
+  - allow patristic or tradition-specific commentary (for example Augustine) as an explicit, labeled layer beside the lexical/source layer
+- Conversational enrichment:
+  - when a user asks about a cited verse or a specific Hebrew/Greek word, chat may prepend a compact verse bundle to prompt context
+  - chat responses should distinguish:
+    - what the source text says
+    - what a key term can mean
+    - what a commentary tradition infers from it
+
+**Definition of Done**
+- A user can click a cited Bible verse and see original-language text plus at least one real English translation witness in the same panel.
+- The UI labels source text, canonical translation, and derived explanation as separate layers.
+- Verse-level lookup is grounded by canonical reference and does not depend on paragraph-only RAG resolution.
+- Conversational answers about a verse can be grounded in the verse bundle instead of relying only on English excerpt retrieval and persona prompting.
+
 ---
 
 ## v2.0.0 — Governance & Auditability (Breaking)

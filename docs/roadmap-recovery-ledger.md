@@ -25,6 +25,7 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 | SVC-001 | Serviceized persona deploy model (`service_id` / `service_version`) | v1.3.1 | Planned | [roadmap.md](roadmap.md#v131--serviceized-persona-deployment-x-as-a-service) |
 | SVC-002 | MDE promotion gate as mandatory production control | v1.3.1 Phase C | Planned | [roadmap.md](roadmap.md#v131--serviceized-persona-deployment-x-as-a-service) |
 | XREF-001 | Bootstrap cross book/author cross-referencing API surfaces (`/crossrefs/books`, `/crossrefs/books/{book_id}`, `/crossrefs/authors/{author_slug}`) from canonical metadata map | v1.3.0 start | In Progress | [roadmap.md](roadmap.md#v130) |
+| SCR-001 | Verse-level scripture bundle for cited Bible text: original-language source, canonical English translations, lexical notes, and optional patristic/commentary expansion surfaced from References and reusable in chat context | v1.3.6 | Planned | [roadmap.md](roadmap.md#v136--verse-bundle-and-original-language-insight) |
 | RAG-001 | Repo-scoped local RAG workflow for engineering support | Dev tooling | Active | [dev_rag.md](dev_rag.md) |
 | DOC-001 | Keep legacy docs; additive updates only; no silent replacement | Continuous | Active | [developer-guide.md](developer-guide.md#11-documentation-rules) |
 | REL-001 | Cross-project release commitment contract for Pericope, Solomonic, MDE, and Latin RAG | v1.1.3 | Active | [release-commitment-v1.1.3-all-tracks.md](release-commitment-v1.1.3-all-tracks.md) |

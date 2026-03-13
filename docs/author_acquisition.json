@@ -42,6 +42,18 @@
     ]
   },
   {
+    "name": "Hermes Trismegistus",
+    "status": "pending",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: traditionally ancient Egyptian; surviving Hermetic corpus mainly c. 1st–3rd century AD",
+      "Origin: Greco-Egyptian Hermetic tradition associated with Hellenistic Egypt",
+      "Role: Attributed sage, revelatory teacher, esoteric philosopher",
+      "Key Works: Corpus Hermeticum; Asclepius; Definitions of Hermes Trismegistus to Asclepius",
+      "Contribution: Hermetic metaphysics, cosmology, divine mind, and late antique wisdom synthesis"
+    ]
+  },
+  {
     "name": "Irenaeus of Lyons",
     "status": "texts present; index volume wired",
     "acquired_date": "2026-02-17",
