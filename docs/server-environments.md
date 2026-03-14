@@ -37,8 +37,12 @@ Dev (fortress-phronesis / 192.168.86.23)
 
 Local (macOS)
 - Workspace root: `/Users/benjaminlagrone/Documents/projects/pericopeai.com`
-- Stack root: `/Users/benjaminlagrone/Documents/projects/pericopeai.com/fortress-phronesis`
-- Compose file: `/Users/benjaminlagrone/Documents/projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml`
+- Standalone local compose files:
+  - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineCorpus/docker-compose.corpus.yml`
+  - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineService/docker-compose.yml`
+  - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineFE/docker-compose.yml`
+- Control-plane mirror compose file (use only when intentionally testing the remote deploy contract):
+  - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml`
 
 ## Session Path Guard (Run First In Every Shell)
 
@@ -78,10 +82,19 @@ Dev (fortress-phronesis / 192.168.86.23)
 
 Local (macOS)
 - Workspace: `/Users/benjaminlagrone/Documents/projects/pericopeai.com`
-- Default ports come from `docker-compose.pericope.yml`:
+- Default local standalone ports:
+  - Corpus `8001`
+  - API `8080`
+  - FE `13080`
+  - MySQL `3308`
+- Default local standalone network: `pericope_net`
+- Control-plane mirror ports, when explicitly using `fortress-phronesis/docker-compose.pericope.yml`:
   - API `18000`
   - FE `13080`
   - MySQL `3307`
+
+Canonical local guide:
+- [local-pericope-stack-runbook.md](local-pericope-stack-runbook.md)
 
 ## Repo layout
 
@@ -115,6 +128,18 @@ docker compose -p fortress-phronesis -f docker-compose.pericope.yml ps
 
 If MySQL fails with `Bind for 0.0.0.0:3307 failed: port is already allocated`,
 stop the conflicting container first (commonly `pericope-local-mysql-1`) and retry.
+
+## Local Standalone Stack
+
+Default local development does not use `fortress-phronesis/docker-compose.pericope.yml`.
+
+Use:
+- `AugustineCorpus/docker-compose.corpus.yml`
+- `AugustineService/docker-compose.yml`
+- `AugustineFE/docker-compose.yml`
+
+See:
+- [local-pericope-stack-runbook.md](local-pericope-stack-runbook.md)
 
 ## Reindex workflow (prod/dev)
 

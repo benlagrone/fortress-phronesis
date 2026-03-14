@@ -43,8 +43,43 @@
   },
   {
     "name": "Hermes Trismegistus",
-    "status": "pending",
+    "status": "texts downloaded; index built; pending runtime wiring",
+    "acquired_date": "2026-03-13",
     "persona_mode": "Authority",
+    "works": [
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th202.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th204.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th207.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th209.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th211.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th213.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th215.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th217.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th219.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th221.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th223.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th225.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th227.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th229.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th231.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th233.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th235.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th237.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th238.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th239.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th240.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th241.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th242.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th243.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th244.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th245.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th246.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th247.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th248.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th249.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th250.html",
+      "http://www.gnosis.org/library/grs-mead/TGH-v2/th251.html"
+    ],
     "notes": [
       "Time: traditionally ancient Egyptian; surviving Hermetic corpus mainly c. 1st–3rd century AD",
       "Origin: Greco-Egyptian Hermetic tradition associated with Hellenistic Egypt",
@@ -172,8 +207,15 @@
   },
   {
     "name": "Athanasius of Alexandria",
-    "status": "pending",
+    "status": "texts downloaded; index built; pending runtime wiring",
+    "acquired_date": "2026-03-13",
     "persona_mode": "Authority",
+    "works": [
+      "https://www.newadvent.org/fathers/2802.htm",
+      "https://www.newadvent.org/fathers/2808.htm",
+      "https://www.newadvent.org/fathers/2811.htm",
+      "https://www.newadvent.org/fathers/2816.htm"
+    ],
     "notes": [
       "Time: c. 296–373 AD; Origin: Alexandria",
       "Role: Bishop, defender of orthodoxy",
@@ -183,8 +225,13 @@
   },
   {
     "name": "Origen of Alexandria",
-    "status": "pending",
+    "status": "texts downloaded; index built; pending runtime wiring",
+    "acquired_date": "2026-03-13",
     "persona_mode": "Authority",
+    "works": [
+      "https://www.newadvent.org/fathers/0412.htm",
+      "https://www.newadvent.org/fathers/0416.htm"
+    ],
     "notes": [
       "Time: c. 185–253 AD; Origin: Alexandria",
       "Role: Theologian, biblical scholar",

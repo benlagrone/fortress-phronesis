@@ -398,8 +398,14 @@ services:
         REACT_APP_KEYCLOAK_REALM: ${REACT_APP_KEYCLOAK_REALM:-pericope}
         REACT_APP_KEYCLOAK_CLIENT_ID: ${REACT_APP_KEYCLOAK_CLIENT_ID:-pericope-web}
         REACT_APP_DISABLE_AUTH: ${REACT_APP_DISABLE_AUTH:-false}
+    environment:
+      - NGINX_ENVSUBST_FILTER=SOLOMONIC_CLOCK_UPSTREAM|SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY
+      - SOLOMONIC_CLOCK_UPSTREAM=${SOLOMONIC_CLOCK_UPSTREAM:-http://host.docker.internal:8086}
+      - SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY=${SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY:-}
     ports:
       - "13080:80"                                              # host:container
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - pericope_net
     restart: unless-stopped

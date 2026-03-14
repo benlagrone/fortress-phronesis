@@ -13,6 +13,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 - [Reference Inference Test Cases v1.1.3](reference-inference-test-cases-v1.1.3.md)
 - [Prod Release Runbook v1.1.1](release-runbook-prod-v1.1.1.md)
 - [Release Runbook v1.1.0](release-runbook-v1.1.0.md)
+- [Local Pericope Stack Runbook](local-pericope-stack-runbook.md)
 - [Server Environments](server-environments.md)
 - [Container Runbook (Dev Server)](dev-server-container-runbook.md)
 - [Roadmap](roadmap.md)

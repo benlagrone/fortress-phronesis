@@ -1,5 +1,10 @@
 # Container Management (PericopeAI)
 
+This document governs the shared `fortress-phronesis` stack. It is not the default local standalone development workflow on macOS.
+
+For local standalone containers, use:
+- [Local Pericope Stack Runbook](local-pericope-stack-runbook.md)
+
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
 Services: `mysql` (host port `3307` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
@@ -44,34 +49,19 @@ bash scripts/verify-pericope-deploy-lock.sh
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f pericopeai-frontend
   ```
 
-## Run Locally for Testing (optional)
-- Build and start both services locally (adjust paths/ports as needed):
-  ```bash
-  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build
-  ```
-- Hit locally:
-  ```bash
-  curl -I http://127.0.0.1:18000/api/docs   # API
-  curl -I http://127.0.0.1:13080           # Frontend
-  ```
-- Stop:
-  ```bash
-  docker compose -p fortress-phronesis -f docker-compose.pericope.yml down
-  ```
+## Local note
+
+If you are on macOS and want the normal local dev stack, do not follow this file.
+Use the standalone runbook instead:
+- [Local Pericope Stack Runbook](local-pericope-stack-runbook.md)
 
 ## Corpus Service (AugustineCorpus)
 - Compose in AugustineCorpus repo: `AugustineCorpus/docker-compose.corpus.yml`
-- Run corpus only:
-  ```bash
-  docker network create fortress-phronesis-net || true
-  docker compose -f AugustineCorpus/docker-compose.corpus.yml up -d augustine-corpus-1-0-0
-  ```
-- Optional indexer (on-demand):
-  ```bash
-  docker compose -f AugustineCorpus/docker-compose.corpus.yml --profile index run --rm pericopeai-indexer
-  ```
-- API wiring: set `CORPUS_API_URL` to `http://augustine-corpus-1-0-0:8001` so API talks to corpus over `fortress-phronesis-net`.
-- Main compose (`docker-compose.pericope.yml`) can point to a corpus image if desired via `CORPUS_IMAGE`; otherwise run corpus via its own compose above.
+- For the normal macOS standalone workflow, use:
+  - [Local Pericope Stack Runbook](local-pericope-stack-runbook.md)
+- For dev server / prod-like operation, use:
+  - `fortress-phronesis/docker-compose.pericope.yml`
+  - [dev-server-container-runbook.md](dev-server-container-runbook.md)
 
 ## Calculators (askmortgageauthority)
 - Repo path assumed: `/root/workspace/calculator.askmortgageauthority.com`.
