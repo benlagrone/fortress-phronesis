@@ -1,0 +1,6 @@
+services:
+  unicornjump-web:
+    image: ${UNICORNJUMP_IMAGE:?UNICORNJUMP_IMAGE is required}
+    ports:
+      - "127.0.0.1:13081:80"
+    restart: unless-stopped
