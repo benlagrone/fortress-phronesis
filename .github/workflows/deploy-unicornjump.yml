@@ -1,0 +1,98 @@
+name: Deploy Unicornjump
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by unicornjump CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unicornjump-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      IMAGE_REF: ghcr.io/benlagrone/unicornjump-web:sha-${{ inputs.source_sha }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.UNICORNJUMP_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.UNICORNJUMP_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "UNICORNJUMP_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -f docker-compose.unicornjump.yml pull unicornjump-web
+          UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -f docker-compose.unicornjump.yml up -d unicornjump-web
+          docker compose -f docker-compose.unicornjump.yml ps
+
+          curl -fsSI http://127.0.0.1:13081/
+          curl -fsSI http://127.0.0.1:13081/asset-manifest.json
+          REMOTE
+
+      - name: Public Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSI https://sapphirelagrone.com/
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Unicornjump Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Public URL: https://sapphirelagrone.com/"
+          } >> "$GITHUB_STEP_SUMMARY"
