@@ -1,0 +1,22 @@
+schema_version: 1
+app_id: unicornjump
+display_name: Unicornjump
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/unicornjump
+artifacts:
+  image: ghcr.io/benlagrone/unicornjump-web
+runtime:
+  compose_file: docker-compose.unicornjump.yml
+  service: unicornjump-web
+  host_bind: 127.0.0.1:13081
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:13081/
+  - type: http
+    url: http://127.0.0.1:13081/asset-manifest.json
+public_urls:
+  - https://sapphirelagrone.com/
