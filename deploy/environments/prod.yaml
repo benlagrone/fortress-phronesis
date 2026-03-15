@@ -1,0 +1,14 @@
+schema_version: 1
+environment: prod
+apps:
+  unicornjump:
+    enabled: true
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/unicornjump-web
+    compose_file: docker-compose.unicornjump.yml
+    service: unicornjump-web
+    local_health_urls:
+      - http://127.0.0.1:13081/
+      - http://127.0.0.1:13081/asset-manifest.json
+    public_urls:
+      - https://sapphirelagrone.com/
