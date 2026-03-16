@@ -49,15 +49,20 @@ require_pattern "name: fortress-phronesis-net" "Network name is locked"
 require_pattern "\"3307:3306\"" "MySQL host port is locked to 3307"
 require_pattern "\"18000:8080\"" "API host port is locked to 18000"
 require_pattern "\"13080:80\"" "Frontend host port is locked to 13080"
+require_pattern "\"8086:8080\"" "Solomonic Clock host port is locked to 8086"
 require_pattern "ENVIRONMENT=\${ENVIRONMENT:-dev}" "Corpus ENVIRONMENT wiring is locked"
 require_pattern "ENV=\${ENV:-dev}" "Corpus ENV wiring is locked"
 require_pattern "CORPUS_API_URL=\${CORPUS_API_URL:-http://augustine-corpus-live:8001}" "API corpus URL wiring is locked"
+require_pattern "SOLOMONIC_PERICOPE_API_BASE=\${SOLOMONIC_PERICOPE_API_BASE:-http://augustine-corpus-live:8001}" "Clock corpus wiring is locked"
 require_pattern "REACT_APP_ENVIRONMENT: \${REACT_APP_ENVIRONMENT:-dev}" "Frontend build environment wiring is locked"
+require_pattern "SOLOMONIC_CLOCK_UPSTREAM=\${SOLOMONIC_CLOCK_UPSTREAM:-http://solomonic-clock:8080}" "Frontend clock upstream wiring is locked"
 
 forbid_pattern "\\$\\{PERICOPE_NET_NAME" "Network override is disabled"
 forbid_pattern "\\$\\{MYSQL_HOST_PORT" "MySQL port override is disabled"
 forbid_pattern "\\$\\{API_HOST_PORT" "API port override is disabled"
 forbid_pattern "\\$\\{FE_HOST_PORT" "Frontend port override is disabled"
+forbid_pattern "\\$\\{SOLOMONIC_HOST_PORT" "Solomonic Clock port override is disabled"
+forbid_pattern "host\\.docker\\.internal:8086" "Frontend no longer defaults to host clock port"
 
 # In production, frontend API key must be present in FE env because it is a build-time arg.
 if [[ -f "$SERVICE_ENV_FILE" && -f "$FE_ENV_FILE" ]]; then

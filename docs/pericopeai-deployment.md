@@ -1,21 +1,25 @@
 # PericopeAI Deployment (Control Plane)
 
-This is the minimal, repeatable way to deploy the PericopeAI stack from the control-plane repo (`fortress-phronesis`) on the Contabo host.
+This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic Clock stack from the control-plane repo (`fortress-phronesis`) on the Contabo host.
 
 ## Components
 - `mysql` (local DB, host port `3307`, data persisted to `mysql_data` volume).
 - `augustine-corpus-live` (in `/root/workspace/AugustineCorpus`, internal port 8001, data persisted to `corpus_indexes` volume).
 - `pericopeai-api` (backend, host port 18000).
+- `solomonic-clock` (clock runtime, host port `8086`, shared network access to corpus).
 - `pericopeai-frontend` (React, host port 13080).
 
 ## One-time prereqs
 1) Clone repos:
    - Corpus: `/root/workspace/AugustineCorpus`
    - API: `/root/workspace/AugustineService`
+   - Clock: `/root/workspace/Solomonic_Seals`
    - FE: `/root/workspace/AugustineFE`
 2) Ensure `.env` files exist:
    - `/root/workspace/AugustineCorpus/.env` (corpus settings).
    - `/root/workspace/AugustineService/.env` (API, including `CORPUS_API_URL` and DB creds if overriding defaults).
+   - `/root/workspace/Solomonic_Seals/.env` (clock overrides if guided prompts key is required).
+   - `/root/workspace/AugustineFE/.env` (frontend build-time values and clock proxy key).
 3) Network:
    ```
    docker network create fortress-phronesis-net 2>/dev/null || true
@@ -27,24 +31,28 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
    bash scripts/verify-pericope-deploy-lock.sh
    ```
 
-1) Corpus (from control plane repo):
+1) Core services (from control plane repo):
    ```
-   docker compose -f docker-compose.corpus.yml up -d --build augustine-corpus-live
+   docker compose -p fortress-phronesis -f docker-compose.pericope.yml \
+     up -d --build mysql augustine-corpus-live pericopeai-api solomonic-clock
    ```
    (Optional indexer run)
    ```
-   docker compose -f docker-compose.corpus.yml --profile index run --rm pericopeai-indexer
+   docker compose -p fortress-phronesis -f docker-compose.pericope.yml \
+     --profile index run --rm pericopeai-indexer
    ```
 
-2) API + Frontend (from control plane repo `/root/workspace/fortress-phronesis`):
+2) Frontend (from control plane repo `/root/workspace/fortress-phronesis`):
    ```
-   docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend
+   docker compose --env-file /root/workspace/AugustineFE/.env \
+     -p fortress-phronesis -f docker-compose.pericope.yml \
+     up -d --build pericopeai-frontend
    ```
-   (`mysql` will start automatically via `depends_on`.)
 
 ## API & Frontend specifics
 - Build contexts (hard-coded in compose):
   - API: `/root/workspace/AugustineService` (uses `/root/workspace/AugustineService/.env`)
+  - Clock: `/root/workspace/Solomonic_Seals`
   - FE:  `/root/workspace/AugustineFE` (build args come from `docker-compose.pericope.yml`; set `REACT_APP_*` there or in the FE Dockerfile ARGs)
 - Key API envs:
   - `CORPUS_API_URL=http://augustine-corpus-live:8001`
@@ -58,23 +66,27 @@ This is the minimal, repeatable way to deploy the PericopeAI stack from the cont
 - Ports:
   - DB: host `3307` → container `3306`
   - API: host `18000` → container `8080`
+  - Clock: host `8086` → container `8080`
   - FE:  host `13080` → container `80`
 
 ## Redeploy / rebuild
-- Corpus redeploy:
+- Core service redeploy:
   ```
-  docker compose -f docker-compose.corpus.yml up -d --build augustine-corpus-live
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml \
+    up -d --build mysql augustine-corpus-live pericopeai-api solomonic-clock
   ```
   (Re-run indexer if needed.)
-- API/FE redeploy:
+- Frontend redeploy:
   ```
-  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend
+  docker compose --env-file /root/workspace/AugustineFE/.env \
+    -p fortress-phronesis -f docker-compose.pericope.yml \
+    up -d --build pericopeai-frontend
   ```
 
 ## Verify
 ```
-curl -I http://127.0.0.1:8001/healthz        # corpus
-curl -I http://127.0.0.1:18000/api/docs      # API
+curl -I http://127.0.0.1:8086/api/clock     # clock
+curl -I http://127.0.0.1:18000/api/docs     # API
 curl -I http://127.0.0.1:13080              # FE
 mysql -h 127.0.0.1 -P 3307 -u${MYSQL_USER:-augustine} -p   # DB (requires mysql client)
 ```
@@ -87,10 +99,14 @@ upstream pericope_fe  { server 127.0.0.1:13080; }
 ```
 Routes:
 ```
+location = /api/pericope/guided-prompts { proxy_pass http://pericope_fe; }
 location /api { proxy_pass http://pericope_api; }
 location /    { proxy_pass http://pericope_fe; }
 ```
 Reload after edits: `nginx -t && nginx -s reload`.
+
+Ordering rule:
+- Keep the exact-match `location = /api/pericope/guided-prompts` block before the generic `location /api` block so guided prompts reach the frontend/clock path instead of the API container.
 
 ## Notes
 - The corpus container is internal-only (no host port). If you need host access, add `ports: ["8001:8001"]` in `docker-compose.corpus.yml`.
@@ -122,6 +138,7 @@ This addendum captures updated deployment strategy rules in detail while keeping
 1. `.env` is authoritative per repo:
    - `/root/workspace/AugustineService/.env`
    - `/root/workspace/AugustineCorpus/.env`
+   - `/root/workspace/Solomonic_Seals/.env`
    - `/root/workspace/AugustineFE/.env`
 2. Do not use ad-hoc shell exports for deployment behavior.
 3. FE `REACT_APP_*` values are build-time only.
@@ -157,6 +174,7 @@ Required env checks:
 ```bash
 grep -E '^(ENV|ENVIRONMENT|HIDE_LOCAL_ONLY)=' /root/workspace/AugustineService/.env
 grep -E '^(ENV|ENVIRONMENT)=' /root/workspace/AugustineCorpus/.env
+grep -E '^(SOLOMONIC_GUIDED_PROMPTS_API_KEY|SOLOMONIC_PSALM_SOURCE_MODE|SOLOMONIC_PERICOPE_API_BASE)=' /root/workspace/Solomonic_Seals/.env
 grep -E '^(REACT_APP_ENVIRONMENT|REACT_APP_AUGUSTINE_API_KEY|REACT_APP_KEYCLOAK_URL)=' /root/workspace/AugustineFE/.env
 ```
 
@@ -193,6 +211,7 @@ Gate 1: local health
 ```bash
 curl -fsS http://127.0.0.1:18000/api/healthz
 curl -fsS http://127.0.0.1:18000/api/v1/authors >/dev/null
+curl -fsS http://127.0.0.1:8086/api/clock >/dev/null
 ```
 
 Gate 2: direct chat against API port
@@ -224,6 +243,18 @@ For chat workloads, configure `/api` with:
 2. `proxy_send_timeout 300s`
 3. `proxy_read_timeout 300s`
 4. `proxy_set_header Authorization $http_authorization;`
+
+Routing order must also preserve:
+
+```nginx
+location = /api/pericope/guided-prompts {
+    proxy_pass http://pericope_fe;
+}
+
+location /api {
+    proxy_pass http://pericope_api;
+}
+```
 
 Validate and reload:
 

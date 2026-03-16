@@ -15,6 +15,7 @@ These rules are mandatory for this repo unless the user explicitly asks to chang
   - MySQL `3307`
   - API `18000`
   - Frontend `13080`
+  - Solomonic Clock `8086`
 - Environment wiring and profiles used by the PericopeAI stack.
 
 ## Change Control

@@ -384,6 +384,29 @@ services:
       - pericope_net
     restart: unless-stopped
 
+  solomonic-clock:
+    build:
+      context: ../Solomonic_Seals
+      dockerfile: Dockerfile
+    image: solomonic-clock:latest
+    environment:
+      - PORT=8080
+      - SOLOMONIC_PSALM_SOURCE_MODE=${SOLOMONIC_PSALM_SOURCE_MODE:-pericope_first}
+      - SOLOMONIC_PERICOPE_API_BASE=${SOLOMONIC_PERICOPE_API_BASE:-http://augustine-corpus-live:8001}
+      - SOLOMONIC_GUIDED_PROMPTS_API_KEY=${SOLOMONIC_GUIDED_PROMPTS_API_KEY:-}
+    ports:
+      - "8086:8080"
+    depends_on:
+      - augustine-corpus-live
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/api/clock', timeout=5).read()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pericope_net
+    restart: unless-stopped
+
   pericopeai-frontend:
     build:
       context: ../AugustineFE        # frontend repo path
@@ -400,7 +423,7 @@ services:
         REACT_APP_DISABLE_AUTH: ${REACT_APP_DISABLE_AUTH:-false}
     environment:
       - NGINX_ENVSUBST_FILTER=SOLOMONIC_CLOCK_UPSTREAM|SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY
-      - SOLOMONIC_CLOCK_UPSTREAM=${SOLOMONIC_CLOCK_UPSTREAM:-http://host.docker.internal:8086}
+      - SOLOMONIC_CLOCK_UPSTREAM=${SOLOMONIC_CLOCK_UPSTREAM:-http://solomonic-clock:8080}
       - SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY=${SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY:-}
     ports:
       - "13080:80"                                              # host:container
@@ -411,6 +434,6 @@ services:
     restart: unless-stopped
 
 # Notes:
-# - Paths are relative to this compose file (../AugustineCorpus, ../AugustineService, ../AugustineFE).
+# - Paths are relative to this compose file (../AugustineCorpus, ../AugustineService, ../Solomonic_Seals, ../AugustineFE).
 # - Shared network is fortress-phronesis-net.
-# - Corpus service is expected on the internal network at 8001.
+# - Internal service DNS includes augustine-corpus-live, pericopeai-api, solomonic-clock, mysql.

@@ -7,7 +7,7 @@ For local standalone containers, use:
 
 Repo root: `/root/workspace/fortress-phronesis`
 Compose file: `docker-compose.pericope.yml`
-Services: `mysql` (host port `3307` → container 3306, volume `mysql_data`), `pericopeai-api` (host port 18000 → container 8080), `pericopeai-frontend` (host port 13080 → container 80), placeholder corpus service (`augustine-corpus-live`) if you set `CORPUS_IMAGE`
+Services: `mysql` (host port `3307` → container 3306, volume `mysql_data`), `augustine-corpus-live` (internal port `8001`), `pericopeai-api` (host port `18000` → container `8080`), `solomonic-clock` (host port `8086` → container `8080`), `pericopeai-frontend` (host port `13080` → container `80`)
 Network: external `fortress-phronesis-net`
 
 Deployment lock check:
@@ -24,9 +24,14 @@ bash scripts/verify-pericope-deploy-lock.sh
   ```bash
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-frontend
   ```
+- Solomonic Clock only (after pulling Solomonic_Seals code):
+  ```bash
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build solomonic-clock
+  ```
 - Restart without rebuild (config-only):
   ```bash
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml restart pericopeai-api
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml restart solomonic-clock
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml restart pericopeai-frontend
   ```
 
@@ -45,7 +50,9 @@ bash scripts/verify-pericope-deploy-lock.sh
 - Logs: 
   ```bash
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f mysql
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f augustine-corpus-live
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f pericopeai-api
+  docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f solomonic-clock
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f pericopeai-frontend
   ```
 
@@ -94,13 +101,16 @@ Use the standalone runbook instead:
   ```
 
 ## Nginx Routing (host)
+- `= /api/pericope/guided-prompts` → 127.0.0.1:13080
 - `/api` → 127.0.0.1:18000
 - `/` → 127.0.0.1:13080
 - Config: `/etc/nginx/sites-available/pericopeai.com` (symlinked in sites-enabled)
+- Keep the exact-match guided-prompts route above the generic `/api` block.
 - Reload after changes: `nginx -t && nginx -s reload`
 
 ## Verification
 - API: `curl -I http://127.0.0.1:18000/api/docs` and `curl -I https://pericopeai.com/api/docs`
+- Clock: `curl -I http://127.0.0.1:8086/api/clock`
 - FE: `curl -I http://127.0.0.1:13080` and `curl -I https://pericopeai.com`
 - DB: `mysql -h 127.0.0.1 -P 3307 -u${MYSQL_USER:-augustine} -p` (requires local MySQL client)
 

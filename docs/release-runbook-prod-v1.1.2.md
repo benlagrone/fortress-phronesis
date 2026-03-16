@@ -8,10 +8,11 @@
 
 ## Scope
 
-1. Production deployment of `fortress-phronesis` stack (`mysql`, `augustine-corpus-live`, `pericopeai-api`, `pericopeai-frontend`).
+1. Production deployment of `fortress-phronesis` stack (`mysql`, `augustine-corpus-live`, `pericopeai-api`, `solomonic-clock`, `pericopeai-frontend`).
 2. DB schema bootstrap and validation, including DB-backed author catalog tables (`author_catalog`, `author_books`).
 3. Author profile endpoint readiness (`/api/v1/authors/{author_slug}/profile`) via catalog sync from corpus.
-4. Post-deploy readiness, regression checks, and rollback gates.
+4. Solomonic Clock runtime availability on the shared stack network and host port `8086`.
+5. Post-deploy readiness, regression checks, and rollback gates.
 
 ## Sacred Rules (Non-Negotiable)
 
@@ -19,6 +20,7 @@
 2. Per-repo `.env` ownership is fixed:
    - `AugustineService/.env`
    - `AugustineCorpus/.env`
+   - `Solomonic_Seals/.env`
    - `AugustineFE/.env`
 3. Do not create or rely on `fortress-phronesis/.env` for deployment behavior.
 4. Do not use ad-hoc `export VAR=...` or inline `VAR=... docker compose ...` overrides during prod deploy.
@@ -39,6 +41,7 @@
 4. Host ports:
    - MySQL `3307`
    - API `18000`
+   - Solomonic Clock `8086`
    - Frontend `13080`
 
 ## Preconditions
@@ -47,10 +50,12 @@
    - `fortress-phronesis`
    - `AugustineService`
    - `AugustineCorpus`
+   - `Solomonic_Seals`
    - `AugustineFE`
 2. Production env files exist and are correct:
    - `../AugustineService/.env`
    - `../AugustineCorpus/.env`
+   - `../Solomonic_Seals/.env` (if guided prompts key or clock overrides are required)
    - `../AugustineFE/.env`
 3. Corpus text assets are present on prod host (`../AugustineCorpus/texts/*_texts`).
 
@@ -70,9 +75,14 @@ fi
 FPR_ROOT="$(cd "$FPR_ROOT" && pwd)"
 COMPOSE="docker compose -p fortress-phronesis -f $FPR_ROOT/docker-compose.pericope.yml"
 FE_COMPOSE="docker compose --env-file $FPR_ROOT/../AugustineFE/.env -p fortress-phronesis -f $FPR_ROOT/docker-compose.pericope.yml"
+CLOCK_COMPOSE="$COMPOSE"
+if [ -f "$FPR_ROOT/../Solomonic_Seals/.env" ]; then
+  CLOCK_COMPOSE="docker compose --env-file $FPR_ROOT/../Solomonic_Seals/.env -p fortress-phronesis -f $FPR_ROOT/docker-compose.pericope.yml"
+fi
 
 echo "FPR_ROOT=$FPR_ROOT"
 echo "COMPOSE_FILE=$FPR_ROOT/docker-compose.pericope.yml"
+echo "CLOCK_ENV_FILE=$FPR_ROOT/../Solomonic_Seals/.env"
 echo "FE_ENV_FILE=$FPR_ROOT/../AugustineFE/.env"
 ```
 
@@ -89,12 +99,15 @@ docker compose version
 
 bash scripts/verify-pericope-deploy-lock.sh
 
-$COMPOSE config >/tmp/pericope-config-v1.1.2.yaml
-grep -n '"18000:8080"\|"13080:80"\|"3307:3306"' /tmp/pericope-config-v1.1.2.yaml
+$CLOCK_COMPOSE config >/tmp/pericope-config-v1.1.2.yaml
+grep -n '"18000:8080"\|"13080:80"\|"8086:8080"\|"3307:3306"' /tmp/pericope-config-v1.1.2.yaml
 
 grep -E '^(ENV|ENVIRONMENT|HIDE_LOCAL_ONLY)=' ../AugustineService/.env
 grep -E '^(ENV|ENVIRONMENT)=' ../AugustineCorpus/.env
 grep -E '^(CORPUS_API_URL|MYSQL_HOST|MYSQL_DB|MYSQL_USER)=' ../AugustineService/.env
+if [ -f ../Solomonic_Seals/.env ]; then
+  grep -E '^(SOLOMONIC_GUIDED_PROMPTS_API_KEY|SOLOMONIC_PSALM_SOURCE_MODE|SOLOMONIC_PERICOPE_API_BASE)=' ../Solomonic_Seals/.env
+fi
 ```
 
 ## Step 2: Stop Old Stack Containers, Then Deploy Core Services
@@ -103,11 +116,11 @@ grep -E '^(CORPUS_API_URL|MYSQL_HOST|MYSQL_DB|MYSQL_USER)=' ../AugustineService/
 cd "$FPR_ROOT"
 
 # End current stack containers before bringing up rebuilt containers.
-$COMPOSE down --remove-orphans
+$CLOCK_COMPOSE down --remove-orphans
 
-$COMPOSE up -d --build mysql augustine-corpus-live pericopeai-api
+$CLOCK_COMPOSE up -d --build mysql augustine-corpus-live pericopeai-api solomonic-clock
 $FE_COMPOSE up -d --build pericopeai-frontend
-$COMPOSE ps
+$CLOCK_COMPOSE ps
 ```
 
 ## Step 3: MySQL Readiness + Schema Bootstrap
@@ -200,6 +213,11 @@ until curl -fsS http://localhost:18000/api/v1/authors/freud/profile >/dev/null; 
   sleep 2
 done
 
+until curl -fsS http://localhost:8086/api/clock >/dev/null; do
+  echo "waiting for solomonic clock..."
+  sleep 2
+done
+
 until curl -fsS http://localhost:13080 >/dev/null; do
   echo "waiting for frontend..."
   sleep 2
@@ -237,13 +255,14 @@ python3 scripts/test-authors.py \
 
 ## Step 8: Rollback
 
-1. Checkout previous release commits/tags for all four repos.
+1. Checkout previous release commits/tags for all five repos.
 2. Restore prior text assets if release included corpus updates.
 3. Rebuild stack:
 
 ```bash
 cd "$FPR_ROOT"
-$COMPOSE up -d --build
+$CLOCK_COMPOSE up -d --build
+$FE_COMPOSE up -d --build pericopeai-frontend
 ```
 
 4. Re-run readiness gates and smoke tests.
@@ -256,8 +275,9 @@ Approve `v1.1.2` only if all are true:
 2. DB tables exist (`users`, `messages`, `citations`, `author_catalog`, `author_books`).
 3. `sync_author_catalog.py` completed without errors.
 4. Author profile endpoints return `200` for production-visible test authors.
-5. Smoke and full regression passed.
-6. No blocking logs in:
+5. Solomonic Clock returns `200` on `http://localhost:8086/api/clock`.
+6. Smoke and full regression passed.
+7. No blocking logs in:
 
 ```bash
 docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs --tail=200 pericopeai-api augustine-corpus-live mysql

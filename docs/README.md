@@ -6,8 +6,10 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 
 - [Developer Guide](developer-guide.md)
 - [PericopeAI Deployment Guide](pericopeai-deployment.md)
+- [GitHub Image Control Plane Design](github-image-control-plane-design.md)
 - [Deployment Prep Checklist](deployment-prep-checklist.md)
 - [Prod Release Runbook v1.1.2](release-runbook-prod-v1.1.2.md)
+- [Prod Release Runbook v1.3.1 Phase A](release-runbook-prod-v1.3.1-phase-a.md)
 - [Release Commitment v1.1.3 (All Tracks)](release-commitment-v1.1.3-all-tracks.md)
 - [Acceptance Test + Demo Guide v1.1.3](acceptance-demo-guide-v1.1.3.md)
 - [Reference Inference Test Cases v1.1.3](reference-inference-test-cases-v1.1.3.md)
@@ -17,6 +19,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 - [Server Environments](server-environments.md)
 - [Container Runbook (Dev Server)](dev-server-container-runbook.md)
 - [Roadmap](roadmap.md)
+- [Author Taxonomy + Browse Contract](author-taxonomy-browse-contract.md)
 - [Testing Guide](testing.md)
 - [Epic: Identity, Authentication, and Customization](epic-identity-auth-customization.md)
 - [Testing + Hardening Plan (Identity/Auth/Customization)](identity-auth-customization-testing-hardening.md)

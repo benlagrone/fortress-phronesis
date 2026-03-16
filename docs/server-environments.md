@@ -10,6 +10,7 @@ cross-environment changes.
    - `AugustineService/.env`
    - `AugustineCorpus/.env`
    - `AugustineFE/.env`
+   - `Solomonic_Seals/.env`
 3. Do not add a top-level `fortress-phronesis/.env` deployment control file.
 4. Do not change architecture during deployment execution (project name, network name, service topology, live container edits).
 5. Frontend `REACT_APP_*` values are build-time; use compose `--env-file` when building frontend.
@@ -25,6 +26,7 @@ Prod (vmi2669159)
 - Compose file: `/root/workspace/fortress-phronesis/docker-compose.pericope.yml`
 - Corpus repo: `/root/workspace/AugustineCorpus`
 - API repo: `/root/workspace/AugustineService`
+- Clock repo: `/root/workspace/Solomonic_Seals`
 - FE repo: `/root/workspace/AugustineFE`
 
 Dev (fortress-phronesis / 192.168.86.23)
@@ -33,6 +35,7 @@ Dev (fortress-phronesis / 192.168.86.23)
 - Compose file: `/home/master-benjamin/Projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml`
 - Corpus repo: `/home/master-benjamin/Projects/pericopeai.com/AugustineCorpus`
 - API repo: `/home/master-benjamin/Projects/pericopeai.com/AugustineService`
+- Clock repo: `/home/master-benjamin/Projects/pericopeai.com/Solomonic_Seals`
 - FE repo: `/home/master-benjamin/Projects/pericopeai.com/AugustineFE`
 
 Local (macOS)
@@ -40,6 +43,7 @@ Local (macOS)
 - Standalone local compose files:
   - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineCorpus/docker-compose.corpus.yml`
   - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineService/docker-compose.yml`
+  - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/Solomonic_Seals/docker-compose.yml`
   - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/AugustineFE/docker-compose.yml`
 - Control-plane mirror compose file (use only when intentionally testing the remote deploy contract):
   - `/Users/benjaminlagrone/Documents/projects/pericopeai.com/fortress-phronesis/docker-compose.pericope.yml`
@@ -70,14 +74,14 @@ Prod (vmi2669159)
 - Workspace: `/root/workspace`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis`
-- Ports: API `18000`, FE `13080`, MySQL `3307`
+- Ports: API `18000`, FE `13080`, Solomonic Clock `8086`, MySQL `3307`
 - Network: `fortress-phronesis-net` (shared external)
 
 Dev (fortress-phronesis / 192.168.86.23)
 - Workspace: `/home/master-benjamin/Projects/pericopeai.com`
 - Compose file: `fortress-phronesis/docker-compose.pericope.yml`
 - Compose project: `fortress-phronesis` (match prod by default)
-- Ports: API `18000`, FE `13080`, MySQL `3307`
+- Ports: API `18000`, FE `13080`, Solomonic Clock `8086`, MySQL `3307`
 - Network: `fortress-phronesis-net` (shared external)
 
 Local (macOS)
@@ -85,11 +89,13 @@ Local (macOS)
 - Default local standalone ports:
   - Corpus `8001`
   - API `8080`
+  - Solomonic Clock `8086`
   - FE `13080`
   - MySQL `3308`
 - Default local standalone network: `pericope_net`
 - Control-plane mirror ports, when explicitly using `fortress-phronesis/docker-compose.pericope.yml`:
   - API `18000`
+  - Solomonic Clock `8086`
   - FE `13080`
   - MySQL `3307`
 
@@ -101,7 +107,12 @@ Canonical local guide:
 Each repo has its own `.env`:
 - `AugustineCorpus/.env`
 - `AugustineService/.env`
+- `Solomonic_Seals/.env`
 - `AugustineFE/.env`
+
+When deploying the coupled stack, clock-specific overrides such as
+`SOLOMONIC_GUIDED_PROMPTS_API_KEY` should come from
+`Solomonic_Seals/.env`.
 
 For prod, set `ENVIRONMENT=prd` (or `ENV=prd`) in both
 `AugustineCorpus/.env` and `AugustineService/.env` to hide `local_only`
@@ -109,25 +120,42 @@ authors like "Alpha (Dev)".
 You can also force this behavior in API regardless of ENV with:
 `HIDE_LOCAL_ONLY=true` in `AugustineService/.env`.
 
-## Pericope stack
+## Pericope + Solomonic stack
 
 Location: `fortress-phronesis/docker-compose.pericope.yml`
 - Paths are relative to the compose file (`../AugustineCorpus`,
-  `../AugustineService`, `../AugustineFE`).
+  `../AugustineService`, `../Solomonic_Seals`, `../AugustineFE`).
 - `fortress-phronesis-net` is a shared external network.
-- Internal service DNS: `augustine-corpus-live`, `mysql`.
+- Internal service DNS: `augustine-corpus-live`, `pericopeai-api`, `solomonic-clock`, `mysql`.
 - Do not use `localhost` inside containers.
+- Frontend clock proxy defaults to `http://solomonic-clock:8080`.
 
 Start/stop
 ```bash
 cd <workspace>/fortress-phronesis
-docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build mysql augustine-corpus-live pericopeai-api
-docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build mysql augustine-corpus-live pericopeai-api solomonic-clock
+docker compose --env-file <workspace>/AugustineFE/.env -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-frontend
 docker compose -p fortress-phronesis -f docker-compose.pericope.yml ps
 ```
 
 If MySQL fails with `Bind for 0.0.0.0:3307 failed: port is already allocated`,
 stop the conflicting container first (commonly `pericope-local-mysql-1`) and retry.
+
+## Host nginx routing
+
+On `pericopeai.com`, keep the frontend-guided-prompts route exact-matched ahead of the generic API proxy:
+
+```nginx
+location = /api/pericope/guided-prompts {
+  proxy_pass http://pericope_fe;
+}
+
+location /api {
+  proxy_pass http://pericope_api;
+}
+```
+
+This ordering is required so guided prompt requests reach the frontend/clock path instead of the API container.
 
 ## Local Standalone Stack
 
@@ -196,6 +224,7 @@ python3 <workspace>/fortress-phronesis/scripts/test-authors.py \
   --base-url http://localhost:18000 \
   --question "Summarize the main themes in 3-5 sentences and include citations." \
   --out <workspace>/tests/author-chat-test.jsonl
+curl -fsS http://localhost:8086/api/clock >/dev/null
 ```
 
 ## Troubleshooting
