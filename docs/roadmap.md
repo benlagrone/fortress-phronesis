@@ -308,6 +308,7 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 **Implementation Phasing**
 - Phase A (service identity + additive data deploy):
   - `service_id/service_version` model, service registry, author-scoped indexing default
+  - Commenced 2026-03-16 with registry-backed `service_catalog/service_versions` plus additive `/api/v1/services` read surfaces
 - Phase B (API + control plane):
   - service-scoped API endpoints + version pointer promotion/rollback workflow
 - Phase C (MDE gate enforcement):
