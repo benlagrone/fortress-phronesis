@@ -76,8 +76,15 @@ jobs:
           UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.unicornjump.yml up -d unicornjump-web
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.unicornjump.yml ps
 
-          curl -fsSI http://127.0.0.1:13081/
-          curl -fsSI http://127.0.0.1:13081/asset-manifest.json
+          for url in http://127.0.0.1:13081/ http://127.0.0.1:13081/asset-manifest.json; do
+            for attempt in $(seq 1 20); do
+              if curl -fsSI "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsSI "$url"
+          done
           REMOTE
 
       - name: Public Smoke
