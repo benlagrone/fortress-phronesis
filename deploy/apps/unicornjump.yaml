@@ -8,6 +8,7 @@ artifacts:
   image: ghcr.io/benlagrone/unicornjump-web
 runtime:
   compose_file: docker-compose.unicornjump.yml
+  project_name: unicornjump
   service: unicornjump-web
   host_bind: 127.0.0.1:13081
 release_types:
