@@ -6,6 +6,7 @@ apps:
     release_channel: stable
     image_repo: ghcr.io/benlagrone/unicornjump-web
     compose_file: docker-compose.unicornjump.yml
+    compose_project: unicornjump
     service: unicornjump-web
     local_health_urls:
       - http://127.0.0.1:13081/
