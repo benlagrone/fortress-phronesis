@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
+      COMPOSE_PROJECT: unicornjump
       IMAGE_REF: ghcr.io/benlagrone/unicornjump-web:sha-${{ inputs.source_sha }}
     steps:
       - name: Checkout Fortress Repo
@@ -53,7 +54,7 @@ jobs:
           set -euo pipefail
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "UNICORNJUMP_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' bash -s" <<'REMOTE'
+            "UNICORNJUMP_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
@@ -71,9 +72,9 @@ jobs:
 
           cd "${DEPLOY_ROOT}"
 
-          UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -f docker-compose.unicornjump.yml pull unicornjump-web
-          UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -f docker-compose.unicornjump.yml up -d unicornjump-web
-          docker compose -f docker-compose.unicornjump.yml ps
+          UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.unicornjump.yml pull unicornjump-web
+          UNICORNJUMP_IMAGE="${UNICORNJUMP_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.unicornjump.yml up -d unicornjump-web
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.unicornjump.yml ps
 
           curl -fsSI http://127.0.0.1:13081/
           curl -fsSI http://127.0.0.1:13081/asset-manifest.json
