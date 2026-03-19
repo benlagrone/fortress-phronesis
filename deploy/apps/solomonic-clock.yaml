@@ -5,7 +5,7 @@ deploy_kind: compose_image
 repo:
   url: https://github.com/benlagrone/Solomonic_Seals
 artifacts:
-  image: ghcr.io/benlagrone/solomonic-clock
+  image: ghcr.io/benlagrone/solomonic-seals
 runtime:
   compose_file: docker-compose.pericope.yml
   project_name: fortress-phronesis
