@@ -28,7 +28,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       COMPOSE_PROJECT: fortress-phronesis
-      IMAGE_REF: ghcr.io/benlagrone/solomonic-clock:sha-${{ inputs.source_sha }}
+      IMAGE_REF: ghcr.io/benlagrone/solomonic-seals:sha-${{ inputs.source_sha }}
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
