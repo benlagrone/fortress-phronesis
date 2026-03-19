@@ -1,6 +1,7 @@
 services:
   calculators:
     container_name: calculators-app
+    image: ${AMA_CALCULATORS_IMAGE:-fortress-phronesis-calculators}
     build:
       context: /root/workspace/calculator.askmortgageauthority.com   # adjust if the repo lives elsewhere
       dockerfile: Dockerfile
@@ -8,7 +9,14 @@ services:
       - "18010:8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').getcode() == 200 else 1)",
+        ]
+      start_period: 5s
       interval: 30s
       timeout: 5s
       retries: 3
