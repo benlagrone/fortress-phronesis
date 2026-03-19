@@ -388,7 +388,7 @@ services:
     build:
       context: ../Solomonic_Seals
       dockerfile: Dockerfile
-    image: solomonic-clock:latest
+    image: ${SOLOMONIC_CLOCK_IMAGE:-solomonic-clock:latest}
     environment:
       - PORT=8080
       - SOLOMONIC_PSALM_SOURCE_MODE=${SOLOMONIC_PSALM_SOURCE_MODE:-pericope_first}

@@ -1,0 +1,23 @@
+schema_version: 1
+app_id: solomonic-clock
+display_name: Solomonic Clock / True Vine OS
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/Solomonic_Seals
+artifacts:
+  image: ghcr.io/benlagrone/solomonic-clock
+runtime:
+  compose_file: docker-compose.pericope.yml
+  project_name: fortress-phronesis
+  service: solomonic-clock
+  host_bind: 127.0.0.1:8086
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:8086/api/clock
+  - type: http
+    url: http://127.0.0.1:8086/
+public_urls:
+  - https://truevineos.cloud/
