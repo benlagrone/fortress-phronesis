@@ -1,0 +1,24 @@
+schema_version: 1
+app_id: ama-calculators
+display_name: AMA Calculators
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/calculator.askmortgageauthority.com
+artifacts:
+  image: ghcr.io/benlagrone/calculator.askmortgageauthority.com
+runtime:
+  compose_file: docker-compose.calculators.yml
+  project_name: fortress-phronesis
+  service: calculators
+  host_bind: 127.0.0.1:18010
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18010/healthz
+  - type: http
+    url: http://127.0.0.1:18010/Annual-Percentage-Rate
+public_urls:
+  - https://calculator.askmortgageauthority.com/
+  - https://calculators.askmortgageauthority.com/
