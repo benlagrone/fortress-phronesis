@@ -13,3 +13,16 @@ apps:
       - http://127.0.0.1:13081/asset-manifest.json
     public_urls:
       - https://sapphirelagrone.com/
+  ama-calculators:
+    enabled: true
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/calculator.askmortgageauthority.com
+    compose_file: docker-compose.calculators.yml
+    compose_project: fortress-phronesis
+    service: calculators
+    local_health_urls:
+      - http://127.0.0.1:18010/healthz
+      - http://127.0.0.1:18010/Annual-Percentage-Rate
+    public_urls:
+      - https://calculator.askmortgageauthority.com/
+      - https://calculators.askmortgageauthority.com/
