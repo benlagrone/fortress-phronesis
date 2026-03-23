@@ -1,0 +1,115 @@
+name: Deploy Thumbnail Wizard
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by Thumbnail Wizard CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thumbnail-wizard-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      COMPOSE_PROJECT: thumbnail-wizard
+      IMAGE_REF: ghcr.io/benlagrone/freetols:sha-${{ inputs.source_sha }}
+      PUBLIC_BASE_URL: http://89.117.151.145:13082
+      THUMBNAIL_WIZARD_HOST_BIND: 13082
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.UNICORNJUMP_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.UNICORNJUMP_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "THUMBNAIL_WIZARD_IMAGE='${IMAGE_REF}' THUMBNAIL_WIZARD_HOST_BIND='${THUMBNAIL_WIZARD_HOST_BIND}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          THUMBNAIL_WIZARD_IMAGE="${THUMBNAIL_WIZARD_IMAGE}" THUMBNAIL_WIZARD_HOST_BIND="${THUMBNAIL_WIZARD_HOST_BIND}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.thumbnail-wizard.yml pull thumbnail-wizard
+          THUMBNAIL_WIZARD_IMAGE="${THUMBNAIL_WIZARD_IMAGE}" THUMBNAIL_WIZARD_HOST_BIND="${THUMBNAIL_WIZARD_HOST_BIND}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.thumbnail-wizard.yml up -d thumbnail-wizard
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.thumbnail-wizard.yml ps thumbnail-wizard
+
+          for url in http://127.0.0.1:13082/ http://127.0.0.1:13082/asset-manifest.json; do
+            for attempt in $(seq 1 20); do
+              if curl -fsSI "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsSI "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        if: ${{ env.PUBLIC_BASE_URL != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="${PUBLIC_BASE_URL%/}"
+          curl -fsSI "${BASE_URL}/" >/dev/null
+          curl -fsSI "${BASE_URL}/asset-manifest.json" >/dev/null
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Thumbnail Wizard Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
+            if [ -n "${PUBLIC_BASE_URL}" ]; then
+              echo "- Public URL: ${PUBLIC_BASE_URL%/}/"
+            else
+              echo "- Public URL: not configured"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

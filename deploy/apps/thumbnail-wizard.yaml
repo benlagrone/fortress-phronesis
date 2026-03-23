@@ -1,0 +1,23 @@
+schema_version: 1
+app_id: thumbnail-wizard
+display_name: Thumbnail Wizard
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/freetols
+artifacts:
+  image: ghcr.io/benlagrone/freetols
+runtime:
+  compose_file: docker-compose.thumbnail-wizard.yml
+  project_name: thumbnail-wizard
+  service: thumbnail-wizard
+  host_bind: 0.0.0.0:13082
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:13082/
+  - type: http
+    url: http://127.0.0.1:13082/asset-manifest.json
+public_urls:
+  - http://89.117.151.145:13082/

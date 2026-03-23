@@ -13,6 +13,31 @@ apps:
       - http://127.0.0.1:13081/asset-manifest.json
     public_urls:
       - https://sapphirelagrone.com/
+  thumbnail-wizard:
+    enabled: true
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/freetols
+    compose_file: docker-compose.thumbnail-wizard.yml
+    compose_project: thumbnail-wizard
+    service: thumbnail-wizard
+    local_health_urls:
+      - http://127.0.0.1:13082/
+      - http://127.0.0.1:13082/asset-manifest.json
+    public_urls:
+      - http://89.117.151.145:13082/
+  lecrowndevelopment:
+    enabled: true
+    release_channel: stable
+    image_repo: lecrown-site:latest
+    compose_file: docker-compose.lecrowndevelopment.yml
+    compose_project: lecrowndevelopment
+    service: lecrown-site
+    local_health_urls:
+      - http://127.0.0.1:18032/
+      - http://127.0.0.1:18032/api/lead/health
+    public_urls:
+      - https://lecrowndevelopment.com/
+      - https://www.lecrowndevelopment.com/
   ama-calculators:
     enabled: true
     release_channel: stable
