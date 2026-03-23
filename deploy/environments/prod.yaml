@@ -24,7 +24,7 @@ apps:
       - http://127.0.0.1:13082/
       - http://127.0.0.1:13082/asset-manifest.json
     public_urls:
-      - http://89.117.151.145:13082/
+      - https://freethumbnailwizard.com/
   lecrowndevelopment:
     enabled: true
     release_channel: stable

@@ -10,7 +10,7 @@ runtime:
   compose_file: docker-compose.thumbnail-wizard.yml
   project_name: thumbnail-wizard
   service: thumbnail-wizard
-  host_bind: 0.0.0.0:13082
+  host_bind: 127.0.0.1:13082
 release_types:
   - code_release
   - rollback
@@ -20,4 +20,4 @@ healthchecks:
   - type: http
     url: http://127.0.0.1:13082/asset-manifest.json
 public_urls:
-  - http://89.117.151.145:13082/
+  - https://freethumbnailwizard.com/

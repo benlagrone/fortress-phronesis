@@ -29,8 +29,8 @@ jobs:
     env:
       COMPOSE_PROJECT: thumbnail-wizard
       IMAGE_REF: ghcr.io/benlagrone/freetols:sha-${{ inputs.source_sha }}
-      PUBLIC_BASE_URL: http://89.117.151.145:13082
-      THUMBNAIL_WIZARD_HOST_BIND: 13082
+      PUBLIC_BASE_URL: https://freethumbnailwizard.com
+      THUMBNAIL_WIZARD_HOST_BIND: 127.0.0.1:13082
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
@@ -77,6 +77,39 @@ jobs:
           THUMBNAIL_WIZARD_IMAGE="${THUMBNAIL_WIZARD_IMAGE}" THUMBNAIL_WIZARD_HOST_BIND="${THUMBNAIL_WIZARD_HOST_BIND}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.thumbnail-wizard.yml pull thumbnail-wizard
           THUMBNAIL_WIZARD_IMAGE="${THUMBNAIL_WIZARD_IMAGE}" THUMBNAIL_WIZARD_HOST_BIND="${THUMBNAIL_WIZARD_HOST_BIND}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.thumbnail-wizard.yml up -d thumbnail-wizard
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.thumbnail-wizard.yml ps thumbnail-wizard
+
+          VHOST="/etc/nginx/sites-available/freethumbnailwizard.com"
+          BACKUP="${VHOST}.bak.$(date +%Y%m%d%H%M%S)"
+          cat <<'NGINX' >/tmp/freethumbnailwizard.com
+          server {
+              listen 80;
+              server_name freethumbnailwizard.com www.freethumbnailwizard.com;
+
+              location / {
+                  proxy_pass http://127.0.0.1:13082;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+          NGINX
+
+          if [ -f "${VHOST}" ]; then
+            sudo cp "${VHOST}" "${BACKUP}"
+          fi
+          sudo mv /tmp/freethumbnailwizard.com "${VHOST}"
+          sudo ln -sf "${VHOST}" /etc/nginx/sites-enabled/freethumbnailwizard.com
+          sudo nginx -t
+          sudo systemctl reload nginx || sudo nginx -s reload
+
+          if command -v certbot >/dev/null 2>&1; then
+            sudo certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email \
+              -d freethumbnailwizard.com -d www.freethumbnailwizard.com --redirect || true
+            sudo nginx -t
+            sudo systemctl reload nginx || sudo nginx -s reload
+          fi
 
           for url in http://127.0.0.1:13082/ http://127.0.0.1:13082/asset-manifest.json; do
             for attempt in $(seq 1 20); do
