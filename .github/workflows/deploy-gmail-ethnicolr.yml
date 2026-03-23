@@ -13,6 +13,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: prod
     env:
       APP_REPO: benlagrone/gmail_ethnicolr_tagger
       APP_IMAGE: ghcr.io/benlagrone/gmail_ethnicolr_tagger:latest
