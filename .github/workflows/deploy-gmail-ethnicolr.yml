@@ -16,7 +16,7 @@ jobs:
     environment: prod
     env:
       APP_REPO: benlagrone/gmail_ethnicolr_tagger
-      APP_IMAGE: ghcr.io/benlagrone/gmail_ethnicolr_tagger:latest
+      APP_IMAGE: ghcr.io/benlagrone/gmail_ethnicolr_tagger
       GOOGLE_EXPECTED_EMAIL: benjaminlagrone@gmail.com
     steps:
       - name: Checkout Fortress Repo
