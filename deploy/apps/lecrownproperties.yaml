@@ -1,0 +1,26 @@
+schema_version: 1
+app_id: lecrownproperties
+display_name: LeCrown Properties
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/lecrownproperties.com
+artifacts:
+  image: ghcr.io/benlagrone/lecrownproperties-site
+runtime:
+  compose_file: docker-compose.lecrownproperties.yml
+  project_name: lecrownproperties
+  service: lecrown-properties-site
+  host_bind: 127.0.0.1:18033
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18033/
+  - type: http
+    url: http://127.0.0.1:18033/contact?lang=zh
+  - type: http
+    url: http://127.0.0.1:18033/data/site.en.json
+public_urls:
+  - https://lecrownproperties.com/
+  - https://www.lecrownproperties.com/

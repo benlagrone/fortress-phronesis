@@ -1,0 +1,115 @@
+name: Deploy LeCrown Properties
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by lecrownproperties.com CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: lecrownproperties-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      COMPOSE_PROJECT: lecrownproperties
+      IMAGE_REF: ghcr.io/benlagrone/lecrownproperties-site:sha-${{ inputs.source_sha }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.UNICORNJUMP_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.UNICORNJUMP_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml pull lecrown-properties-site
+          LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml up -d lecrown-properties-site
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml ps lecrown-properties-site
+
+          for url in \
+            http://127.0.0.1:18033/ \
+            "http://127.0.0.1:18033/contact?lang=zh" \
+            http://127.0.0.1:18033/data/site.en.json; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSI https://lecrownproperties.com/ >/dev/null
+          curl -fsSI "https://lecrownproperties.com/contact?lang=zh" >/dev/null
+          curl -fsS https://lecrownproperties.com/data/site.en.json >/dev/null
+          curl -fsSI https://www.lecrownproperties.com/ >/dev/null
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## LeCrown Properties Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Public URL: https://lecrownproperties.com/"
+          } >> "$GITHUB_STEP_SUMMARY"
