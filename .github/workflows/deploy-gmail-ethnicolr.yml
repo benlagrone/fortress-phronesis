@@ -1,0 +1,129 @@
+name: Deploy Gmail Ethnicolr
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gmail-ethnicolr-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_REPO: benlagrone/gmail_ethnicolr_tagger
+      APP_IMAGE: ghcr.io/benlagrone/gmail_ethnicolr_tagger:latest
+      GOOGLE_EXPECTED_EMAIL: benjaminlagrone@gmail.com
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s
+' "${{ secrets.UNICORNJUMP_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s
+' "${{ secrets.UNICORNJUMP_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
+          GHCR_READ_TOKEN: ${{ secrets.UNICORNJUMP_GHCR_READ_TOKEN }}
+          REPO_PULL_TOKEN: ${{ secrets.GMAIL_ETHNICOLR_REPO_PULL_TOKEN }}
+          CLIENT_SECRET_JSON: ${{ secrets.GMAIL_ETHNICOLR_CLIENT_SECRET_JSON }}
+          TOKEN_PKL_B64: ${{ secrets.GMAIL_ETHNICOLR_TOKEN_PKL_B64 }}
+        run: |
+          set -euo pipefail
+
+          CLIENT_SECRET_JSON_B64="$(printf '%s' "${CLIENT_SECRET_JSON}" | base64 -w 0)"
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}"             "APP_REPO='${APP_REPO}' APP_IMAGE='${APP_IMAGE}' GOOGLE_EXPECTED_EMAIL='${GOOGLE_EXPECTED_EMAIL}' REPO_PULL_TOKEN='${REPO_PULL_TOKEN}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' CLIENT_SECRET_JSON_B64='${CLIENT_SECRET_JSON_B64}' TOKEN_PKL_B64='${TOKEN_PKL_B64}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          APP_ROOT="${HOME}/workspace/gmail_ethnicolr_tagger"
+          REPO_URL="https://github.com/${APP_REPO}.git"
+          AUTH_HEADER="$(printf '%s' "x-access-token:${REPO_PULL_TOKEN}" | base64 | tr -d '
+')"
+          if [ "$(id -u)" -eq 0 ]; then
+            SUDO=""
+          else
+            SUDO="sudo"
+          fi
+
+          install -d "$(dirname "${APP_ROOT}")"
+
+          if [ ! -d "${APP_ROOT}/.git" ]; then
+            git -c http.https://github.com/.extraheader="AUTHORIZATION: basic ${AUTH_HEADER}" clone "${REPO_URL}" "${APP_ROOT}"
+          fi
+
+          git -C "${APP_ROOT}" remote set-url origin "${REPO_URL}"
+          git -C "${APP_ROOT}" -c http.https://github.com/.extraheader="AUTHORIZATION: basic ${AUTH_HEADER}" fetch origin main
+          git -C "${APP_ROOT}" checkout main
+          git -C "${APP_ROOT}" -c http.https://github.com/.extraheader="AUTHORIZATION: basic ${AUTH_HEADER}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            printf '%s' "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${APP_ROOT}"
+          install -d secrets data
+
+          cat > .env <<EOF
+APP_IMAGE=ghcr.io/benlagrone/gmail_ethnicolr_tagger
+IMAGE_TAG=latest
+API_BIND_HOST=127.0.0.1
+API_PORT=5001
+SECRETS_DIR=../secrets
+DATA_DIR=../data
+GOOGLE_OAUTH_USE_CONSOLE=1
+GOOGLE_EXPECTED_EMAIL=${GOOGLE_EXPECTED_EMAIL}
+EOF
+
+          printf '%s' "${CLIENT_SECRET_JSON_B64}" | base64 -d > secrets/client_secret.json
+
+          if [ -n "${TOKEN_PKL_B64:-}" ]; then
+            printf '%s' "${TOKEN_PKL_B64}" | base64 -d > data/token.pkl
+          fi
+
+          docker compose --env-file .env -f deploy/docker-compose.prod.yml pull ethnicolr-api
+          docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d ethnicolr-api
+
+          ${SUDO} cp deploy/systemd/gmail-ethnicolr-api.service /etc/systemd/system/
+          ${SUDO} cp deploy/systemd/gmail-ethnicolr-bot.service /etc/systemd/system/
+          ${SUDO} cp deploy/systemd/gmail-ethnicolr-bot.timer /etc/systemd/system/
+          ${SUDO} systemctl daemon-reload
+          ${SUDO} systemctl enable --now gmail-ethnicolr-api.service
+
+          if [ -s data/token.pkl ]; then
+            ${SUDO} systemctl enable --now gmail-ethnicolr-bot.timer
+          else
+            ${SUDO} systemctl disable --now gmail-ethnicolr-bot.timer || true
+            echo "Token file missing; bot timer left disabled."
+          fi
+
+          ${SUDO} systemctl status gmail-ethnicolr-api.service --no-pager
+          ${SUDO} systemctl status gmail-ethnicolr-bot.timer --no-pager || true
+          curl -fsS http://127.0.0.1:5001/ >/dev/null
+          REMOTE
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Gmail Ethnicolr Deploy"
+            echo ""
+            echo "- App image: \`${APP_IMAGE}\`"
+            echo "- Remote repo: \`${APP_REPO}\`"
+            echo "- Expected Gmail account: \`${GOOGLE_EXPECTED_EMAIL}\`"
+            echo "- Schedule: every 4 hours once a token is present"
+          } >> "$GITHUB_STEP_SUMMARY"
