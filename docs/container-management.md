@@ -85,6 +85,25 @@ Use the standalone runbook instead:
 - Nginx: proxy `calculators.askmortgageauthority.com` to `http://127.0.0.1:18010`.
 - Healthcheck uses curl inside the container; ensure `curl` is in the image.
 
+## Gmail Ethnicolr
+- Repo path assumed: `/root/workspace/gmail_ethnicolr_tagger`.
+- Control-plane workflow: `.github/workflows/deploy-gmail-ethnicolr.yml`.
+- Runtime split:
+  API runs from the app repo's `deploy/docker-compose.prod.yml`.
+  Scheduled scans run from `gmail-ethnicolr-bot.timer`.
+- Current schedule: every 4 hours.
+- Current batch scope: rolling last 6 months, skipping already race-labeled messages.
+- Local checks:
+  ```bash
+  curl -fsS http://127.0.0.1:5001/ >/dev/null
+  curl -fsS http://127.0.0.1:5001/docs >/dev/null
+  systemctl status gmail-ethnicolr-api.service --no-pager
+  systemctl status gmail-ethnicolr-bot.timer --no-pager
+  ```
+- Notes:
+  `GOOGLE_EXPECTED_EMAIL` is pinned to `benjaminlagrone@gmail.com`.
+  The deploy workflow writes the OAuth client secret and token from GitHub Actions secrets onto the host.
+
 ## WordPress (askmortgageauthority.com) pull helpers
 - Set values in `scripts/.env` (defaults in scripts: SSH_HOST=root@vmi2669159, WP_PATH=/var/www/askmortgageauthority, USER=root).
 - Pull wp-config:

@@ -63,3 +63,14 @@ apps:
       - http://127.0.0.1:8086/
     public_urls:
       - https://truevineos.cloud/
+  gmail-ethnicolr:
+    enabled: true
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/gmail_ethnicolr_tagger
+    compose_file: ~/workspace/gmail_ethnicolr_tagger/deploy/docker-compose.prod.yml
+    compose_project: gmail-ethnicolr
+    service: ethnicolr-api
+    local_health_urls:
+      - http://127.0.0.1:5001/
+      - http://127.0.0.1:5001/docs
+    public_urls: []

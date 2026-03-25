@@ -1,0 +1,28 @@
+schema_version: 1
+app_id: gmail-ethnicolr
+display_name: Gmail Ethnicolr Tagger
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/gmail_ethnicolr_tagger
+artifacts:
+  image: ghcr.io/benlagrone/gmail_ethnicolr_tagger
+runtime:
+  repo_root: /root/workspace/gmail_ethnicolr_tagger
+  compose_file: deploy/docker-compose.prod.yml
+  project_name: gmail-ethnicolr
+  service: ethnicolr-api
+  host_bind: 127.0.0.1:5001
+scheduler:
+  type: systemd_timer
+  unit: gmail-ethnicolr-bot.timer
+  cadence: every_4_hours
+release_types:
+  - code_release
+  - schedule_update
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:5001/
+  - type: http
+    url: http://127.0.0.1:5001/docs
+public_urls: []
