@@ -124,6 +124,12 @@ jobs:
           for url in \
             https://pericopeai.com/api/v1/services/augustine.en/version \
             https://pericopeai.com/api/v1/services/augustine.en/versions; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 5
+            done
             curl -fsS "$url" >/dev/null
           done
 
