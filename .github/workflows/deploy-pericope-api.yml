@@ -1,0 +1,146 @@
+name: Deploy Pericope API
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-pericope-api.yml"
+      - "docker-compose.pericope.yml"
+      - "scripts/verify-pericope-deploy-lock.sh"
+      - "docs/pericopeai-deployment.md"
+  workflow_dispatch:
+    inputs:
+      service_ref:
+        description: AugustineService branch to deploy
+        required: true
+        default: master
+        type: string
+      source_sha:
+        description: Optional AugustineService commit SHA to deploy
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pericope-api-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+        run: |
+          set -euo pipefail
+
+          SERVICE_REF="${INPUT_SERVICE_REF:-master}"
+          SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
+          SERVICE_REPO_URL="https://github.com/benlagrone/AugustineService.git"
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
+
+          install -d "${WORKSPACE_ROOT}"
+
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            install -d "$(dirname "${FORTRESS_ROOT}")"
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+
+          if [ ! -d "${SERVICE_ROOT}/.git" ]; then
+            git clone "${SERVICE_REPO_URL}" "${SERVICE_ROOT}"
+          fi
+
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+
+          git -C "${SERVICE_ROOT}" fetch origin "${SERVICE_REF}"
+          git -C "${SERVICE_ROOT}" checkout "${SERVICE_REF}"
+          git -C "${SERVICE_ROOT}" pull --ff-only origin "${SERVICE_REF}"
+
+          if [ -n "${SOURCE_SHA:-}" ]; then
+            git -C "${SERVICE_ROOT}" checkout "${SOURCE_SHA}"
+          fi
+
+          cd "${FORTRESS_ROOT}"
+
+          bash scripts/verify-pericope-deploy-lock.sh
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-api
+
+          for url in \
+            http://127.0.0.1:18000/api/healthz \
+            http://127.0.0.1:18000/api/v1/services/augustine.en/version \
+            http://127.0.0.1:18000/api/v1/services/augustine.en/versions; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            https://pericopeai.com/api/v1/services/augustine.en/version \
+            https://pericopeai.com/api/v1/services/augustine.en/versions; do
+            curl -fsS "$url" >/dev/null
+          done
+
+      - name: Deployment Summary
+        shell: bash
+        env:
+          INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          SERVICE_REF="${INPUT_SERVICE_REF:-master}"
+          SOURCE_SHA="${INPUT_SOURCE_SHA:-latest-on-branch}"
+          {
+            echo "## Pericope API Deploy"
+            echo ""
+            echo "- AugustineService ref: \`${SERVICE_REF}\`"
+            echo "- AugustineService SHA: \`${SOURCE_SHA}\`"
+            echo "- Public API: https://pericopeai.com/api/v1/services/augustine.en/version"
+            echo "- Public History: https://pericopeai.com/api/v1/services/augustine.en/versions"
+          } >> "$GITHUB_STEP_SUMMARY"
