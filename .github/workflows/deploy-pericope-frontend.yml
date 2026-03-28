@@ -25,13 +25,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: pericope-frontend-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
+  group: pericope-frontend-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
+    environment: prod
     env:
       COMPOSE_PROJECT: fortress-phronesis
     steps:
