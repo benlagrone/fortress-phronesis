@@ -55,13 +55,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/tidalcycles/strudel.git strudel
+          rm -rf "${GITHUB_WORKSPACE}/strudel"
+          git clone --depth 1 https://github.com/tidalcycles/strudel.git "${GITHUB_WORKSPACE}/strudel"
 
       - name: Prepare Docs Snapshot
         shell: bash
         working-directory: jester-src
         run: |
           set -euo pipefail
+          test -d "${GITHUB_WORKSPACE}/strudel"
+          test -d "${GITHUB_WORKSPACE}/strudel/website/src/pages"
+          test -d "${GITHUB_WORKSPACE}/strudel/docs"
           STRUDEL_SOURCE_ROOT="${GITHUB_WORKSPACE}/strudel" bash deploy/production/prepare-docs.sh
           test -d .deploy-docs
 
