@@ -202,6 +202,46 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Memory inspection
 - Reset / disable controls
 
+### v1.2.2 — Purposeful Conversation State & Relationship Memory
+**Goal:** Make chats feel conversational, goal-directed, and resumable across time without introducing silent drift.
+
+- Add explicit conversation state persisted beside raw messages:
+  - `current_goal`
+  - `stage`
+  - `open_questions`
+  - `next_best_action`
+  - `promises_made`
+  - rolling session summary
+- Change prompt assembly order so responses are built from:
+  - active conversation state
+  - rolling session summary
+  - recent turns
+  - retrieved corpus context
+- Add response-policy guardrails so each answer must:
+  - acknowledge what changed
+  - orient around the current objective
+  - advance the conversation by one purposeful step
+  - preserve durable facts that were explicitly provided or confirmed
+- Add durable user/relationship memory keyed by authenticated identity or verified lead identity:
+  - organization
+  - project type
+  - timeline
+  - constraints
+  - prior decisions
+  - follow-up commitments
+- Treat browser intake as conversation seed data instead of one-shot capture:
+  - lead intake initializes memory/session state
+  - later sessions can resume from the same relationship context
+- Keep memory boundaries inspectable and reversible:
+  - no silent promotion of inferred personal facts into long-term memory
+  - reset/disable controls remain explicit
+
+**Definition of Done**
+- Chats no longer depend only on the last few turns for continuity.
+- A resumed session can recover the active goal, current stage, and next best step.
+- Lead/intake-originated conversations can continue as long-term threads.
+- Durable memory remains explicit, inspectable, and resettable.
+
 **Constraint**
 - No silent or implicit long-term memory
 
@@ -305,6 +345,20 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Operators can query active version, baseline, and promotion history per service.
 - Existing clients using `/api/v2/chat` continue to work unchanged.
 
+**Release Boundary (`2026-03-26`)**
+- Treat `v1.3.1` as feature-complete once one canonical service proves the full local operator loop:
+  - author-scoped deploy without full-system reindex
+  - service version promote
+  - service version rollback
+  - mandatory promotion gate on promote
+  - auditable promotion history
+- After that boundary is met, do not add more `v1.3.1` feature scope.
+- Remaining work may only be:
+  - public/prod deployment alignment
+  - access/env issues needed to publish the already-finished feature set
+- Public/prod deployment alignment was completed on `2026-03-27` via control-plane GitHub Actions deploy proof; `v1.3.1` is closed.
+- Do not hold `v1.3.1` open for broader warehouse/dashboard ambitions once the audit tables and promotion history contract exist locally.
+
 **Implementation Phasing**
 - Phase A (service identity + additive data deploy):
   - `service_id/service_version` model, service registry, author-scoped indexing default
@@ -315,6 +369,7 @@ PericopeAI is treated as a **platform and framework**, not just a website.
   - required eval schema, baseline diffing, promotion block rules
 - Phase D (warehouse + audit hardening):
   - warehouse integration tables, dashboard views, exportable audit trail
+  - deferred beyond `v1.3.1` release closure once the `2026-03-26` boundary above is satisfied
 
 ### v1.3.2 — Reference Inference Engine (Cross-Author / Cross-Work)
 **Goal:** Make inferred references first-class and traceable across Bible and non-Bible corpora.
