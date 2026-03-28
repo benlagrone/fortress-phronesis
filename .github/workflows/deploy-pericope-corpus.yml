@@ -14,23 +14,53 @@ on:
         type: choice
         options:
           - prod
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/deploy-pericope-corpus.yml'
+      - 'deploy/releases/pericope-corpus.json'
 
 permissions:
   contents: read
 
 concurrency:
-  group: pericope-corpus-${{ inputs.environment }}
+  group: pericope-corpus-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
     env:
       COMPOSE_PROJECT: fortress-phronesis
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
+
+      - name: Resolve Release Target
+        id: target
+        shell: bash
+        env:
+          DEFAULT_SOURCE_SHA: ${{ inputs.source_sha }}
+          DEFAULT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "source_sha=${DEFAULT_SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+            echo "environment=${DEFAULT_ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+
+          with open("deploy/releases/pericope-corpus.json", "r", encoding="utf-8") as fh:
+              data = json.load(fh)
+
+          print(f"source_sha={data['source_sha']}")
+          print(f"environment={data.get('environment', 'prod')}")
+          PY
 
       - name: Prepare SSH
         shell: bash
@@ -52,7 +82,7 @@ jobs:
           set -euo pipefail
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOURCE_SHA='${{ inputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "SOURCE_SHA='${{ steps.target.outputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
@@ -110,7 +140,7 @@ jobs:
           {
             echo "## Pericope Corpus Deploy"
             echo ""
-            echo "- Environment: \`${{ inputs.environment }}\`"
-            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Environment: \`${{ steps.target.outputs.environment }}\`"
+            echo "- Source SHA: \`${{ steps.target.outputs.source_sha }}\`"
             echo "- Public API: https://pericopeai.com/api/v1/authors"
           } >> "$GITHUB_STEP_SUMMARY"

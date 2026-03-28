@@ -14,24 +14,53 @@ on:
         type: choice
         options:
           - prod
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/deploy-pericope-frontend.yml'
+      - 'deploy/releases/pericope-frontend.json'
 
 permissions:
   contents: read
 
 concurrency:
-  group: pericope-frontend-${{ inputs.environment }}
+  group: pericope-frontend-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
     env:
       COMPOSE_PROJECT: fortress-phronesis
-      IMAGE_REF: ghcr.io/benlagrone/pericopeai-frontend-prod:sha-${{ inputs.source_sha }}
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
+
+      - name: Resolve Release Target
+        id: target
+        shell: bash
+        env:
+          DEFAULT_SOURCE_SHA: ${{ inputs.source_sha }}
+          DEFAULT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "source_sha=${DEFAULT_SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+            echo "environment=${DEFAULT_ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+
+          with open("deploy/releases/pericope-frontend.json", "r", encoding="utf-8") as fh:
+              data = json.load(fh)
+
+          print(f"source_sha={data['source_sha']}")
+          print(f"environment={data.get('environment', 'prod')}")
+          PY
 
       - name: Prepare SSH
         shell: bash
@@ -46,6 +75,7 @@ jobs:
       - name: Deploy On Server
         shell: bash
         env:
+          IMAGE_REF: ghcr.io/benlagrone/pericopeai-frontend-prod:sha-${{ steps.target.outputs.source_sha }}
           DEPLOY_HOST: ${{ secrets.PERICOPE_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.PERICOPE_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.PERICOPE_DEPLOY_ROOT }}
@@ -101,8 +131,8 @@ jobs:
           {
             echo "## Pericope Frontend Deploy"
             echo ""
-            echo "- Environment: \`${{ inputs.environment }}\`"
-            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Environment: \`${{ steps.target.outputs.environment }}\`"
+            echo "- Source SHA: \`${{ steps.target.outputs.source_sha }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
             echo "- Public URL: https://pericopeai.com/"
           } >> "$GITHUB_STEP_SUMMARY"
