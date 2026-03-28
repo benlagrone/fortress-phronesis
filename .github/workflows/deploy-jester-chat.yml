@@ -1,6 +1,9 @@
 name: Deploy Jester Chat
 
 on:
+  push:
+    branches:
+      - codex/jester-chat-deploy
   workflow_dispatch:
     inputs:
       app_ref:
