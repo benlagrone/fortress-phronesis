@@ -85,6 +85,7 @@ services:
     build:
       context: ../AugustineCorpus
       dockerfile: Dockerfile
+    image: ${PERICOPE_CORPUS_IMAGE:-pericope-corpus:latest}
     env_file:
       - ../AugustineCorpus/.env
     environment:

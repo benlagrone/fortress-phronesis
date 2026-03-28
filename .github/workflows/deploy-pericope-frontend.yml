@@ -75,9 +75,11 @@ jobs:
       - name: Deploy On Server
         shell: bash
         env:
+          IMAGE_REF: ghcr.io/benlagrone/pericopeai-frontend-prod:sha-${{ steps.target.outputs.source_sha }}
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -100,34 +102,28 @@ jobs:
 
           set +e
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOURCE_SHA='${{ steps.target.outputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "PERICOPE_FRONTEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
-
-          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
-          FRONTEND_ROOT="${WORKSPACE_ROOT}/AugustineFE"
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
             install -d "$(dirname "${DEPLOY_ROOT}")"
             git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
           fi
 
-          if [ ! -d "${FRONTEND_ROOT}/.git" ]; then
-            echo "AugustineFE repo missing at ${FRONTEND_ROOT}" >&2
-            exit 1
-          fi
-
           git -C "${DEPLOY_ROOT}" fetch origin main
           git -C "${DEPLOY_ROOT}" checkout main
           git -C "${DEPLOY_ROOT}" pull --ff-only origin main
 
-          git -C "${FRONTEND_ROOT}" fetch origin master
-          git -C "${FRONTEND_ROOT}" checkout --detach "${SOURCE_SHA}"
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
 
           cd "${DEPLOY_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+          PERICOPE_FRONTEND_IMAGE="${PERICOPE_FRONTEND_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull pericopeai-frontend
+          PERICOPE_FRONTEND_IMAGE="${PERICOPE_FRONTEND_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d pericopeai-frontend
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-frontend
 
           for url in http://127.0.0.1:13080/; do
@@ -163,5 +159,6 @@ jobs:
             echo ""
             echo "- Environment: \`${{ steps.target.outputs.environment }}\`"
             echo "- Source SHA: \`${{ steps.target.outputs.source_sha }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
             echo "- Public URL: https://pericopeai.com/"
           } >> "$GITHUB_STEP_SUMMARY"
