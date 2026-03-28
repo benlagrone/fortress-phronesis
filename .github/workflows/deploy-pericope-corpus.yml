@@ -1,0 +1,116 @@
+name: Deploy Pericope Corpus
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by AugustineCorpus CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pericope-corpus-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.PERICOPE_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.PERICOPE_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.PERICOPE_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.PERICOPE_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.PERICOPE_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "SOURCE_SHA='${{ inputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          if [ ! -d "${CORPUS_ROOT}/.git" ]; then
+            git clone https://github.com/benlagrone/AugustineCorpus.git "${CORPUS_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          git -C "${CORPUS_ROOT}" fetch origin master
+          git -C "${CORPUS_ROOT}" checkout --detach "${SOURCE_SHA}"
+
+          cd "${DEPLOY_ROOT}"
+
+          bash scripts/verify-pericope-deploy-lock.sh
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
+
+          for url in \
+            http://127.0.0.1:18000/api/healthz \
+            http://127.0.0.1:18000/api/v1/authors; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            https://pericopeai.com/api/healthz \
+            https://pericopeai.com/api/v1/authors; do
+            curl -fsS "$url" >/dev/null
+          done
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Pericope Corpus Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Public API: https://pericopeai.com/api/v1/authors"
+          } >> "$GITHUB_STEP_SUMMARY"
