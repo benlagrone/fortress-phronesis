@@ -51,23 +51,14 @@ jobs:
           APP_REF="${APP_REF:-codex/jester-contabo-deploy-20260328}"
           git clone --depth 1 --branch "${APP_REF}" "https://x-access-token:${APP_REPO_TOKEN}@github.com/benlagrone/my-strudel-flutes.git" jester-src
 
-      - name: Clone Strudel Docs Source
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf "${GITHUB_WORKSPACE}/strudel"
-          git clone --depth 1 https://github.com/tidalcycles/strudel.git "${GITHUB_WORKSPACE}/strudel"
-
-      - name: Prepare Docs Snapshot
+      - name: Verify Docs Snapshot
         shell: bash
         working-directory: jester-src
         run: |
           set -euo pipefail
-          test -d "${GITHUB_WORKSPACE}/strudel"
-          test -d "${GITHUB_WORKSPACE}/strudel/website/src/pages"
-          test -d "${GITHUB_WORKSPACE}/strudel/docs"
-          STRUDEL_SOURCE_ROOT="${GITHUB_WORKSPACE}/strudel" bash deploy/production/prepare-docs.sh
           test -d .deploy-docs
+          test -d .deploy-docs/website/src/pages
+          test -d .deploy-docs/docs
 
       - name: Write Production Env
         shell: bash
