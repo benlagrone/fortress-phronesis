@@ -67,34 +67,34 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.PERICOPE_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.PERICOPE_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy On Server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.PERICOPE_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.PERICOPE_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.PERICOPE_DEPLOY_ROOT }}
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
         run: |
           set -euo pipefail
 
           ssh-keygen -lf ~/.ssh/id_ed25519 >/dev/null 2>&1 || {
-            echo "::error::PERICOPE_DEPLOY_SSH_KEY is missing or invalid."
+            echo "::error::SOLOMONIC_CLOCK_DEPLOY_SSH_KEY is missing or invalid."
             exit 1
           }
           [ -n "${DEPLOY_HOST:-}" ] || {
-            echo "::error::PERICOPE_DEPLOY_HOST is missing."
+            echo "::error::SOLOMONIC_CLOCK_DEPLOY_HOST is missing."
             exit 1
           }
           [ -n "${DEPLOY_USER:-}" ] || {
-            echo "::error::PERICOPE_DEPLOY_USER is missing."
+            echo "::error::SOLOMONIC_CLOCK_DEPLOY_USER is missing."
             exit 1
           }
           [ -n "${DEPLOY_ROOT:-}" ] || {
-            echo "::error::PERICOPE_DEPLOY_ROOT is missing."
+            echo "::error::SOLOMONIC_CLOCK_DEPLOY_ROOT is missing."
             exit 1
           }
 
@@ -112,7 +112,8 @@ jobs:
           fi
 
           if [ ! -d "${CORPUS_ROOT}/.git" ]; then
-            git clone https://github.com/benlagrone/AugustineCorpus.git "${CORPUS_ROOT}"
+            echo "AugustineCorpus repo missing at ${CORPUS_ROOT}" >&2
+            exit 1
           fi
 
           git -C "${DEPLOY_ROOT}" fetch origin main
