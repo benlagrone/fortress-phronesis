@@ -38,15 +38,11 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 
 1. [Completed 2026-03-03] Resolve and lock one frontend host port contract everywhere (`compose`, lock script, runbooks, nginx).
 2. [Completed 2026-03-03] Ship v1.1.3 UI simplification end-to-end in code and release notes.
-3. [In Progress] Run one disciplined release using required gates; archive outputs under `tests/` artifacts.
-4. [In Progress 2026-03-16] Start v1.3.1 Phase A only (`service_id/service_version` + additive author-scoped deploy path).
-5. [Completed 2026-03-18] Preserve active `service_version`/compatibility metadata on registry reseed and revalidate live `GET /api/v1/services*` surfaces after API rebuild.
-6. [Completed 2026-03-21] Add canonical `scripts/reindex-author.sh` helper and move default author additions to one author-scoped index + restart + smoke path.
-7. [Completed 2026-03-22] Add canonical `scripts/service-version.sh` helper, expose rollback-target metadata on `/api/v1/services/{service_id}/versions`, and verify live `augustine.en` promote/rollback pointer switches while restoring active `1.0.0` after proof.
-8. [Completed 2026-03-27] Public `pericopeai.com` now serves `/api/v1/services/{service_id}/version` and `/api/v1/services/{service_id}/versions` after the control-plane GitHub Actions deploy path was added and verified.
-9. [Completed 2026-03-26] Land local Phase C gate contract: required eval payload on promote, threshold + baseline enforcement, audited `/api/v1/services/{service_id}/promotions` history, and live approve/block/rollback proof on `augustine.en`.
-10. [Completed 2026-03-26] Cut `v1.3.1` release scope harder: feature-complete locally; only public deploy alignment remains. No further `v1.3.1` feature expansion is allowed.
-11. [Completed 2026-03-27] Close `v1.3.1` after successful public deploy alignment and public `200` verification for both service-version endpoints.
+3. [Completed 2026-03-27] Close `v1.3.1` after successful public deploy alignment and public `200` verification for both service-version endpoints.
+4. [Next 2026-03-28] Close remaining `v1.1.3` UI carry-over by landing `UI-005` (New Testament voice guardrail).
+5. [Queued 2026-03-28] Close `v1.1.4` carry-over `UI-006` (request states + `401` / `403` / `504` handling).
+6. [Queued 2026-03-28] Close `v1.1.4` carry-over `UI-007` (desktop right-side context/references panel while preserving mobile behavior).
+7. [Rule 2026-03-28] No new forward roadmap work may begin until items 4-6 are completed.
 
 ## Update Rule
 

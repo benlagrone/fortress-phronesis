@@ -111,7 +111,22 @@ A release is not complete unless all pass:
    - release execution: versioned runbooks
 4. Additive updates are preferred; avoid destructive rewrites.
 
-## 12) Incident Rules
+## 12) Commitment Scoping Rules
+
+1. Do not execute against an umbrella roadmap label alone when it spans multiple phases, release types, or deploy surfaces.
+2. Before work starts, split large items into named execution slices that can be completed, verified, and documented in one pass.
+3. Prefer slice names such as:
+   - `Phase A closeout`
+   - `API contract`
+   - `UI guardrail`
+   - `rollback proof`
+4. Status updates, release notes, and handoff summaries must reference the active slice, not only the parent umbrella.
+5. If a commitment survives more than one verified iteration without closeout, stop and split it into smaller dated sub-commitments in the ledger before continuing.
+6. Scope size is correct only when one slice has one primary objective, one verification bundle, and one clear stop condition.
+7. When a semantic release reaches feature-complete locally, freeze its feature scope. Any remaining item must be labeled as deploy/access/publish pending, not treated as justification to keep adding features under the same release number.
+8. Do not start forward roadmap work under a newer release while older semantic-release items remain unfinished. Carry-over work must be closed first.
+
+## 13) Incident Rules
 
 1. Stabilize first, optimize second.
 2. Do not mix architecture changes into incident hotfixes.
@@ -122,7 +137,7 @@ A release is not complete unless all pass:
    - prevention change (runbook/script gate)
 4. Convert incident learnings into explicit checks, not tribal knowledge.
 
-## 13) Definition of Discipline
+## 14) Definition of Discipline
 
 Operational discipline exists when:
 
@@ -131,4 +146,3 @@ Operational discipline exists when:
 3. Rollback is deterministic and tested.
 4. Data updates do not force unnecessary full reindex.
 5. Promotion criteria are explicit and auditable.
-

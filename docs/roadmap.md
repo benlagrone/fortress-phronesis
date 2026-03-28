@@ -147,6 +147,14 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 ### v1.1.4 — Immediate UI Hardening and Operator Clarity
 **Goal:** Ship the next UI updates directly after control simplification, focused on reliability signals, error clarity, and author onboarding readiness.
 
+**Carry-Over Rule (`2026-03-28`)**
+- `v1.1.4` is carry-over UI work that was left open while later platform work advanced.
+- No work may advance to newer roadmap scope until all unfinished `v1.1.x` UI carry-over items are closed.
+- Execution order is:
+  - finish remaining `v1.1.3` UI carry-over (`UI-005`)
+  - finish `v1.1.4` UI carry-over (`UI-006`, `UI-007`)
+  - only then resume forward roadmap work
+
 - Responsive layout behavior by viewport:
   - mobile keeps the current single-column format (chat-first)
   - large desktop moves author context and references/citations into a right-side panel while chat remains primary
@@ -522,6 +530,55 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - The UI labels source text, canonical translation, and derived explanation as separate layers.
 - Verse-level lookup is grounded by canonical reference and does not depend on paragraph-only RAG resolution.
 - Conversational answers about a verse can be grounded in the verse bundle instead of relying only on English excerpt retrieval and persona prompting.
+
+
+### v1.3.7 — `local_tools` Model Release Watch + MDE Test Handoff
+**Goal:** Make the local control plane detect newly released provider models, notify the operator once, and hand off directly into MDE benchmarking.
+
+- Ownership boundary:
+  - MDE owns provider catalog polling, snapshot diffing, and release metadata normalization.
+  - `local_tools` owns scheduling, alert lifecycle, dedupe, notification routing, and operator actions.
+- Polling contract:
+  - scheduled job runs the MDE model poller (default cadence: daily)
+  - consumes `output/model_catalog_watch/latest.json`
+  - evaluates `changed`, per-provider diffs, model IDs, and release-notes URLs
+- Alert model:
+  - create one actionable control-plane event per stable change key: `provider:model_id:first_seen`
+  - event states: `new`, `acknowledged`, `deferred`, `resolved`, `ignored`
+  - do not recreate the same event every day unless the underlying model diff changes materially
+- Notification policy:
+  - immediate alert for newly seen model IDs
+  - one-time alert for removed models or meaningful metadata changes
+  - provider polling failure escalates only after N consecutive failures
+  - initial notification channel is email; webhook/Slack/SMS can follow later
+- Operator actions:
+  - open provider release notes
+  - inspect the raw model diff payload
+  - trigger an MDE benchmark run with the new model prefilled
+  - mark ignore/defer with an explicit reason
+- Required `local_tools` data surfaces:
+  - `model_release_watch_runs`
+  - `model_release_events`
+  - `notification_events`
+  - `benchmark_requests`
+- Benchmark handoff contract:
+  - `local_tools` submits provider/model identity into the MDE run workflow
+  - MDE returns run ID, status, and report links
+  - the control plane stores benchmark status against the originating release event
+- UI contract:
+  - dashboard card for new models awaiting benchmark
+  - event detail shows provider, model ID, first-seen timestamp, release-notes URL, and benchmark status
+  - filters include `unseen`, `awaiting benchmark`, `benchmarked`, and `dismissed`
+- Auditing:
+  - retain alert history, notification attempts, and benchmark launch/result linkage
+  - keep dedupe keys and first-seen timestamps stable across restarts
+
+**Definition of Done**
+- `local_tools` runs scheduled model-release polling through MDE.
+- A newly seen provider model creates exactly one actionable event.
+- Email notification is sent once per new actionable event.
+- An operator can trigger an MDE benchmark from the control plane without manual CLI assembly.
+- The control plane records benchmark status and report link back onto the originating event.
 
 ---
 
