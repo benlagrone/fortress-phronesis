@@ -48,6 +48,7 @@ jobs:
           APP_REPO_TOKEN: ${{ secrets.JESTER_REPO_TOKEN }}
         run: |
           set -euo pipefail
+          APP_REF="${APP_REF:-codex/jester-contabo-deploy-20260328}"
           git clone --depth 1 --branch "${APP_REF}" "https://x-access-token:${APP_REPO_TOKEN}@github.com/benlagrone/my-strudel-flutes.git" jester-src
 
       - name: Clone Strudel Docs Source
