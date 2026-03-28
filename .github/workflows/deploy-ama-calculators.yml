@@ -57,20 +57,16 @@ jobs:
             "AMA_CALCULATORS_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
-          fi
-
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          install -d "$(dirname "${DEPLOY_ROOT}")"
+          RELEASE_ROOT="$(mktemp -d "$(dirname "${DEPLOY_ROOT}")/ama-calculators-deploy.XXXXXX")"
+          trap 'rm -rf "${RELEASE_ROOT}"' EXIT
+          git clone --depth 1 --branch main https://github.com/benlagrone/fortress-phronesis.git "${RELEASE_ROOT}"
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
           fi
 
-          cd "${DEPLOY_ROOT}"
+          cd "${RELEASE_ROOT}"
 
           AMA_CALCULATORS_IMAGE="${AMA_CALCULATORS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.calculators.yml pull calculators
           AMA_CALCULATORS_IMAGE="${AMA_CALCULATORS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.calculators.yml up -d calculators
