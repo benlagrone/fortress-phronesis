@@ -14,53 +14,24 @@ on:
         type: choice
         options:
           - prod
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/deploy-pericope-corpus.yml'
-      - 'deploy/releases/pericope-corpus.json'
 
 permissions:
   contents: read
 
 concurrency:
-  group: pericope-corpus-prod
+  group: pericope-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: prod
+    environment: ${{ inputs.environment }}
     env:
       COMPOSE_PROJECT: fortress-phronesis
+      IMAGE_REF: ghcr.io/benlagrone/pericopeai-corpus:sha-${{ inputs.source_sha }}
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
-
-      - name: Resolve Release Target
-        id: target
-        shell: bash
-        env:
-          DEFAULT_SOURCE_SHA: ${{ inputs.source_sha }}
-          DEFAULT_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            echo "source_sha=${DEFAULT_SOURCE_SHA}" >> "$GITHUB_OUTPUT"
-            echo "environment=${DEFAULT_ENVIRONMENT}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-
-          with open("deploy/releases/pericope-corpus.json", "r", encoding="utf-8") as fh:
-              data = json.load(fh)
-
-          print(f"source_sha={data['source_sha']}")
-          print(f"environment={data.get('environment', 'prod')}")
-          PY
 
       - name: Prepare SSH
         shell: bash
@@ -75,7 +46,6 @@ jobs:
       - name: Deploy On Server
         shell: bash
         env:
-          IMAGE_REF: ghcr.io/benlagrone/pericopeai-corpus:sha-${{ steps.target.outputs.source_sha }}
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
@@ -102,7 +72,8 @@ jobs:
 
           set +e
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "PERICOPE_CORPUS_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "PERICOPE_CORPUS_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" \
+            2>deploy-ssh.stderr <<'REMOTE'
           set -euo pipefail
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
@@ -137,7 +108,7 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
-          REMOTE 2>deploy-ssh.stderr
+          REMOTE
           status=$?
           set -e
 
@@ -163,8 +134,8 @@ jobs:
           {
             echo "## Pericope Corpus Deploy"
             echo ""
-            echo "- Environment: \`${{ steps.target.outputs.environment }}\`"
-            echo "- Source SHA: \`${{ steps.target.outputs.source_sha }}\`"
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
             echo "- Public API: https://pericopeai.com/api/v1/authors"
           } >> "$GITHUB_STEP_SUMMARY"

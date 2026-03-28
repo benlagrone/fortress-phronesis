@@ -1,14 +1,6 @@
 name: Deploy Pericope API
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/deploy-pericope-api.yml"
-      - "docker-compose.pericope.yml"
-      - "scripts/verify-pericope-deploy-lock.sh"
-      - "docs/pericopeai-deployment.md"
   workflow_dispatch:
     inputs:
       service_ref:
@@ -25,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pericope-api-prod
+  group: pericope-prod
   cancel-in-progress: false
 
 jobs:
