@@ -62,7 +62,7 @@ jobs:
         working-directory: jester-src
         run: |
           set -euo pipefail
-          bash deploy/production/prepare-docs.sh
+          STRUDEL_SOURCE_ROOT="${GITHUB_WORKSPACE}/strudel" bash deploy/production/prepare-docs.sh
           test -d .deploy-docs
 
       - name: Write Production Env
