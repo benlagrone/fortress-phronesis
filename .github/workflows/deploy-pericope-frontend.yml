@@ -83,6 +83,24 @@ jobs:
         run: |
           set -euo pipefail
 
+          ssh-keygen -lf ~/.ssh/id_ed25519 >/dev/null 2>&1 || {
+            echo "::error::PERICOPE_DEPLOY_SSH_KEY is missing or invalid."
+            exit 1
+          }
+          [ -n "${DEPLOY_HOST:-}" ] || {
+            echo "::error::PERICOPE_DEPLOY_HOST is missing."
+            exit 1
+          }
+          [ -n "${DEPLOY_USER:-}" ] || {
+            echo "::error::PERICOPE_DEPLOY_USER is missing."
+            exit 1
+          }
+          [ -n "${DEPLOY_ROOT:-}" ] || {
+            echo "::error::PERICOPE_DEPLOY_ROOT is missing."
+            exit 1
+          }
+
+          set +e
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "PERICOPE_FRONTEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
@@ -117,7 +135,15 @@ jobs:
             done
             curl -fsSI "$url" >/dev/null
           done
-          REMOTE
+          REMOTE 2>deploy-ssh.stderr
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            detail="$(tail -n 20 deploy-ssh.stderr | tr '\n' ' ' | sed 's/  */ /g')"
+            echo "::error::Pericope frontend deploy failed with exit ${status}. ${detail}"
+            exit "$status"
+          fi
 
       - name: Public Smoke
         shell: bash
