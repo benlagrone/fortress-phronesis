@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pericope-prod
+  group: pericope-corpus-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +28,6 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       COMPOSE_PROJECT: fortress-phronesis
-      IMAGE_REF: ghcr.io/benlagrone/pericopeai-corpus:sha-${{ inputs.source_sha }}
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
@@ -38,63 +37,48 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.PERICOPE_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.PERICOPE_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy On Server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
-          GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.PERICOPE_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.PERICOPE_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.PERICOPE_DEPLOY_ROOT }}
         run: |
           set -euo pipefail
 
-          ssh-keygen -lf ~/.ssh/id_ed25519 >/dev/null 2>&1 || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_SSH_KEY is missing or invalid."
-            exit 1
-          }
-          [ -n "${DEPLOY_HOST:-}" ] || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_HOST is missing."
-            exit 1
-          }
-          [ -n "${DEPLOY_USER:-}" ] || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_USER is missing."
-            exit 1
-          }
-          [ -n "${DEPLOY_ROOT:-}" ] || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_ROOT is missing."
-            exit 1
-          }
-
-          set +e
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "PERICOPE_CORPUS_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" \
-            2>deploy-ssh.stderr <<'REMOTE'
+            "SOURCE_SHA='${{ inputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
+
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
             install -d "$(dirname "${DEPLOY_ROOT}")"
             git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
           fi
 
+          if [ ! -d "${CORPUS_ROOT}/.git" ]; then
+            git clone https://github.com/benlagrone/AugustineCorpus.git "${CORPUS_ROOT}"
+          fi
+
           git -C "${DEPLOY_ROOT}" fetch origin main
           git -C "${DEPLOY_ROOT}" checkout main
           git -C "${DEPLOY_ROOT}" pull --ff-only origin main
 
-          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
-            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
-          fi
+          git -C "${CORPUS_ROOT}" fetch origin master
+          git -C "${CORPUS_ROOT}" checkout --detach "${SOURCE_SHA}"
 
           cd "${DEPLOY_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh
 
-          PERICOPE_CORPUS_IMAGE="${PERICOPE_CORPUS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull augustine-corpus-live
-          PERICOPE_CORPUS_IMAGE="${PERICOPE_CORPUS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d augustine-corpus-live pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live pericopeai-api
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
 
           for url in \
@@ -109,14 +93,6 @@ jobs:
             curl -fsS "$url" >/dev/null
           done
           REMOTE
-          status=$?
-          set -e
-
-          if [ "$status" -ne 0 ]; then
-            detail="$(tail -n 20 deploy-ssh.stderr | tr '\n' ' ' | sed 's/  */ /g')"
-            echo "::error::Pericope corpus deploy failed with exit ${status}. ${detail}"
-            exit "$status"
-          fi
 
       - name: Public Smoke
         shell: bash
@@ -136,6 +112,5 @@ jobs:
             echo ""
             echo "- Environment: \`${{ inputs.environment }}\`"
             echo "- Source SHA: \`${{ inputs.source_sha }}\`"
-            echo "- Image: \`${IMAGE_REF}\`"
             echo "- Public API: https://pericopeai.com/api/v1/authors"
           } >> "$GITHUB_STEP_SUMMARY"
