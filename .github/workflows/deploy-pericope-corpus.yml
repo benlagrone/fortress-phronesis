@@ -57,6 +57,9 @@ jobs:
 
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
+          RELEASE_ROOT="$(mktemp -d "${WORKSPACE_ROOT}/pericope-release.XXXXXX")"
+          FORTRESS_RELEASE_ROOT="${RELEASE_ROOT}/fortress-phronesis"
+          CORPUS_RELEASE_ROOT="${RELEASE_ROOT}/AugustineCorpus"
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
             install -d "$(dirname "${DEPLOY_ROOT}")"
@@ -68,13 +71,20 @@ jobs:
           fi
 
           git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
-
           git -C "${CORPUS_ROOT}" fetch origin master
-          git -C "${CORPUS_ROOT}" checkout --detach "${SOURCE_SHA}"
+          install -d "${FORTRESS_RELEASE_ROOT}" "${CORPUS_RELEASE_ROOT}"
+          git -C "${DEPLOY_ROOT}" archive --format=tar origin/main | tar -xf - -C "${FORTRESS_RELEASE_ROOT}"
+          git -C "${CORPUS_ROOT}" archive --format=tar "${SOURCE_SHA}" | tar -xf - -C "${CORPUS_RELEASE_ROOT}"
 
-          cd "${DEPLOY_ROOT}"
+          if [ -f "${CORPUS_ROOT}/.env" ]; then
+            ln -s "${CORPUS_ROOT}/.env" "${CORPUS_RELEASE_ROOT}/.env"
+          fi
+
+          ln -s "${WORKSPACE_ROOT}/AugustineService" "${RELEASE_ROOT}/AugustineService"
+          ln -s "${WORKSPACE_ROOT}/AugustineFE" "${RELEASE_ROOT}/AugustineFE"
+          ln -s "${WORKSPACE_ROOT}/Solomonic_Seals" "${RELEASE_ROOT}/Solomonic_Seals"
+
+          cd "${FORTRESS_RELEASE_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh
 
