@@ -197,6 +197,12 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Newly promoted authors render safely even when metadata is partial.
 - Bible citations present in answer text are surfaced in References even when not returned in metadata.
 
+**Status (`2026-03-31`)**
+- `v1.1.4` carry-over UI hardening is closed on the public stack.
+- `UI-006` request-state and explicit `401` / `403` / `504` handling is live and verified.
+- `UI-007` desktop right-side context/references layout with mobile single-column behavior is live and verified.
+- Verification artifact: [ui-006-ui-007-public-verification-20260331.md](../tests/ui-006-ui-007-public-verification-20260331.md)
+
 ---
 
 ## v1.2.x — Memory (Scoped and Explicit)
