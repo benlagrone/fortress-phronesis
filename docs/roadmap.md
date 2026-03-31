@@ -142,10 +142,10 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Users can select persona from within the author context element (single combined panel).
 - Existing author-context data flow remains DB-backed and functional.
 - On mobile, the chat window fits within viewport height minus controls, with message list scrolling independently while input/send remains visible at the bottom.
-- New Testament persona responses are validated to avoid first-person Jesus identity drift and remain in the selected author voice.
+- Bible-author persona responses are validated to avoid first-person divine-speaker identity drift and remain in the selected author voice.
 
 **Status (`2026-03-30`)**
-- `v1.1.3` UI carry-over is closed, including live `UI-005` verification for `john` on the public stack.
+- `v1.1.3` UI carry-over is closed, including live `UI-005` verification for Bible-author personas on the public stack.
 
 ### v1.1.4 — Immediate UI Hardening and Operator Clarity
 **Goal:** Ship the next UI updates directly after control simplification, focused on reliability signals, error clarity, and author onboarding readiness.

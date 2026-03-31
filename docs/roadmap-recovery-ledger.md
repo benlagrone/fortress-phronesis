@@ -16,7 +16,7 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 | UI-002 | Remove `Test Memory` button from chat controls | v1.1.3 | Completed | [roadmap.md](roadmap.md#v113--augustine-frontend-control-simplification) |
 | UI-003 | Combine persona selector into author context element as one panel | v1.1.3 | Completed | [roadmap.md](roadmap.md#v113--augustine-frontend-control-simplification) |
 | UI-004 | Mobile viewport fit: message list scrolls independently, input pinned | v1.1.3 | Completed | [roadmap.md](roadmap.md#v113--augustine-frontend-control-simplification) |
-| UI-005 | New Testament tuning guardrail to prevent first-person Jesus drift | v1.1.3 | Completed | [ui-005-john-guardrail-public-20260330.md](../tests/ui-005-john-guardrail-public-20260330.md) |
+| UI-005 | Bible-author voice guardrail to prevent first-person divine-speaker drift | v1.1.3 | Completed | [ui-005-bible-author-guardrail-public-20260330.md](../tests/ui-005-bible-author-guardrail-public-20260330.md) |
 | UI-006 | Chat request lifecycle states and explicit timeout/error UX (`401`,`403`,`504`) | v1.1.4 | Planned | [roadmap.md](roadmap.md#v114--immediate-ui-hardening-and-operator-clarity) |
 | UI-007 | Responsive layout: mobile keeps single-column chat format; large desktop uses right-side context/references panel; mobile keeps input pinned while page can scroll to citations | v1.1.4 | Planned | [roadmap.md](roadmap.md#v114--immediate-ui-hardening-and-operator-clarity) |
 | MEM-001 | Purposeful conversational continuity: explicit session state, rolling summaries, durable relationship memory, and intake-as-thread seed | v1.2.2 | Planned | [roadmap.md](roadmap.md#v122--purposeful-conversation-state--relationship-memory) |
@@ -39,7 +39,7 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 1. [Completed 2026-03-03] Resolve and lock one frontend host port contract everywhere (`compose`, lock script, runbooks, nginx).
 2. [Completed 2026-03-03] Ship v1.1.3 UI simplification end-to-end in code and release notes.
 3. [Completed 2026-03-27] Close `v1.3.1` after successful public deploy alignment and public `200` verification for both service-version endpoints.
-4. [Completed 2026-03-30] Close remaining `v1.1.3` UI carry-over by landing `UI-005` (New Testament voice guardrail).
+4. [Completed 2026-03-30] Close remaining `v1.1.3` UI carry-over by landing `UI-005` (Bible-author voice guardrail).
 5. [Next 2026-03-30] Close `v1.1.4` carry-over `UI-006` (request states + `401` / `403` / `504` handling).
 6. [Queued 2026-03-30] Close `v1.1.4` carry-over `UI-007` (desktop right-side context/references panel while preserving mobile behavior).
 7. [Rule 2026-03-28] No new forward roadmap work may begin until items 5-6 are completed.
