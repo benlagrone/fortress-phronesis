@@ -119,6 +119,12 @@ jobs:
           ./crm.sh up
           ./crm.sh ps
 
+          for attempt in $(seq 1 30); do
+            if curl -fsSI http://127.0.0.1:18036 >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
           curl -fsSI http://127.0.0.1:18036 >/dev/null
 
           sudo cp nginx.crm.lecrowndevelopment.com.conf /etc/nginx/sites-available/crm.lecrowndevelopment.com
