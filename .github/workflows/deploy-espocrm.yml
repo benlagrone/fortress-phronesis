@@ -1,0 +1,162 @@
+name: Deploy EspoCRM
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      issue_certificate:
+        description: Run certbot for crm.lecrowndevelopment.com
+        required: true
+        default: true
+        type: boolean
+      run_public_smoke:
+        description: Verify the public CRM URL after deploy
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: espocrm-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      REMOTE_DIR: ~/workspace/espocrm
+      CERTBOT_EMAIL: benjamin@lecrowndevelopment.com
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Sync EspoCRM Stack
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p ${REMOTE_DIR}"
+
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_ed25519" \
+            deploy/espocrm/ "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_DIR}/"
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
+          ISSUE_CERTIFICATE: ${{ inputs.issue_certificate }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "REMOTE_DIR='${REMOTE_DIR}' ISSUE_CERTIFICATE='${ISSUE_CERTIFICATE}' CERTBOT_EMAIL='${CERTBOT_EMAIL}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          set_kv() {
+            local key="$1"
+            local value="$2"
+            if grep -q "^${key}=" .env; then
+              sed -i "s|^${key}=.*|${key}=${value}|" .env
+            else
+              printf '%s=%s\n' "${key}" "${value}" >> .env
+            fi
+          }
+
+          ensure_secret() {
+            local key="$1"
+            local current
+            current="$(awk -F= -v k="${key}" '$1==k {print $2}' .env 2>/dev/null || true)"
+            if [ -z "${current}" ] || [[ "${current}" == change-me* ]]; then
+              set_kv "${key}" "$(openssl rand -hex 24)"
+            fi
+          }
+
+          REMOTE_DIR="${REMOTE_DIR/#\~/${HOME}}"
+          install -d "${REMOTE_DIR}"
+          cd "${REMOTE_DIR}"
+
+          bash ./crm.sh init-env
+
+          set_kv ESPOCRM_BIND_HOST 127.0.0.1
+          set_kv ESPOCRM_HTTP_PORT 18036
+          set_kv ESPOCRM_WS_PORT 18037
+          set_kv ESPOCRM_SITE_URL https://crm.lecrowndevelopment.com
+          set_kv ESPOCRM_WEB_SOCKET_URL wss://crm.lecrowndevelopment.com/ws
+          set_kv ESPOCRM_ADMIN_USERNAME admin
+
+          ensure_secret ESPOCRM_ADMIN_PASSWORD
+          ensure_secret MARIADB_ROOT_PASSWORD
+          ensure_secret MARIADB_PASSWORD
+
+          ./crm.sh pull
+          ./crm.sh up
+          ./crm.sh ps
+
+          curl -fsSI http://127.0.0.1:18036 >/dev/null
+
+          sudo cp nginx.crm.lecrowndevelopment.com.conf /etc/nginx/sites-available/crm.lecrowndevelopment.com
+          sudo ln -sf /etc/nginx/sites-available/crm.lecrowndevelopment.com /etc/nginx/sites-enabled/crm.lecrowndevelopment.com
+          sudo nginx -t
+          sudo systemctl reload nginx || sudo nginx -s reload
+
+          if [ "${ISSUE_CERTIFICATE}" = "true" ]; then
+            sudo certbot --nginx \
+              --non-interactive \
+              --agree-tos \
+              --keep-until-expiring \
+              -m "${CERTBOT_EMAIL}" \
+              -d crm.lecrowndevelopment.com
+            sudo nginx -t
+            sudo systemctl reload nginx || sudo nginx -s reload
+          fi
+
+          curl -fsSI https://crm.lecrowndevelopment.com/ >/dev/null || true
+          REMOTE
+
+      - name: Public Smoke
+        if: ${{ inputs.run_public_smoke }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSI https://crm.lecrowndevelopment.com/ >/dev/null
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## EspoCRM Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Public URL: https://crm.lecrowndevelopment.com/"
+            echo "- Remote dir: \`~/workspace/espocrm\`"
+            echo "- Upstreams: \`127.0.0.1:18036\` and \`127.0.0.1:18037\`"
+            echo "- Certbot: \`${{ inputs.issue_certificate }}\`"
+            echo "- Public smoke: \`${{ inputs.run_public_smoke }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
