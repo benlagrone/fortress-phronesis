@@ -1,0 +1,227 @@
+name: Backup AMA WordPress
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      backup_root:
+        description: Remote backup root (blank uses $HOME/backups/ama-wordpress)
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ama-wordpress-backup-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.AMA_CALCULATORS_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.AMA_CALCULATORS_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run Remote Backup
+        id: remote_backup
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+          BACKUP_ROOT_INPUT: ${{ inputs.backup_root }}
+        run: |
+          set -euo pipefail
+          ssh_output="$(
+            ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "BACKUP_ROOT_INPUT='${BACKUP_ROOT_INPUT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          log() {
+            printf '[backup] %s\n' "$*" >&2
+          }
+
+          first_existing() {
+            local path
+            for path in "$@"; do
+              if [ -e "$path" ]; then
+                printf '%s\n' "$path"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          extract_define() {
+            local key="$1"
+            perl -ne "if (/define\(\s*[\"']${key}[\"']\s*,\s*[\"']((?:\\\\.|[^\"'])*)[\"']\s*\)/) { my \$v=\$1; \$v =~ s/\\(['\"\\])/\$1/g; print \$v; exit }" "$WP_CONFIG"
+          }
+
+          BACKUP_ROOT="${BACKUP_ROOT_INPUT:-${HOME}/backups/ama-wordpress}"
+          mkdir -p "$BACKUP_ROOT"
+
+          WP_PATH="$(first_existing /var/www/askmortgageauthority /var/www/askmortgageauthority.com || true)"
+          if [ -z "${WP_PATH:-}" ]; then
+            WP_CONFIG="$(find /var/www /srv /home -maxdepth 4 -type f -name 'wp-config.php' 2>/dev/null | head -n1)"
+            [ -n "${WP_CONFIG:-}" ] || {
+              log 'Unable to find wp-config.php'
+              exit 1
+            }
+            WP_PATH="$(dirname "$WP_CONFIG")"
+          fi
+
+          WP_CONFIG="${WP_PATH}/wp-config.php"
+          [ -f "$WP_CONFIG" ] || {
+            log "Missing ${WP_CONFIG}"
+            exit 1
+          }
+          [ -d "${WP_PATH}/wp-content" ] || {
+            log "Missing ${WP_PATH}/wp-content"
+            exit 1
+          }
+
+          DB_NAME="$(extract_define DB_NAME)"
+          DB_USER="$(extract_define DB_USER)"
+          DB_PASSWORD="$(extract_define DB_PASSWORD)"
+          DB_HOST_RAW="$(extract_define DB_HOST)"
+          [ -n "$DB_HOST_RAW" ] || DB_HOST_RAW="localhost"
+
+          [ -n "$DB_NAME" ] || {
+            log 'DB_NAME missing'
+            exit 1
+          }
+          [ -n "$DB_USER" ] || {
+            log 'DB_USER missing'
+            exit 1
+          }
+
+          DB_HOST="$DB_HOST_RAW"
+          DB_PORT="3306"
+          DB_SOCKET=""
+          if [[ "$DB_HOST_RAW" == *:* ]]; then
+            host_part="${DB_HOST_RAW%%:*}"
+            suffix="${DB_HOST_RAW#*:}"
+            if [[ "$suffix" == /* ]]; then
+              DB_HOST="$host_part"
+              DB_SOCKET="$suffix"
+            elif [[ "$suffix" =~ ^[0-9]+$ ]]; then
+              DB_HOST="$host_part"
+              DB_PORT="$suffix"
+            fi
+          fi
+
+          DUMP_BIN="$(command -v mysqldump || command -v mariadb-dump || true)"
+          [ -n "$DUMP_BIN" ] || {
+            log 'mysqldump/mariadb-dump not found'
+            exit 1
+          }
+
+          RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+          RELEASE_DIR="${BACKUP_ROOT}/${RELEASE_ID}"
+          mkdir -p "${RELEASE_DIR}/nginx"
+
+          log "Backing up wp-config from ${WP_CONFIG}"
+          cp "$WP_CONFIG" "${RELEASE_DIR}/wp-config.php.backup"
+
+          log "Backing up wp-content from ${WP_PATH}/wp-content"
+          tar -C "$WP_PATH" -czf "${RELEASE_DIR}/live-wp-content.tar.gz" wp-content
+
+          log "Backing up database ${DB_NAME}"
+          dump_args=(--single-transaction --routines --triggers --events -u "$DB_USER")
+          if [ -n "$DB_SOCKET" ]; then
+            dump_args+=(--socket="$DB_SOCKET")
+          elif [ -n "$DB_HOST" ]; then
+            dump_args+=(-h "$DB_HOST" -P "$DB_PORT")
+          fi
+          MYSQL_PWD="$DB_PASSWORD" "$DUMP_BIN" "${dump_args[@]}" "$DB_NAME" | gzip -c > "${RELEASE_DIR}/live-db.sql.gz"
+
+          log 'Snapshotting nginx config'
+          cp -a /etc/nginx/sites-available/*askmortgageauthority* "${RELEASE_DIR}/nginx/" 2>/dev/null || true
+          cp -a /etc/nginx/sites-enabled/*askmortgageauthority* "${RELEASE_DIR}/nginx/" 2>/dev/null || true
+
+          if command -v sha256sum >/dev/null 2>&1; then
+            wp_sha="$(sha256sum "${RELEASE_DIR}/live-wp-content.tar.gz" | awk '{print $1}')"
+            db_sha="$(sha256sum "${RELEASE_DIR}/live-db.sql.gz" | awk '{print $1}')"
+          else
+            wp_sha=""
+            db_sha=""
+          fi
+
+          wp_size="$(wc -c < "${RELEASE_DIR}/live-wp-content.tar.gz" | tr -d ' ')"
+          db_size="$(wc -c < "${RELEASE_DIR}/live-db.sql.gz" | tr -d ' ')"
+
+          cat > "${RELEASE_DIR}/manifest.env" <<EOF
+release_id=${RELEASE_ID}
+release_dir=${RELEASE_DIR}
+wp_path=${WP_PATH}
+wp_config=${WP_CONFIG}
+db_name=${DB_NAME}
+db_host_raw=${DB_HOST_RAW}
+db_backup=${RELEASE_DIR}/live-db.sql.gz
+db_backup_bytes=${db_size}
+db_backup_sha256=${db_sha}
+wp_content_backup=${RELEASE_DIR}/live-wp-content.tar.gz
+wp_content_backup_bytes=${wp_size}
+wp_content_backup_sha256=${wp_sha}
+created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+
+          printf 'release_id=%s\n' "$RELEASE_ID"
+          printf 'release_dir=%s\n' "$RELEASE_DIR"
+          printf 'wp_path=%s\n' "$WP_PATH"
+          printf 'db_name=%s\n' "$DB_NAME"
+          printf 'db_backup=%s\n' "${RELEASE_DIR}/live-db.sql.gz"
+          printf 'wp_content_backup=%s\n' "${RELEASE_DIR}/live-wp-content.tar.gz"
+          printf 'manifest=%s\n' "${RELEASE_DIR}/manifest.env"
+REMOTE
+          )"
+          printf '%s\n' "$ssh_output" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Manifest
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}:${{ steps.remote_backup.outputs.manifest }}" ./ama-wordpress-backup-manifest.env
+
+      - name: Upload Manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ama-wordpress-backup-manifest-${{ steps.remote_backup.outputs.release_id }}
+          path: ./ama-wordpress-backup-manifest.env
+          if-no-files-found: error
+
+      - name: Backup Summary
+        shell: bash
+        run: |
+          {
+            echo "## AMA WordPress Backup"
+            echo ""
+            echo "- Environment: `${{ inputs.environment }}`"
+            echo "- Release: `${{ steps.remote_backup.outputs.release_id }}`"
+            echo "- Remote directory: `${{ steps.remote_backup.outputs.release_dir }}`"
+            echo "- WordPress path: `${{ steps.remote_backup.outputs.wp_path }}`"
+            echo "- Database: `${{ steps.remote_backup.outputs.db_name }}`"
+            echo "- DB backup: `${{ steps.remote_backup.outputs.db_backup }}`"
+            echo "- wp-content backup: `${{ steps.remote_backup.outputs.wp_content_backup }}`"
+            echo "- Manifest artifact: `ama-wordpress-backup-manifest-${{ steps.remote_backup.outputs.release_id }}`"
+          } >> "$GITHUB_STEP_SUMMARY"
