@@ -1,0 +1,86 @@
+name: Run AMA WordPress Backup V3
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      backup_root:
+        description: Remote backup root (blank uses $HOME/backups/ama-wordpress)
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: run-ama-wordpress-backup-v3-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.AMA_CALCULATORS_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.AMA_CALCULATORS_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run Remote Backup
+        id: remote_backup
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+          BACKUP_ROOT_INPUT: ${{ inputs.backup_root }}
+        run: |
+          set -euo pipefail
+          ssh_output="$(ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "BACKUP_ROOT_INPUT='${BACKUP_ROOT_INPUT}' bash -s" < scripts/backup-ama-wordpress-remote-v3.sh)"
+          printf '%s\n' "$ssh_output" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Manifest
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}:${{ steps.remote_backup.outputs.manifest }}" ./ama-wordpress-backup-manifest.env
+
+      - name: Upload Manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ama-wordpress-backup-manifest-${{ steps.remote_backup.outputs.release_id }}
+          path: ./ama-wordpress-backup-manifest.env
+          if-no-files-found: error
+
+      - name: Backup Summary
+        shell: bash
+        run: |
+          {
+            echo "## AMA WordPress Backup"
+            echo ""
+            echo "- Environment: `${{ inputs.environment }}`"
+            echo "- Release: `${{ steps.remote_backup.outputs.release_id }}`"
+            echo "- Remote directory: `${{ steps.remote_backup.outputs.release_dir }}`"
+            echo "- WordPress path: `${{ steps.remote_backup.outputs.wp_path }}`"
+            echo "- Database: `${{ steps.remote_backup.outputs.db_name }}`"
+            echo "- DB backup: `${{ steps.remote_backup.outputs.db_backup }}`"
+            echo "- wp-content backup: `${{ steps.remote_backup.outputs.wp_content_backup }}`"
+            echo "- Manifest artifact: `ama-wordpress-backup-manifest-${{ steps.remote_backup.outputs.release_id }}`"
+          } >> "$GITHUB_STEP_SUMMARY"
