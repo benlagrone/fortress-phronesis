@@ -74,3 +74,29 @@ apps:
       - http://127.0.0.1:5001/
       - http://127.0.0.1:5001/docs
     public_urls: []
+  energydataexplorer-frontend:
+    enabled: true
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/energydataexplorer-frontend
+    compose_file: docker-compose.energydataexplorer.yml
+    compose_project: energydataexplorer
+    service: energydataexplorer-frontend
+    local_health_urls:
+      - http://127.0.0.1:13083/
+      - http://127.0.0.1:13083/robots.txt
+      - http://127.0.0.1:13083/sitemap.xml
+    public_urls:
+      - https://energydataexplorer.com/
+      - https://www.energydataexplorer.com/
+  energydataexplorer-api:
+    enabled: true
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/energydataexplorer-api
+    compose_file: docker-compose.energydataexplorer.yml
+    compose_project: energydataexplorer
+    service: energydataexplorer-api
+    local_health_urls:
+      - http://127.0.0.1:18038/api/marketing/summary
+      - http://127.0.0.1:18038/api/texas-companies
+    public_urls:
+      - https://api.energydataexplorer.com/

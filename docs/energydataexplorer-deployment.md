@@ -260,6 +260,17 @@ After cutover, host Nginx should proxy:
 - `api.energydataexplorer.com`
   - all traffic -> `http://127.0.0.1:18038`
 
+Checked-in fortress Nginx config files:
+
+- `deploy/nginx/energydataexplorer.com.conf`
+- `deploy/nginx/api.energydataexplorer.com.conf`
+
+Workflow behavior:
+
+- frontend workflow installs and enables the apex site config
+- API workflow installs and enables the API-host site config
+- both workflows run `nginx -t` before reloading host Nginx
+
 If the frontend bundle uses `/api`, keep the exact `/api` block ahead of the
 generic `/` block on the apex site config.
 
@@ -275,6 +286,8 @@ curl http://127.0.0.1:13083/robots.txt
 curl http://127.0.0.1:13083/sitemap.xml
 curl http://127.0.0.1:18038/api/marketing/summary >/dev/null
 curl http://127.0.0.1:18038/api/texas-companies >/dev/null
+curl --resolve api.energydataexplorer.com:443:127.0.0.1 -k https://api.energydataexplorer.com/api/marketing/summary >/dev/null
+curl --resolve api.energydataexplorer.com:443:127.0.0.1 -k https://api.energydataexplorer.com/api/texas-companies >/dev/null
 docker compose -p energydataexplorer -f docker-compose.energydataexplorer.yml ps
 ```
 

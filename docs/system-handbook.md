@@ -1,8 +1,8 @@
 # System Handbook (Verified State)
 
 ## Hosting Split
-- **Contabo (89.117.151.145):** askmortgageauthority.com (WordPress on Apache 8080), chat.askmortgageauthority.com (FastAPI host process 9001), pericopeai.com (React + FastAPI path /api), auth.pericopeai.com (Keycloak), Nginx 80/443, MariaDB local.
-- **HostGator (50.6.160.246):** calculator.askmortgageauthority.com, CRM API (Laravel), LeCrown domains, EnergyDataExplorer, HostGator MySQL for CRM/calculators.
+- **Contabo (89.117.151.145):** askmortgageauthority.com (WordPress on Apache 8080), chat.askmortgageauthority.com (FastAPI host process 9001), pericopeai.com (React + FastAPI path /api), auth.pericopeai.com (Keycloak), energydataexplorer.com and www.energydataexplorer.com (frontend plus apex `/api` proxy), Nginx 80/443, MariaDB local.
+- **HostGator (50.6.160.246):** calculator.askmortgageauthority.com, CRM API (Laravel), LeCrown domains, api.energydataexplorer.com (until DNS cutover), HostGator MySQL for CRM/calculators.
 
 ## Key Services on Contabo
 - **Nginx:** fronting all Contabo domains; conflicting vhosts for AMA/chat (chat vhost overridden).
@@ -14,12 +14,13 @@
 - **MariaDB:** 127.0.0.1:3306; only database present is `wordpress`.
 
 ## DNS (Authoritative)
-- **Contabo:** pericopeai.com, auth.pericopeai.com, askmortgageauthority.com, chat.askmortgageauthority.com.
-- **HostGator:** calculator.askmortgageauthority.com, lecrownproperties.com, lecrownhomes.com, lecrowndevelopment.com, energydataexplorer.com, api.energydataexplorer.com.
+- **Contabo:** pericopeai.com, auth.pericopeai.com, askmortgageauthority.com, chat.askmortgageauthority.com, energydataexplorer.com, www.energydataexplorer.com.
+- **HostGator:** calculator.askmortgageauthority.com, lecrownproperties.com, lecrownhomes.com, lecrowndevelopment.com, api.energydataexplorer.com.
 - **Missing/unset:** crm.askmortgageauthority.com (should point to HostGator), auth.askmortgageauthority.com (should point to Contabo), api.pericopeai.com (unused; API via /api path).
 
 ## Outstanding Issues
 - **Nginx conflicts:** Duplicate server_name for askmortgageauthority.com; chat proxy overridden by WordPress vhost.
+- **Energy Data Explorer API DNS drift:** `api.energydataexplorer.com` still points to HostGator until public DNS cutover reaches Contabo.
 - **Dual Keycloak:** host vs Docker; choose one and retire the other.
 - **Credential hygiene:** PericopeAI .env contains HostGator DB credentials; rotate and store securely. Chat API .env contains provider API keys; rotate if exposed.
 

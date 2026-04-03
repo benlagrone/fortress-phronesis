@@ -231,6 +231,9 @@ jobs:
           while IFS= read -r enabled_site; do
             [ -n "${enabled_site}" ] || continue
             [ "${enabled_site}" = "${NGINX_LINK}" ] && continue
+            if grep -q "server_name .*api\\.energydataexplorer\\.com" "${enabled_site}"; then
+              continue
+            fi
             rm -f "${enabled_site}"
           done < <(grep -lR "server_name .*energydataexplorer\\.com" /etc/nginx/sites-enabled 2>/dev/null || true)
 

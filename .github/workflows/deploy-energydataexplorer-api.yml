@@ -224,6 +224,10 @@ jobs:
           COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
           API_ENV_FILE="${DEPLOY_ROOT}/.env.energydataexplorer-api.local"
           API_BIND_URL="http://127.0.0.1:18038"
+          NGINX_SOURCE="${DEPLOY_WORKTREE}/deploy/nginx/api.energydataexplorer.com.conf"
+          NGINX_TARGET="/etc/nginx/sites-available/api.energydataexplorer.com"
+          NGINX_LINK="/etc/nginx/sites-enabled/api.energydataexplorer.com"
+          API_HOST="api.energydataexplorer.com"
 
           if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
             install -d "$(dirname "${DEPLOY_WORKTREE}")"
@@ -251,6 +255,20 @@ jobs:
 
           ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" pull energydataexplorer-api
           ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" up -d energydataexplorer-api
+
+          install -d /etc/nginx/sites-available /etc/nginx/sites-enabled
+          install -m 644 "${NGINX_SOURCE}" "${NGINX_TARGET}"
+
+          while IFS= read -r enabled_site; do
+            [ -n "${enabled_site}" ] || continue
+            [ "${enabled_site}" = "${NGINX_LINK}" ] && continue
+            rm -f "${enabled_site}"
+          done < <(grep -lR "server_name .*api\\.energydataexplorer\\.com" /etc/nginx/sites-enabled 2>/dev/null || true)
+
+          ln -sfn "${NGINX_TARGET}" "${NGINX_LINK}"
+          nginx -t
+          systemctl reload nginx
+
           "${COMPOSE_CMD[@]}" ps energydataexplorer-api
 
           if [ "${RUN_MIGRATIONS}" = "true" ]; then
@@ -267,6 +285,18 @@ jobs:
               sleep 2
             done
             curl -fsS "$url" >/dev/null
+          done
+
+          for url in \
+            "https://${API_HOST}/api/marketing/summary" \
+            "https://${API_HOST}/api/texas-companies"; do
+            for attempt in $(seq 1 20); do
+              if curl -fsSk --resolve "${API_HOST}:443:127.0.0.1" "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsSk --resolve "${API_HOST}:443:127.0.0.1" "$url" >/dev/null
           done
           REMOTE
 
