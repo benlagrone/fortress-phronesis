@@ -121,6 +121,12 @@ At minimum, production needs valid values for:
 - `EDE_DB_USERNAME`
 - `EDE_DB_PASSWORD`
 
+Fortress can source that runtime env in either of two ways:
+
+1. existing host file at `${DEPLOY_ROOT}/.env.energydataexplorer-api.local`
+2. GitHub Actions secret `ENERGYDATAEXPLORER_API_RUNTIME_ENV`, written to that
+   path during deploy before compose runs
+
 ## Canonical Deploy Commands
 
 From the fortress repo root on the target host:
