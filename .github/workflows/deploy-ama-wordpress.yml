@@ -38,22 +38,126 @@ jobs:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
+      - name: Resolve Deploy Credentials
+        id: resolve_deploy
+        shell: bash
+        env:
+          PRIMARY_DEPLOY_HOST: ${{ secrets.AMA_WORDPRESS_DEPLOY_HOST }}
+          PRIMARY_DEPLOY_USER: ${{ secrets.AMA_WORDPRESS_DEPLOY_USER }}
+          PRIMARY_DEPLOY_ROOT: ${{ secrets.AMA_WORDPRESS_DEPLOY_ROOT }}
+          PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.AMA_WORDPRESS_DEPLOY_SSH_KEY }}
+          PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.AMA_WORDPRESS_DEPLOY_KNOWN_HOSTS }}
+          SECONDARY_DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          SECONDARY_DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+          SECONDARY_DEPLOY_ROOT: ${{ secrets.AMA_CALCULATORS_DEPLOY_ROOT }}
+          SECONDARY_DEPLOY_SSH_KEY: ${{ secrets.AMA_CALCULATORS_DEPLOY_SSH_KEY }}
+          SECONDARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.AMA_CALCULATORS_DEPLOY_KNOWN_HOSTS }}
+          TERTIARY_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          TERTIARY_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          TERTIARY_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          TERTIARY_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          TERTIARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          pick() {
+            if [ -n "${1:-}" ]; then
+              printf '%s' "${1}"
+            elif [ -n "${2:-}" ]; then
+              printf '%s' "${2}"
+            else
+              printf '%s' "${3:-}"
+            fi
+          }
+
+          DEPLOY_HOST="$(pick "${PRIMARY_DEPLOY_HOST:-}" "${SECONDARY_DEPLOY_HOST:-}" "${TERTIARY_DEPLOY_HOST:-}")"
+          DEPLOY_USER="$(pick "${PRIMARY_DEPLOY_USER:-}" "${SECONDARY_DEPLOY_USER:-}" "${TERTIARY_DEPLOY_USER:-}")"
+          DEPLOY_ROOT="$(pick "${PRIMARY_DEPLOY_ROOT:-}" "${SECONDARY_DEPLOY_ROOT:-}" "${TERTIARY_DEPLOY_ROOT:-}")"
+          DEPLOY_SSH_KEY="$(pick "${PRIMARY_DEPLOY_SSH_KEY:-}" "${SECONDARY_DEPLOY_SSH_KEY:-}" "${TERTIARY_DEPLOY_SSH_KEY:-}")"
+          DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${SECONDARY_DEPLOY_KNOWN_HOSTS:-}" "${TERTIARY_DEPLOY_KNOWN_HOSTS:-}")"
+
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing AMA WordPress deploy configuration after fallback: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          primary_all_set=true
+          for name in \
+            PRIMARY_DEPLOY_HOST \
+            PRIMARY_DEPLOY_USER \
+            PRIMARY_DEPLOY_ROOT \
+            PRIMARY_DEPLOY_SSH_KEY \
+            PRIMARY_DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name:-}" ]; then
+              primary_all_set=false
+              break
+            fi
+          done
+
+          secondary_all_set=true
+          for name in \
+            SECONDARY_DEPLOY_HOST \
+            SECONDARY_DEPLOY_USER \
+            SECONDARY_DEPLOY_ROOT \
+            SECONDARY_DEPLOY_SSH_KEY \
+            SECONDARY_DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name:-}" ]; then
+              secondary_all_set=false
+              break
+            fi
+          done
+
+          if [ "${primary_all_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="ama-wordpress-dedicated"
+          elif [ "${secondary_all_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="ama-calculators-shared"
+          else
+            CREDENTIAL_SOURCE="solomonic-clock-shared"
+          fi
+
+          {
+            echo "DEPLOY_HOST<<EOF"
+            echo "${DEPLOY_HOST}"
+            echo "EOF"
+            echo "DEPLOY_USER<<EOF"
+            echo "${DEPLOY_USER}"
+            echo "EOF"
+            echo "DEPLOY_ROOT<<EOF"
+            echo "${DEPLOY_ROOT}"
+            echo "EOF"
+            echo "DEPLOY_SSH_KEY<<EOF"
+            echo "${DEPLOY_SSH_KEY}"
+            echo "EOF"
+            echo "DEPLOY_KNOWN_HOSTS<<EOF"
+            echo "${DEPLOY_KNOWN_HOSTS}"
+            echo "EOF"
+            echo "CREDENTIAL_SOURCE=${CREDENTIAL_SOURCE}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
         shell: bash
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.AMA_WORDPRESS_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ steps.resolve_deploy.outputs.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.AMA_WORDPRESS_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ steps.resolve_deploy.outputs.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy On Server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.AMA_WORDPRESS_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.AMA_WORDPRESS_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.AMA_WORDPRESS_DEPLOY_ROOT }}
+          DEPLOY_HOST: ${{ steps.resolve_deploy.outputs.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ steps.resolve_deploy.outputs.DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ steps.resolve_deploy.outputs.DEPLOY_ROOT }}
           INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
           INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
           RUN_ID: ${{ github.run_id }}
