@@ -167,6 +167,9 @@ jobs:
           SERVICE_REF="${INPUT_SERVICE_REF:-main}"
           SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
 
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "BACKUP_ROOT_INPUT='' bash -s" \
+            < scripts/backup-ama-wordpress-remote-v3.sh
+
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' WORDPRESS_ROOT='${WORDPRESS_ROOT}' RUN_ID='${RUN_ID}' bash -s" <<'REMOTE'
           set -euo pipefail
@@ -190,10 +193,6 @@ jobs:
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
           cd "${FORTRESS_ROOT}"
-
-          BACKUP_LABEL="gha-${RUN_ID}-${SERVICE_REF}" \
-          WORDPRESS_ROOT="${WORDPRESS_ROOT}" \
-          bash scripts/backup-ama-wordpress.sh
 
           git -C "${WORDPRESS_ROOT}" fetch origin --tags
 
