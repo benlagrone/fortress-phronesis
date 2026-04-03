@@ -224,10 +224,14 @@ jobs:
           COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
           API_ENV_FILE="${DEPLOY_ROOT}/.env.energydataexplorer-api.local"
           API_BIND_URL="http://127.0.0.1:18038"
-          NGINX_SOURCE="${DEPLOY_WORKTREE}/deploy/nginx/api.energydataexplorer.com.conf"
+          NGINX_TLS_SOURCE="${DEPLOY_WORKTREE}/deploy/nginx/api.energydataexplorer.com.conf"
+          NGINX_BOOTSTRAP_SOURCE="${DEPLOY_WORKTREE}/deploy/nginx/api.energydataexplorer.com.bootstrap.conf"
           NGINX_TARGET="/etc/nginx/sites-available/api.energydataexplorer.com"
           NGINX_LINK="/etc/nginx/sites-enabled/api.energydataexplorer.com"
           API_HOST="api.energydataexplorer.com"
+          API_CERT_DIR="/etc/letsencrypt/live/${API_HOST}"
+          API_CERT_FILE="${API_CERT_DIR}/fullchain.pem"
+          API_KEY_FILE="${API_CERT_DIR}/privkey.pem"
 
           if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
             install -d "$(dirname "${DEPLOY_WORKTREE}")"
@@ -257,6 +261,12 @@ jobs:
           ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" up -d energydataexplorer-api
 
           install -d /etc/nginx/sites-available /etc/nginx/sites-enabled
+          API_SITE_MODE="bootstrap-http"
+          NGINX_SOURCE="${NGINX_BOOTSTRAP_SOURCE}"
+          if [ -f "${API_CERT_FILE}" ] && [ -f "${API_KEY_FILE}" ]; then
+            API_SITE_MODE="tls"
+            NGINX_SOURCE="${NGINX_TLS_SOURCE}"
+          fi
           install -m 644 "${NGINX_SOURCE}" "${NGINX_TARGET}"
 
           while IFS= read -r enabled_site; do
@@ -287,17 +297,31 @@ jobs:
             curl -fsS "$url" >/dev/null
           done
 
-          for url in \
-            "https://${API_HOST}/api/marketing/summary" \
-            "https://${API_HOST}/api/texas-companies"; do
-            for attempt in $(seq 1 20); do
-              if curl -fsSk --resolve "${API_HOST}:443:127.0.0.1" "$url" >/dev/null 2>&1; then
-                break
-              fi
-              sleep 2
+          if [ "${API_SITE_MODE}" = "tls" ]; then
+            for url in \
+              "https://${API_HOST}/api/marketing/summary" \
+              "https://${API_HOST}/api/texas-companies"; do
+              for attempt in $(seq 1 20); do
+                if curl -fsSk --resolve "${API_HOST}:443:127.0.0.1" "$url" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 2
+              done
+              curl -fsSk --resolve "${API_HOST}:443:127.0.0.1" "$url" >/dev/null
             done
-            curl -fsSk --resolve "${API_HOST}:443:127.0.0.1" "$url" >/dev/null
-          done
+          else
+            for path in \
+              /api/marketing/summary \
+              /api/texas-companies; do
+              for attempt in $(seq 1 20); do
+                if curl -fsS -H "Host: ${API_HOST}" "http://127.0.0.1${path}" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 2
+              done
+              curl -fsS -H "Host: ${API_HOST}" "http://127.0.0.1${path}" >/dev/null
+            done
+          fi
           REMOTE
 
       - name: Public Smoke

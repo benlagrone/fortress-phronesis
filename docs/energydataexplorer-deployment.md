@@ -264,11 +264,16 @@ Checked-in fortress Nginx config files:
 
 - `deploy/nginx/energydataexplorer.com.conf`
 - `deploy/nginx/api.energydataexplorer.com.conf`
+- `deploy/nginx/api.energydataexplorer.com.bootstrap.conf`
 
 Workflow behavior:
 
 - frontend workflow installs and enables the apex site config
-- API workflow installs and enables the API-host site config
+- API workflow installs the TLS API-host site config when the server already has
+  `api.energydataexplorer.com` certificate files under
+  `/etc/letsencrypt/live/api.energydataexplorer.com/`
+- otherwise the API workflow installs the bootstrap HTTP-only API-host config so
+  the deploy can complete before DNS and certificate cutover
 - both workflows run `nginx -t` before reloading host Nginx
 
 If the frontend bundle uses `/api`, keep the exact `/api` block ahead of the
@@ -286,10 +291,16 @@ curl http://127.0.0.1:13083/robots.txt
 curl http://127.0.0.1:13083/sitemap.xml
 curl http://127.0.0.1:18038/api/marketing/summary >/dev/null
 curl http://127.0.0.1:18038/api/texas-companies >/dev/null
+curl -H 'Host: api.energydataexplorer.com' http://127.0.0.1/api/marketing/summary >/dev/null
+curl -H 'Host: api.energydataexplorer.com' http://127.0.0.1/api/texas-companies >/dev/null
 curl --resolve api.energydataexplorer.com:443:127.0.0.1 -k https://api.energydataexplorer.com/api/marketing/summary >/dev/null
 curl --resolve api.energydataexplorer.com:443:127.0.0.1 -k https://api.energydataexplorer.com/api/texas-companies >/dev/null
 docker compose -p energydataexplorer -f docker-compose.energydataexplorer.yml ps
 ```
+
+The HTTP host-header checks pass in the bootstrap pre-TLS state. The HTTPS
+checks pass only after DNS has been cut over and a certificate exists on the
+Contabo host for `api.energydataexplorer.com`.
 
 Public checks after DNS and Nginx cutover:
 
