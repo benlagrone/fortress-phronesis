@@ -213,24 +213,27 @@ jobs:
             "ENERGYDATAEXPLORER_API_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' RUN_MIGRATIONS='${RUN_MIGRATIONS}' bash -s" <<'REMOTE'
           set -euo pipefail
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          DEPLOY_ROOT="${DEPLOY_ROOT%/}"
+          DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-ci"
+          COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
+          API_ENV_FILE="${DEPLOY_ROOT}/.env.energydataexplorer-api.local"
+
+          if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_WORKTREE}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_WORKTREE}"
           fi
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          git -C "${DEPLOY_WORKTREE}" fetch origin main
+          git -C "${DEPLOY_WORKTREE}" checkout main
+          git -C "${DEPLOY_WORKTREE}" pull --ff-only origin main
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
           fi
 
-          cd "${DEPLOY_ROOT}"
-
-          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml)
-          if [ -f .env.energydataexplorer-api.local ]; then
-            COMPOSE_CMD=(docker compose --env-file .env.energydataexplorer-api.local -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml)
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}")
+          if [ -f "${API_ENV_FILE}" ]; then
+            COMPOSE_CMD=(docker compose --env-file "${API_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}")
           fi
 
           ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" pull energydataexplorer-api

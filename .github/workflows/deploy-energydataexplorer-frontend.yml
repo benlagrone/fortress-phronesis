@@ -197,30 +197,32 @@ jobs:
             "ENERGYDATAEXPLORER_FRONTEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          DEPLOY_ROOT="${DEPLOY_ROOT%/}"
+          DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-ci"
+          COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
+
+          if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_WORKTREE}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_WORKTREE}"
           fi
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          git -C "${DEPLOY_WORKTREE}" fetch origin main
+          git -C "${DEPLOY_WORKTREE}" checkout main
+          git -C "${DEPLOY_WORKTREE}" pull --ff-only origin main
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
           fi
 
-          cd "${DEPLOY_ROOT}"
-
           ENERGYDATAEXPLORER_FRONTEND_IMAGE="${ENERGYDATAEXPLORER_FRONTEND_IMAGE}" \
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml \
+            docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" \
             pull energydataexplorer-frontend
 
           ENERGYDATAEXPLORER_FRONTEND_IMAGE="${ENERGYDATAEXPLORER_FRONTEND_IMAGE}" \
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml \
+            docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" \
             up -d energydataexplorer-frontend
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml \
+          docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" \
             ps energydataexplorer-frontend
 
           for url in \
