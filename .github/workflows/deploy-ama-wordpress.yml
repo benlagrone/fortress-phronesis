@@ -223,6 +223,11 @@ jobs:
             exit 1
           fi
 
+          echo "Port 18020 listeners before container start:"
+          ss -ltnp '( sport = :18020 )' || true
+          echo "Docker containers publishing 18020 before container start:"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep '18020' || true
+
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml pull nginx
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml build wordpress
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d wordpress nginx
