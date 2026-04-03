@@ -1,0 +1,176 @@
+name: Deploy Energy Data Explorer API
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by Energy Data Explorer API CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      run_migrations:
+        description: Run Laravel migrations after the container is updated
+        required: true
+        default: true
+        type: boolean
+      run_public_smoke:
+        description: Run api.energydataexplorer.com smoke checks after DNS and Nginx cutover
+        required: true
+        default: false
+        type: boolean
+  repository_dispatch:
+    types:
+      - deploy-energydataexplorer-api
+
+permissions:
+  contents: read
+
+concurrency:
+  group: energydataexplorer-api-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+    env:
+      COMPOSE_PROJECT: energydataexplorer
+      DEPLOY_ENVIRONMENT: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+      SOURCE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || inputs.source_sha }}
+      IMAGE_REF: ghcr.io/benlagrone/energydataexplorer-api:sha-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || inputs.source_sha }}
+    steps:
+      - name: Resolve Trigger Inputs
+        id: resolve
+        shell: bash
+        env:
+          RAW_RUN_MIGRATIONS: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.run_migrations || inputs.run_migrations || true }}
+          RAW_RUN_PUBLIC_SMOKE: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.run_public_smoke || inputs.run_public_smoke || false }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SOURCE_SHA:-}" ]; then
+            echo "source_sha is required" >&2
+            exit 1
+          fi
+
+          normalize_bool() {
+            local value
+            value="$(printf '%s' "${1:-false}" | tr '[:upper:]' '[:lower:]')"
+            case "${value}" in
+              true|false)
+                printf '%s\n' "${value}"
+                ;;
+              *)
+                echo "invalid boolean: ${1}" >&2
+                return 1
+                ;;
+            esac
+          }
+
+          RUN_MIGRATIONS="$(normalize_bool "${RAW_RUN_MIGRATIONS:-true}")"
+          RUN_PUBLIC_SMOKE="$(normalize_bool "${RAW_RUN_PUBLIC_SMOKE:-false}")"
+
+          {
+            echo "source_sha=${SOURCE_SHA}"
+            echo "deploy_environment=${DEPLOY_ENVIRONMENT}"
+            echo "run_migrations=${RUN_MIGRATIONS}"
+            echo "run_public_smoke=${RUN_PUBLIC_SMOKE}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.ENERGYDATAEXPLORER_API_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.ENERGYDATAEXPLORER_API_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.ENERGYDATAEXPLORER_API_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ENERGYDATAEXPLORER_API_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.ENERGYDATAEXPLORER_API_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.ENERGYDATAEXPLORER_API_GHCR_READ_TOKEN }}
+          RUN_MIGRATIONS: ${{ steps.resolve.outputs.run_migrations }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "ENERGYDATAEXPLORER_API_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' RUN_MIGRATIONS='${RUN_MIGRATIONS}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml)
+          if [ -f .env.energydataexplorer-api.local ]; then
+            COMPOSE_CMD=(docker compose --env-file .env.energydataexplorer-api.local -p "${COMPOSE_PROJECT}" -f docker-compose.energydataexplorer.yml)
+          fi
+
+          ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" pull energydataexplorer-api
+          ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" up -d energydataexplorer-api
+          "${COMPOSE_CMD[@]}" ps energydataexplorer-api
+
+          if [ "${RUN_MIGRATIONS}" = "true" ]; then
+            "${COMPOSE_CMD[@]}" exec -T energydataexplorer-api php artisan migrate --force
+          fi
+
+          for url in \
+            http://127.0.0.1:18036/api/marketing/summary \
+            http://127.0.0.1:18036/api/texas-companies; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        if: ${{ steps.resolve.outputs.run_public_smoke == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://api.energydataexplorer.com/api/marketing/summary >/dev/null
+          curl -fsS https://api.energydataexplorer.com/api/texas-companies >/dev/null
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Energy Data Explorer API Deploy"
+            echo ""
+            echo "- Environment: \`${{ steps.resolve.outputs.deploy_environment }}\`"
+            echo "- Source SHA: \`${{ steps.resolve.outputs.source_sha }}\`"
+            echo "- Run migrations: \`${{ steps.resolve.outputs.run_migrations }}\`"
+            echo "- Public smoke: \`${{ steps.resolve.outputs.run_public_smoke }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Public URL: https://api.energydataexplorer.com/"
+          } >> "$GITHUB_STEP_SUMMARY"
