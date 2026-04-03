@@ -200,6 +200,9 @@ jobs:
           DEPLOY_ROOT="${DEPLOY_ROOT%/}"
           DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-frontend-ci"
           COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
+          NGINX_SOURCE="${DEPLOY_WORKTREE}/deploy/nginx/energydataexplorer.com.conf"
+          NGINX_TARGET="/etc/nginx/sites-available/energydataexplorer.com"
+          NGINX_LINK="/etc/nginx/sites-enabled/energydataexplorer.com"
 
           if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
             install -d "$(dirname "${DEPLOY_WORKTREE}")"
@@ -222,13 +225,27 @@ jobs:
             docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" \
             up -d energydataexplorer-frontend
 
+          install -d /etc/nginx/sites-available /etc/nginx/sites-enabled
+          install -m 644 "${NGINX_SOURCE}" "${NGINX_TARGET}"
+
+          while IFS= read -r enabled_site; do
+            [ -n "${enabled_site}" ] || continue
+            [ "${enabled_site}" = "${NGINX_LINK}" ] && continue
+            rm -f "${enabled_site}"
+          done < <(grep -lR "server_name .*energydataexplorer\\.com" /etc/nginx/sites-enabled 2>/dev/null || true)
+
+          ln -sfn "${NGINX_TARGET}" "${NGINX_LINK}"
+          nginx -t
+          systemctl reload nginx
+
           docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" \
             ps energydataexplorer-frontend
 
           for url in \
             http://127.0.0.1:13083/ \
             http://127.0.0.1:13083/robots.txt \
-            http://127.0.0.1:13083/sitemap.xml; do
+            http://127.0.0.1:13083/sitemap.xml \
+            https://energydataexplorer.com/; do
             for attempt in $(seq 1 20); do
               if curl -fsSIL "$url" >/dev/null 2>&1; then
                 break
@@ -248,6 +265,7 @@ jobs:
           curl -fsSIL https://www.energydataexplorer.com/ >/dev/null
           curl -fsS https://energydataexplorer.com/robots.txt >/dev/null
           curl -fsS https://energydataexplorer.com/sitemap.xml >/dev/null
+          curl -fsS https://energydataexplorer.com/api/marketing/summary >/dev/null
 
       - name: Deployment Summary
         shell: bash

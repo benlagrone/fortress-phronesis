@@ -38,4 +38,4 @@ services:
       CACHE_STORE: ${EDE_CACHE_STORE:-database}
       QUEUE_CONNECTION: ${EDE_QUEUE_CONNECTION:-database}
     ports:
-      - "127.0.0.1:18036:80"
+      - "127.0.0.1:18038:80"

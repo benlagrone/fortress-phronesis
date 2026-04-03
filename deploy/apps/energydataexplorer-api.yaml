@@ -8,14 +8,14 @@ runtime:
   compose_file: docker-compose.energydataexplorer.yml
   project_name: energydataexplorer
   service: energydataexplorer-api
-  host_bind: 127.0.0.1:18036
+  host_bind: 127.0.0.1:18038
 release_types:
   - code_release
   - rollback
 healthchecks:
   - type: http
-    url: http://127.0.0.1:18036/api/marketing/summary
+    url: http://127.0.0.1:18038/api/marketing/summary
   - type: http
-    url: http://127.0.0.1:18036/api/texas-companies
+    url: http://127.0.0.1:18038/api/texas-companies
 public_urls:
   - https://api.energydataexplorer.com/

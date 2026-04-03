@@ -217,6 +217,7 @@ jobs:
           DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-api-ci"
           COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
           API_ENV_FILE="${DEPLOY_ROOT}/.env.energydataexplorer-api.local"
+          API_BIND_URL="http://127.0.0.1:18038"
 
           if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
             install -d "$(dirname "${DEPLOY_WORKTREE}")"
@@ -245,8 +246,8 @@ jobs:
           fi
 
           for url in \
-            http://127.0.0.1:18036/api/marketing/summary \
-            http://127.0.0.1:18036/api/texas-companies; do
+            "${API_BIND_URL}/api/marketing/summary" \
+            "${API_BIND_URL}/api/texas-companies"; do
             for attempt in $(seq 1 20); do
               if curl -fsS "$url" >/dev/null 2>&1; then
                 break

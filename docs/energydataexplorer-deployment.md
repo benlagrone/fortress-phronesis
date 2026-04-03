@@ -42,9 +42,9 @@ Frontend runtime:
 API runtime:
 
 - Service: `energydataexplorer-api`
-- Host bind: `127.0.0.1:18036`
+- Host bind: `127.0.0.1:18038`
 - Container port: `80`
-- Host Nginx upstream: `http://127.0.0.1:18036`
+- Host Nginx upstream: `http://127.0.0.1:18038`
 - Public host: `https://api.energydataexplorer.com/`
 - Image contract: `ghcr.io/benlagrone/energydataexplorer-api:sha-<commit>`
 
@@ -249,10 +249,10 @@ letting the source repo own image publication.
 After cutover, host Nginx should proxy:
 
 - `energydataexplorer.com` and `www.energydataexplorer.com`
-  - `location /api` -> `http://127.0.0.1:18036`
+  - `location /api` -> `http://127.0.0.1:18038`
   - `location /` -> `http://127.0.0.1:13083`
 - `api.energydataexplorer.com`
-  - all traffic -> `http://127.0.0.1:18036`
+  - all traffic -> `http://127.0.0.1:18038`
 
 If the frontend bundle uses `/api`, keep the exact `/api` block ahead of the
 generic `/` block on the apex site config.
@@ -267,8 +267,8 @@ Local checks on the host:
 curl -I http://127.0.0.1:13083/
 curl http://127.0.0.1:13083/robots.txt
 curl http://127.0.0.1:13083/sitemap.xml
-curl http://127.0.0.1:18036/api/marketing/summary >/dev/null
-curl http://127.0.0.1:18036/api/texas-companies >/dev/null
+curl http://127.0.0.1:18038/api/marketing/summary >/dev/null
+curl http://127.0.0.1:18038/api/texas-companies >/dev/null
 docker compose -p energydataexplorer -f docker-compose.energydataexplorer.yml ps
 ```
 
