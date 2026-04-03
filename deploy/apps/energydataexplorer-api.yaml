@@ -1,0 +1,21 @@
+schema_version: 1
+app_id: energydataexplorer-api
+display_name: Energy Data Explorer API
+deploy_kind: compose_image
+artifacts:
+  image: ghcr.io/benlagrone/energydataexplorer-api
+runtime:
+  compose_file: docker-compose.energydataexplorer.yml
+  project_name: energydataexplorer
+  service: energydataexplorer-api
+  host_bind: 127.0.0.1:18036
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18036/api/marketing/summary
+  - type: http
+    url: http://127.0.0.1:18036/api/texas-companies
+public_urls:
+  - https://api.energydataexplorer.com/

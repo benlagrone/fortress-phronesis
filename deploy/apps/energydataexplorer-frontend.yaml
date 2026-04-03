@@ -1,0 +1,24 @@
+schema_version: 1
+app_id: energydataexplorer-frontend
+display_name: Energy Data Explorer Frontend
+deploy_kind: compose_image
+artifacts:
+  image: ghcr.io/benlagrone/energydataexplorer-frontend
+runtime:
+  compose_file: docker-compose.energydataexplorer.yml
+  project_name: energydataexplorer
+  service: energydataexplorer-frontend
+  host_bind: 127.0.0.1:13083
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:13083/
+  - type: http
+    url: http://127.0.0.1:13083/robots.txt
+  - type: http
+    url: http://127.0.0.1:13083/sitemap.xml
+public_urls:
+  - https://energydataexplorer.com/
+  - https://www.energydataexplorer.com/
