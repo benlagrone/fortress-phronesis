@@ -214,7 +214,7 @@ jobs:
           set -euo pipefail
 
           DEPLOY_ROOT="${DEPLOY_ROOT%/}"
-          DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-ci"
+          DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-api-ci"
           COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
           API_ENV_FILE="${DEPLOY_ROOT}/.env.energydataexplorer-api.local"
 

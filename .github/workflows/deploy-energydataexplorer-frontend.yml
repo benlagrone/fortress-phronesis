@@ -198,7 +198,7 @@ jobs:
           set -euo pipefail
 
           DEPLOY_ROOT="${DEPLOY_ROOT%/}"
-          DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-ci"
+          DEPLOY_WORKTREE="${DEPLOY_ROOT}.energydataexplorer-frontend-ci"
           COMPOSE_FILE="${DEPLOY_WORKTREE}/docker-compose.energydataexplorer.yml"
 
           if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
