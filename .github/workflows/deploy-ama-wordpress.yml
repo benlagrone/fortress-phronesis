@@ -1,0 +1,181 @@
+name: Deploy AMA WordPress
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_ref:
+        description: askmortgageauthority.com branch to deploy
+        required: true
+        default: main
+        type: string
+      source_sha:
+        description: Optional askmortgageauthority.com commit SHA to deploy
+        required: false
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ama-wordpress-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      COMPOSE_PROJECT: ama-wordpress
+      WORDPRESS_ROOT: /root/workspace/askmortgageauthority.com
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.AMA_WORDPRESS_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.AMA_WORDPRESS_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.AMA_WORDPRESS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.AMA_WORDPRESS_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.AMA_WORDPRESS_DEPLOY_ROOT }}
+          INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          SERVICE_REF="${INPUT_SERVICE_REF:-main}"
+          SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' WORDPRESS_ROOT='${WORDPRESS_ROOT}' RUN_ID='${RUN_ID}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+
+          install -d "$(dirname "${FORTRESS_ROOT}")"
+
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+
+          if [ ! -d "${WORDPRESS_ROOT}/.git" ]; then
+            echo "Expected a git checkout at ${WORDPRESS_ROOT} before deploy." >&2
+            exit 1
+          fi
+
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+
+          cd "${FORTRESS_ROOT}"
+
+          BACKUP_LABEL="gha-${RUN_ID}-${SERVICE_REF}" \
+          WORDPRESS_ROOT="${WORDPRESS_ROOT}" \
+          bash scripts/backup-ama-wordpress.sh
+
+          git -C "${WORDPRESS_ROOT}" fetch origin --tags
+
+          if git -C "${WORDPRESS_ROOT}" show-ref --verify --quiet "refs/remotes/origin/${SERVICE_REF}"; then
+            if git -C "${WORDPRESS_ROOT}" show-ref --verify --quiet "refs/heads/${SERVICE_REF}"; then
+              git -C "${WORDPRESS_ROOT}" checkout "${SERVICE_REF}"
+            else
+              git -C "${WORDPRESS_ROOT}" checkout -b "${SERVICE_REF}" "origin/${SERVICE_REF}"
+            fi
+            git -C "${WORDPRESS_ROOT}" pull --ff-only origin "${SERVICE_REF}"
+          else
+            git -C "${WORDPRESS_ROOT}" checkout "${SERVICE_REF}"
+          fi
+
+          if [ -n "${SOURCE_SHA:-}" ]; then
+            git -C "${WORDPRESS_ROOT}" checkout "${SOURCE_SHA}"
+          fi
+
+          install -d \
+            "${WORDPRESS_ROOT}/custom/wp-content/themes" \
+            "${WORDPRESS_ROOT}/custom/wp-content/plugins" \
+            "${WORDPRESS_ROOT}/custom/wp-content/mu-plugins" \
+            "${WORDPRESS_ROOT}/data/uploads" \
+            "${WORDPRESS_ROOT}/nginx"
+
+          if [ ! -f "${WORDPRESS_ROOT}/nginx/default.conf" ]; then
+            echo "Missing nginx config: ${WORDPRESS_ROOT}/nginx/default.conf" >&2
+            exit 1
+          fi
+
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml pull nginx
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml build wordpress
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d wordpress nginx
+
+          if [ -f "${WORDPRESS_ROOT}/plugins.txt" ] && [ -f "${WORDPRESS_ROOT}/scripts/install-plugins.sh" ]; then
+            AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" \
+            COMPOSE_FILE_PATH="${FORTRESS_ROOT}/docker-compose.wordpress.yml" \
+            COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT}" \
+            bash "${WORDPRESS_ROOT}/scripts/install-plugins.sh"
+          fi
+
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml ps wordpress nginx
+
+          for url in \
+            http://127.0.0.1:18020/ \
+            http://127.0.0.1:18020/wp-login.php; do
+            for attempt in $(seq 1 20); do
+              if curl -fsSL "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 3
+            done
+            curl -fsSL "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            https://askmortgageauthority.com/ \
+            https://askmortgageauthority.com/wp-login.php; do
+            for attempt in $(seq 1 20); do
+              if curl -fsSL "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 5
+            done
+            curl -fsSL "$url" >/dev/null
+          done
+
+      - name: Deployment Summary
+        shell: bash
+        env:
+          INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          SERVICE_REF="${INPUT_SERVICE_REF:-main}"
+          SOURCE_SHA="${INPUT_SOURCE_SHA:-latest-on-branch}"
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## AMA WordPress Deploy
+
+          - Source ref: \`${SERVICE_REF}\`
+          - Source SHA: \`${SOURCE_SHA}\`
+          - Deploy mode: \`backup -> update -> build -> plugin sync -> restart\`
+          - Public URL: https://askmortgageauthority.com/
+          EOF
