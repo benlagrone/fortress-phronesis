@@ -100,3 +100,24 @@ apps:
       - http://127.0.0.1:18038/api/texas-companies
     public_urls:
       - https://api.energydataexplorer.com/
+  solar-potential-frontend:
+    enabled: false
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/solar-potential-frontend
+    compose_file: docker-compose.solar-potential.yml
+    compose_project: solar-potential
+    service: solar-potential-frontend
+    local_health_urls:
+      - http://127.0.0.1:18030/
+      - http://127.0.0.1:18030/runtime-config.js
+      - http://127.0.0.1:18030/release-history.html
+  solar-potential-backend:
+    enabled: false
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/solar-potential-api
+    compose_file: docker-compose.solar-potential.yml
+    compose_project: solar-potential
+    service: solar-potential-backend
+    local_health_urls:
+      - http://127.0.0.1:18031/health
+      - http://127.0.0.1:18031/openapi.json

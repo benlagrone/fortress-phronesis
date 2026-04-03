@@ -1,0 +1,130 @@
+name: Deploy Solar Potential Frontend
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by the Solar Potential frontend CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+  repository_dispatch:
+    types:
+      - deploy-solar-potential-frontend
+
+permissions:
+  contents: read
+
+concurrency:
+  group: solar-potential-frontend-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+    env:
+      COMPOSE_PROJECT: solar-potential
+      DEPLOY_ENVIRONMENT: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+      SOURCE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || inputs.source_sha }}
+      IMAGE_REF: ghcr.io/benlagrone/solar-potential-frontend:sha-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || inputs.source_sha }}
+    steps:
+      - name: Resolve Trigger Inputs
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SOURCE_SHA:-}" ]; then
+            echo "source_sha is required" >&2
+            exit 1
+          fi
+
+          {
+            echo "source_sha=${SOURCE_SHA}"
+            echo "deploy_environment=${DEPLOY_ENVIRONMENT}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLARPOTENTIAL_FRONTEND_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLARPOTENTIAL_FRONTEND_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLARPOTENTIAL_FRONTEND_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLARPOTENTIAL_FRONTEND_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLARPOTENTIAL_FRONTEND_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.SOLARPOTENTIAL_FRONTEND_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "SOLARPOTENTIAL_FRONTEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.solar-potential.yml)
+          if [ -f .env.solar-potential.local ]; then
+            COMPOSE_CMD=(docker compose --env-file .env.solar-potential.local -p "${COMPOSE_PROJECT}" -f docker-compose.solar-potential.yml)
+          fi
+
+          SOLARPOTENTIAL_FRONTEND_IMAGE="${SOLARPOTENTIAL_FRONTEND_IMAGE}" "${COMPOSE_CMD[@]}" pull solar-potential-frontend
+          SOLARPOTENTIAL_FRONTEND_IMAGE="${SOLARPOTENTIAL_FRONTEND_IMAGE}" "${COMPOSE_CMD[@]}" up -d solar-potential-frontend
+          "${COMPOSE_CMD[@]}" ps solar-potential-frontend
+
+          for url in \
+            http://127.0.0.1:18030/ \
+            http://127.0.0.1:18030/runtime-config.js \
+            http://127.0.0.1:18030/release-history.html; do
+            for attempt in $(seq 1 20); do
+              if curl -fsSIL "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsSIL "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Solar Potential Frontend Deploy"
+            echo ""
+            echo "- Environment: \`${{ steps.resolve.outputs.deploy_environment }}\`"
+            echo "- Source SHA: \`${{ steps.resolve.outputs.source_sha }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Local health targets: \`http://127.0.0.1:18030/\`, \`/runtime-config.js\`, \`/release-history.html\`"
+          } >> "$GITHUB_STEP_SUMMARY"

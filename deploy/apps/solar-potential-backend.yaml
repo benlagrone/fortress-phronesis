@@ -1,0 +1,21 @@
+schema_version: 1
+app_id: solar-potential-backend
+display_name: Solar Potential Backend
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/solar-potential-backend
+artifacts:
+  image: ghcr.io/benlagrone/solar-potential-api
+runtime:
+  compose_file: docker-compose.solar-potential.yml
+  project_name: solar-potential
+  service: solar-potential-backend
+  host_bind: 127.0.0.1:18031
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18031/health
+  - type: http
+    url: http://127.0.0.1:18031/openapi.json

@@ -1,0 +1,36 @@
+services:
+  solar-potential-frontend:
+    image: ${SOLARPOTENTIAL_FRONTEND_IMAGE:-ghcr.io/benlagrone/solar-potential-frontend:latest}
+    container_name: solar-potential-frontend
+    restart: unless-stopped
+    depends_on:
+      - solar-potential-backend
+    environment:
+      APP_API_BASE_URL: ${SOLARPOTENTIAL_APP_API_BASE_URL:-}
+      APP_GA_MEASUREMENT_ID: ${SOLARPOTENTIAL_APP_GA_MEASUREMENT_ID:-G-SZRJSTZBSV}
+      APP_DEMO_MODE: ${SOLARPOTENTIAL_APP_DEMO_MODE:-false}
+      APP_SECONDARY_FRONTEND_URL: ${SOLARPOTENTIAL_APP_SECONDARY_FRONTEND_URL:-}
+    ports:
+      - "127.0.0.1:18030:80"
+
+  solar-potential-backend:
+    image: ${SOLARPOTENTIAL_BACKEND_IMAGE:-ghcr.io/benlagrone/solar-potential-api:latest}
+    container_name: solar-potential-backend
+    restart: unless-stopped
+    environment:
+      APP_DB_PATH: ${SOLARPOTENTIAL_APP_DB_PATH:-/app/.runtime/solar-potential.sqlite3}
+      GEOCODER_PROVIDER: ${SOLARPOTENTIAL_GEOCODER_PROVIDER:-hybrid}
+      GEOCODER_NOMINATIM_DOMAIN: ${SOLARPOTENTIAL_GEOCODER_NOMINATIM_DOMAIN:-}
+      NREL_API_KEY: ${SOLARPOTENTIAL_NREL_API_KEY:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${SOLARPOTENTIAL_GOOGLE_APPLICATION_CREDENTIALS:-}
+      PERSONAL_INFO_SHEET_ID: ${SOLARPOTENTIAL_PERSONAL_INFO_SHEET_ID:-}
+      BROWSER_DATA_SHEET_ID: ${SOLARPOTENTIAL_BROWSER_DATA_SHEET_ID:-}
+      SOLAR_DATA_SHEET_ID: ${SOLARPOTENTIAL_SOLAR_DATA_SHEET_ID:-}
+    volumes:
+      - type: bind
+        source: ${SOLARPOTENTIAL_RUNTIME_DIR:-./runtime/solar-potential-backend}
+        target: /app/.runtime
+        bind:
+          create_host_path: true
+    ports:
+      - "127.0.0.1:18031:8000"

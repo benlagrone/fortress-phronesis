@@ -1,0 +1,23 @@
+schema_version: 1
+app_id: solar-potential-frontend
+display_name: Solar Buddy Frontend
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/solar-potential-frontend
+artifacts:
+  image: ghcr.io/benlagrone/solar-potential-frontend
+runtime:
+  compose_file: docker-compose.solar-potential.yml
+  project_name: solar-potential
+  service: solar-potential-frontend
+  host_bind: 127.0.0.1:18030
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18030/
+  - type: http
+    url: http://127.0.0.1:18030/runtime-config.js
+  - type: http
+    url: http://127.0.0.1:18030/release-history.html
