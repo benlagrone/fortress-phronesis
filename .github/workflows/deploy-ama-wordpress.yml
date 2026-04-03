@@ -223,6 +223,23 @@ jobs:
             exit 1
           fi
 
+          LIVE_WP_PATH=""
+          for candidate in /var/www/askmortgageauthority /var/www/askmortgageauthority.com; do
+            if [ -d "${candidate}/wp-content/uploads" ]; then
+              LIVE_WP_PATH="${candidate}"
+              break
+            fi
+          done
+
+          if [ -n "${LIVE_WP_PATH}" ]; then
+            echo "Syncing live uploads from ${LIVE_WP_PATH}/wp-content/uploads"
+            if command -v rsync >/dev/null 2>&1; then
+              rsync -a "${LIVE_WP_PATH}/wp-content/uploads/" "${WORDPRESS_ROOT}/data/uploads/"
+            else
+              cp -a "${LIVE_WP_PATH}/wp-content/uploads/." "${WORDPRESS_ROOT}/data/uploads/"
+            fi
+          fi
+
           echo "Port 18020 listeners before container start:"
           ss -ltnp '( sport = :18020 )' || true
           echo "Docker containers publishing 18020 before container start:"
@@ -235,7 +252,7 @@ jobs:
 
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml pull nginx
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml build wordpress
-          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d wordpress nginx
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d wordpress
 
           if [ -f "${WORDPRESS_ROOT}/plugins.txt" ] && [ -f "${WORDPRESS_ROOT}/scripts/install-plugins.sh" ]; then
             AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" \
@@ -243,6 +260,28 @@ jobs:
             COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT}" \
             bash "${WORDPRESS_ROOT}/scripts/install-plugins.sh"
           fi
+
+          LEGACY_PORT_CONTAINER="$(docker ps --filter publish=18020 --format '{{.Names}}' | head -n1 || true)"
+          LEGACY_STOPPED=false
+
+          rollback_cutover() {
+            if [ "${LEGACY_STOPPED}" = "true" ] && [ -n "${LEGACY_PORT_CONTAINER}" ]; then
+              echo "Rolling back to ${LEGACY_PORT_CONTAINER}" >&2
+              AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml stop nginx || true
+              docker rm -f ama-wordpress-nginx >/dev/null 2>&1 || true
+              docker start "${LEGACY_PORT_CONTAINER}" || true
+            fi
+          }
+
+          if [ -n "${LEGACY_PORT_CONTAINER}" ]; then
+            echo "Stopping existing port 18020 container: ${LEGACY_PORT_CONTAINER}"
+            docker stop "${LEGACY_PORT_CONTAINER}"
+            LEGACY_STOPPED=true
+          fi
+
+          trap rollback_cutover ERR
+
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d nginx
 
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml ps wordpress nginx
 
@@ -257,6 +296,8 @@ jobs:
             done
             curl -fsSL "$url" >/dev/null
           done
+
+          trap - ERR
           REMOTE
 
       - name: Public Smoke
