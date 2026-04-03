@@ -87,11 +87,11 @@ jobs:
 
           git -C "${DEPLOY_ROOT}" fetch origin main
           git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          git -C "${DEPLOY_ROOT}" merge --ff-only FETCH_HEAD
 
           git -C "${FE_ROOT}" fetch origin master
           git -C "${FE_ROOT}" checkout master
-          git -C "${FE_ROOT}" pull --ff-only origin master
+          git -C "${FE_ROOT}" merge --ff-only FETCH_HEAD
           actual_sha="$(git -C "${FE_ROOT}" rev-parse HEAD)"
           if [ "${actual_sha}" != "${SOURCE_SHA}" ]; then
             echo "::error::AugustineFE HEAD ${actual_sha} does not match requested source SHA ${SOURCE_SHA}."
