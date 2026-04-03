@@ -227,6 +227,11 @@ jobs:
           ss -ltnp '( sport = :18020 )' || true
           echo "Docker containers publishing 18020 before container start:"
           docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep '18020' || true
+          echo "Host nginx config referencing askmortgageauthority or 18020:"
+          grep -R -n -E 'askmortgageauthority|18020|proxy_pass|fastcgi_pass' \
+            /etc/nginx/sites-available /etc/nginx/sites-enabled 2>/dev/null || true
+          echo "blog-wordpress container details:"
+          docker inspect blog-wordpress --format 'name={{.Name}} image={{.Config.Image}} status={{.State.Status}} started={{.State.StartedAt}}' 2>/dev/null || true
 
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml pull nginx
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml build wordpress
