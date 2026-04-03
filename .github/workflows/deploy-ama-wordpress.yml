@@ -240,10 +240,19 @@ jobs:
             fi
           fi
 
+          if [ -n "${LIVE_WP_PATH}" ] && [ -f "${LIVE_WP_PATH}/wp-config.php" ]; then
+            echo "Live wp-config database constants:"
+            perl -ne 'print if /define\(\s*["'"'"'"](DB_NAME|DB_USER|DB_HOST)["'"'"'"]/' "${LIVE_WP_PATH}/wp-config.php" || true
+          fi
+
           echo "Port 18020 listeners before container start:"
           ss -ltnp '( sport = :18020 )' || true
+          echo "Port 3306 listeners before container start:"
+          ss -ltnp '( sport = :3306 )' || true
           echo "Docker containers publishing 18020 before container start:"
           docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep '18020' || true
+          echo "Docker containers related to mysql or mariadb:"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'mysql|mariadb|3306' || true
           echo "Host nginx config referencing askmortgageauthority or 18020:"
           grep -R -n -E 'askmortgageauthority|18020|proxy_pass|fastcgi_pass' \
             /etc/nginx/sites-available /etc/nginx/sites-enabled 2>/dev/null || true
