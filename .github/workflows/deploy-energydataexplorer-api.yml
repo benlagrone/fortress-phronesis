@@ -216,7 +216,7 @@ jobs:
           fi
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "ENERGYDATAEXPLORER_API_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' RUN_MIGRATIONS='${RUN_MIGRATIONS}' API_RUNTIME_ENV_B64='${API_RUNTIME_ENV_B64}' bash -s" <<'REMOTE'
+            "ENERGYDATAEXPLORER_API_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' RUN_MIGRATIONS='${RUN_MIGRATIONS}' API_RUNTIME_ENV_B64='${API_RUNTIME_ENV_B64}' DEPLOY_PUBLIC_HOST='${DEPLOY_HOST}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           DEPLOY_ROOT="${DEPLOY_ROOT%/}"
@@ -232,6 +232,8 @@ jobs:
           API_CERT_DIR="/etc/letsencrypt/live/${API_HOST}"
           API_CERT_FILE="${API_CERT_DIR}/fullchain.pem"
           API_KEY_FILE="${API_CERT_DIR}/privkey.pem"
+          ACME_WEBROOT="/var/www/letsencrypt"
+          CERTBOT_EMAIL="${ENERGYDATAEXPLORER_CERTBOT_EMAIL:-benjaminlagrone@gmail.com}"
 
           if [ ! -d "${DEPLOY_WORKTREE}/.git" ]; then
             install -d "$(dirname "${DEPLOY_WORKTREE}")"
@@ -261,6 +263,7 @@ jobs:
           ENERGYDATAEXPLORER_API_IMAGE="${ENERGYDATAEXPLORER_API_IMAGE}" "${COMPOSE_CMD[@]}" up -d energydataexplorer-api
 
           install -d /etc/nginx/sites-available /etc/nginx/sites-enabled
+          install -d "${ACME_WEBROOT}"
           API_SITE_MODE="bootstrap-http"
           NGINX_SOURCE="${NGINX_BOOTSTRAP_SOURCE}"
           if [ -f "${API_CERT_FILE}" ] && [ -f "${API_KEY_FILE}" ]; then
@@ -278,6 +281,27 @@ jobs:
           ln -sfn "${NGINX_TARGET}" "${NGINX_LINK}"
           nginx -t
           systemctl reload nginx
+
+          if [ "${API_SITE_MODE}" != "tls" ] && command -v certbot >/dev/null 2>&1; then
+            DNS_IP="$(getent ahostsv4 "${API_HOST}" | awk '{print $1; exit}')"
+            if [ -n "${DNS_IP:-}" ] && [ "${DNS_IP}" = "${DEPLOY_PUBLIC_HOST}" ]; then
+              certbot certonly \
+                --webroot \
+                -w "${ACME_WEBROOT}" \
+                -d "${API_HOST}" \
+                --non-interactive \
+                --agree-tos \
+                --email "${CERTBOT_EMAIL}" \
+                --keep-until-expiring
+
+              if [ -f "${API_CERT_FILE}" ] && [ -f "${API_KEY_FILE}" ]; then
+                install -m 644 "${NGINX_TLS_SOURCE}" "${NGINX_TARGET}"
+                nginx -t
+                systemctl reload nginx
+                API_SITE_MODE="tls"
+              fi
+            fi
+          fi
 
           "${COMPOSE_CMD[@]}" ps energydataexplorer-api
 

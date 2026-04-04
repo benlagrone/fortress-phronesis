@@ -274,6 +274,10 @@ Workflow behavior:
   `/etc/letsencrypt/live/api.energydataexplorer.com/`
 - otherwise the API workflow installs the bootstrap HTTP-only API-host config so
   the deploy can complete before DNS and certificate cutover
+- once public DNS for `api.energydataexplorer.com` points at the Contabo host,
+  the API workflow attempts `certbot certonly --webroot` against
+  `/var/www/letsencrypt` and switches to the TLS site config when the
+  certificate is created
 - both workflows run `nginx -t` before reloading host Nginx
 
 If the frontend bundle uses `/api`, keep the exact `/api` block ahead of the
