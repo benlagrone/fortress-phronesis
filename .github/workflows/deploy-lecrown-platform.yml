@@ -1,0 +1,131 @@
+name: Deploy LeCrown Platform
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by LeCrown Platform CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      run_public_smoke:
+        description: Run split-host smoke checks after DNS, Nginx, and TLS cutover
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lecrown-platform-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      COMPOSE_PROJECT: lecrown-platform
+      API_IMAGE_REF: ghcr.io/benlagrone/lecrown-platform-api:sha-${{ inputs.source_sha }}
+      ADMIN_IMAGE_REF: ghcr.io/benlagrone/lecrown-platform-admin:sha-${{ inputs.source_sha }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.LECROWNPLATFORM_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.LECROWNPLATFORM_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.LECROWNPLATFORM_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.LECROWNPLATFORM_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.LECROWNPLATFORM_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          REMOTE_SYNC_SCRIPT="/tmp/lecrown-platform-sync-prod-repo-${GITHUB_RUN_ID}.sh"
+
+          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "LECROWNPLATFORM_API_IMAGE='${API_IMAGE_REF}' LECROWNPLATFORM_ADMIN_IMAGE='${ADMIN_IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          chmod 700 "${SYNC_SCRIPT}"
+          trap 'rm -f "${SYNC_SCRIPT}"' EXIT
+
+          bash "${SYNC_SCRIPT}" "${DEPLOY_ROOT}" "https://github.com/benlagrone/fortress-phronesis.git" main "fortress-phronesis"
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrown-platform.yml)
+          if [ -f .env.lecrown-platform.local ]; then
+            COMPOSE_CMD=(docker compose --env-file .env.lecrown-platform.local -p "${COMPOSE_PROJECT}" -f docker-compose.lecrown-platform.yml)
+          fi
+
+          LECROWNPLATFORM_API_IMAGE="${LECROWNPLATFORM_API_IMAGE}" \
+          LECROWNPLATFORM_ADMIN_IMAGE="${LECROWNPLATFORM_ADMIN_IMAGE}" \
+          "${COMPOSE_CMD[@]}" pull lecrown-platform-api lecrown-platform-admin
+
+          LECROWNPLATFORM_API_IMAGE="${LECROWNPLATFORM_API_IMAGE}" \
+          LECROWNPLATFORM_ADMIN_IMAGE="${LECROWNPLATFORM_ADMIN_IMAGE}" \
+          "${COMPOSE_CMD[@]}" up -d lecrown-platform-api lecrown-platform-admin
+
+          "${COMPOSE_CMD[@]}" ps lecrown-platform-api lecrown-platform-admin
+
+          for url in \
+            http://127.0.0.1:18035/healthz \
+            http://127.0.0.1:13082/; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS "$url" >/dev/null
+          done
+
+          bash "${SYNC_SCRIPT}" --check-clean "${DEPLOY_ROOT}" "fortress-phronesis"
+          REMOTE
+
+      - name: Public Smoke
+        if: ${{ inputs.run_public_smoke }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://api.lecrowndevelopment.com/healthz >/dev/null
+          curl -fsSIL https://app.lecrowndevelopment.com/ >/dev/null
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## LeCrown Platform Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Public smoke: \`${{ inputs.run_public_smoke }}\`"
+            echo "- API image: \`${API_IMAGE_REF}\`"
+            echo "- Admin image: \`${ADMIN_IMAGE_REF}\`"
+            echo "- App URL: https://app.lecrowndevelopment.com/"
+            echo "- API URL: https://api.lecrowndevelopment.com/healthz"
+          } >> "$GITHUB_STEP_SUMMARY"
