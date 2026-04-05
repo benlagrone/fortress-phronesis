@@ -52,9 +52,9 @@ jobs:
       - name: Deploy On Server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.LECROWNPLATFORM_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.LECROWNPLATFORM_DEPLOY_ROOT }}
+          DEPLOY_HOST: ${{ secrets.LECROWNPLATFORM_DEPLOY_HOST != '' && secrets.LECROWNPLATFORM_DEPLOY_HOST || '89.117.151.145' }}
+          DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER != '' && secrets.LECROWNPLATFORM_DEPLOY_USER || 'root' }}
+          DEPLOY_ROOT: ${{ secrets.LECROWNPLATFORM_DEPLOY_ROOT != '' && secrets.LECROWNPLATFORM_DEPLOY_ROOT || '/root/workspace/fortress-phronesis' }}
           GHCR_READ_TOKEN: ${{ secrets.LECROWNPLATFORM_GHCR_READ_TOKEN }}
         run: |
           set -euo pipefail
