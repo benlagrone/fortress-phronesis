@@ -59,10 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           REMOTE_SYNC_SCRIPT="/tmp/lecrown-platform-sync-prod-repo-${GITHUB_RUN_ID}.sh"
+          SSH_OPTS=(-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
 
-          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
+          scp "${SSH_OPTS[@]}" scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
 
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "LECROWNPLATFORM_API_IMAGE='${API_IMAGE_REF}' LECROWNPLATFORM_ADMIN_IMAGE='${ADMIN_IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
