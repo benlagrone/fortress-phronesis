@@ -56,28 +56,10 @@ jobs:
 
           KC_ENV_JSON="$(docker inspect "${KC_CONTAINER}" --format '{{json .Config.Env}}')"
           KC_ADMIN_USER="$(
-            printf '%s' "${KC_ENV_JSON}" | python3 - <<'PY'
-import json, sys
-data = json.load(sys.stdin)
-env = {}
-for item in data:
-    if "=" in item:
-        key, value = item.split("=", 1)
-        env[key] = value
-print(env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or env.get("KEYCLOAK_ADMIN") or "")
-PY
+            printf '%s' "${KC_ENV_JSON}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or env.get("KEYCLOAK_ADMIN") or "")'
           )"
           KC_ADMIN_PASSWORD="$(
-            printf '%s' "${KC_ENV_JSON}" | python3 - <<'PY'
-import json, sys
-data = json.load(sys.stdin)
-env = {}
-for item in data:
-    if "=" in item:
-        key, value = item.split("=", 1)
-        env[key] = value
-print(env.get("KC_BOOTSTRAP_ADMIN_PASSWORD") or env.get("KEYCLOAK_ADMIN_PASSWORD") or "")
-PY
+            printf '%s' "${KC_ENV_JSON}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_PASSWORD") or env.get("KEYCLOAK_ADMIN_PASSWORD") or "")'
           )"
 
           if [ -z "${KC_ADMIN_USER}" ] || [ -z "${KC_ADMIN_PASSWORD}" ]; then
@@ -93,14 +75,7 @@ PY
 
           KC_CLIENT_ID="$(
             docker exec "${KC_CONTAINER}" /opt/keycloak/bin/kcadm.sh get clients -r pericope --fields id,clientId \
-              | python3 - <<'PY'
-import json, sys
-clients = json.load(sys.stdin)
-for client in clients:
-    if client.get("clientId") == "pericope-web":
-        print(client.get("id", ""))
-        break
-PY
+              | python3 -c 'import json,sys; clients=json.load(sys.stdin); print(next((client.get("id","") for client in clients if client.get("clientId") == "pericope-web"), ""))'
           )"
 
           if [ -z "${KC_CLIENT_ID}" ]; then
@@ -111,35 +86,11 @@ PY
           KC_CLIENT_JSON="$(docker exec "${KC_CONTAINER}" /opt/keycloak/bin/kcadm.sh get "clients/${KC_CLIENT_ID}" -r pericope)"
 
           REDIRECTS_JSON="$(
-            printf '%s' "${KC_CLIENT_JSON}" | python3 - <<'PY'
-import json, sys
-client = json.load(sys.stdin)
-values = set(client.get("redirectUris") or [])
-values.update({
-    "https://pericopeai.com/*",
-    "https://truevineos.cloud/*",
-    "http://localhost:13080/*",
-    "http://localhost:8086/*",
-    "http://127.0.0.1:8086/*",
-})
-print(json.dumps(sorted(values), separators=(",", ":")))
-PY
+            printf '%s' "${KC_CLIENT_JSON}" | python3 -c 'import json,sys; client=json.load(sys.stdin); values=set(client.get("redirectUris") or []); values.update({"https://pericopeai.com/*","https://truevineos.cloud/*","http://localhost:13080/*","http://localhost:8086/*","http://127.0.0.1:8086/*"}); print(json.dumps(sorted(values), separators=(",", ":")))'
           )"
 
           ORIGINS_JSON="$(
-            printf '%s' "${KC_CLIENT_JSON}" | python3 - <<'PY'
-import json, sys
-client = json.load(sys.stdin)
-values = set(client.get("webOrigins") or [])
-values.update({
-    "https://pericopeai.com",
-    "https://truevineos.cloud",
-    "http://localhost:13080",
-    "http://localhost:8086",
-    "http://127.0.0.1:8086",
-})
-print(json.dumps(sorted(values), separators=(",", ":")))
-PY
+            printf '%s' "${KC_CLIENT_JSON}" | python3 -c 'import json,sys; client=json.load(sys.stdin); values=set(client.get("webOrigins") or []); values.update({"https://pericopeai.com","https://truevineos.cloud","http://localhost:13080","http://localhost:8086","http://127.0.0.1:8086"}); print(json.dumps(sorted(values), separators=(",", ":")))'
           )"
 
           docker exec "${KC_CONTAINER}" /opt/keycloak/bin/kcadm.sh update "clients/${KC_CLIENT_ID}" -r pericope \
@@ -147,30 +98,7 @@ PY
             -s "webOrigins=${ORIGINS_JSON}"
 
           docker exec "${KC_CONTAINER}" /opt/keycloak/bin/kcadm.sh get "clients/${KC_CLIENT_ID}" -r pericope \
-            | python3 - <<'PY'
-import json, sys
-client = json.load(sys.stdin)
-redirects = set(client.get("redirectUris") or [])
-origins = set(client.get("webOrigins") or [])
-required_redirects = {
-    "https://truevineos.cloud/*",
-    "http://localhost:8086/*",
-    "http://127.0.0.1:8086/*",
-}
-required_origins = {
-    "https://truevineos.cloud",
-    "http://localhost:8086",
-    "http://127.0.0.1:8086",
-}
-missing_redirects = sorted(required_redirects - redirects)
-missing_origins = sorted(required_origins - origins)
-if missing_redirects or missing_origins:
-    raise SystemExit(
-        "Missing Keycloak client settings. Redirects: %s Origins: %s"
-        % (missing_redirects, missing_origins)
-    )
-print("Updated pericope-web redirect URIs and web origins.")
-PY
+            | python3 -c 'import json,sys; client=json.load(sys.stdin); redirects=set(client.get("redirectUris") or []); origins=set(client.get("webOrigins") or []); required_redirects={"https://truevineos.cloud/*","http://localhost:8086/*","http://127.0.0.1:8086/*"}; required_origins={"https://truevineos.cloud","http://localhost:8086","http://127.0.0.1:8086"}; missing_redirects=sorted(required_redirects - redirects); missing_origins=sorted(required_origins - origins); 0 if not (missing_redirects or missing_origins) else (_ for _ in ()).throw(SystemExit("Missing Keycloak client settings. Redirects: %s Origins: %s" % (missing_redirects, missing_origins))); print("Updated pericope-web redirect URIs and web origins.")'
           REMOTE
 
       - name: Public Redirect Smoke
