@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Commit SHA built by lecrownproperties.com CI
+        description: Commit SHA built by LeCrown Properties CI
         required: true
         type: string
       environment:
@@ -41,33 +41,63 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.LECROWNPROPERTIES_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.UNICORNJUMP_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.LECROWNPROPERTIES_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy On Server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.UNICORNJUMP_DEPLOY_ROOT }}
-          GHCR_READ_TOKEN: ${{ secrets.UNICORNJUMP_GHCR_READ_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.LECROWNPROPERTIES_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.LECROWNPROPERTIES_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.LECROWNPROPERTIES_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.LECROWNPROPERTIES_GHCR_READ_TOKEN }}
+          GRIDSCOPE_EXTERNAL_API_URL: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_URL }}
+          GRIDSCOPE_EXTERNAL_API_KEY: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_KEY }}
+          GRIDSCOPE_EXTERNAL_API_AUTH_MODE: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_AUTH_MODE }}
+          GRIDSCOPE_EXTERNAL_API_HEADER_NAME: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_HEADER_NAME }}
+          GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS }}
+          GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS }}
         run: |
           set -euo pipefail
+          REMOTE_SYNC_SCRIPT="/tmp/lecrownproperties-sync-prod-repo-${GITHUB_RUN_ID}.sh"
+          REMOTE_ENV_FILE=""
 
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
-          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          if [ -n "${GRIDSCOPE_EXTERNAL_API_URL:-}" ] && [ -n "${GRIDSCOPE_EXTERNAL_API_KEY:-}" ]; then
+            LOCAL_ENV_FILE="$(mktemp)"
+            {
+              printf 'GRIDSCOPE_EXTERNAL_API_URL=%s\n' "${GRIDSCOPE_EXTERNAL_API_URL}"
+              printf 'GRIDSCOPE_EXTERNAL_API_KEY=%s\n' "${GRIDSCOPE_EXTERNAL_API_KEY}"
+              if [ -n "${GRIDSCOPE_EXTERNAL_API_AUTH_MODE:-}" ]; then
+                printf 'GRIDSCOPE_EXTERNAL_API_AUTH_MODE=%s\n' "${GRIDSCOPE_EXTERNAL_API_AUTH_MODE}"
+              fi
+              if [ -n "${GRIDSCOPE_EXTERNAL_API_HEADER_NAME:-}" ]; then
+                printf 'GRIDSCOPE_EXTERNAL_API_HEADER_NAME=%s\n' "${GRIDSCOPE_EXTERNAL_API_HEADER_NAME}"
+              fi
+              if [ -n "${GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS:-}" ]; then
+                printf 'GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS=%s\n' "${GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS}"
+              fi
+              if [ -n "${GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS:-}" ]; then
+                printf 'GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS=%s\n' "${GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS}"
+              fi
+            } > "${LOCAL_ENV_FILE}"
+            chmod 600 "${LOCAL_ENV_FILE}"
+            REMOTE_ENV_FILE="/tmp/lecrownproperties-gridscope-${GITHUB_RUN_ID}.env"
+            scp -i ~/.ssh/id_ed25519 "${LOCAL_ENV_FILE}" "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_ENV_FILE}"
+            rm -f "${LOCAL_ENV_FILE}"
           fi
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' GRIDSCOPE_ENV_FILE='${REMOTE_ENV_FILE}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          chmod 700 "${SYNC_SCRIPT}"
+          trap 'rm -f "${SYNC_SCRIPT}" "${GRIDSCOPE_ENV_FILE:-}"' EXIT
+
+          bash "${SYNC_SCRIPT}" "${DEPLOY_ROOT}" "https://github.com/benlagrone/fortress-phronesis.git" main "fortress-phronesis"
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
@@ -75,11 +105,18 @@ jobs:
 
           cd "${DEPLOY_ROOT}"
 
-          LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml pull lecrown-properties-site
-          LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml up -d lecrown-properties-site
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml ps lecrown-properties-site
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          if [ -n "${GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${GRIDSCOPE_ENV_FILE}" ]; then
+            chmod 600 "${GRIDSCOPE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${GRIDSCOPE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          fi
+
+          LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" "${COMPOSE_CMD[@]}" pull lecrown-properties-site
+          LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" "${COMPOSE_CMD[@]}" up -d lecrown-properties-site
+          "${COMPOSE_CMD[@]}" ps lecrown-properties-site
 
           for url in \
+            http://127.0.0.1:18033/health \
             http://127.0.0.1:18033/ \
             "http://127.0.0.1:18033/contact?lang=zh" \
             http://127.0.0.1:18033/data/site.en.json; do
@@ -91,16 +128,18 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+
+          bash "${SYNC_SCRIPT}" --check-clean "${DEPLOY_ROOT}" "fortress-phronesis"
           REMOTE
 
       - name: Public Smoke
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSI https://lecrownproperties.com/ >/dev/null
-          curl -fsSI "https://lecrownproperties.com/contact?lang=zh" >/dev/null
-          curl -fsS https://lecrownproperties.com/data/site.en.json >/dev/null
-          curl -fsSI https://www.lecrownproperties.com/ >/dev/null
+          curl -fsSL https://lecrownproperties.com/ >/dev/null
+          curl -fsSL "https://lecrownproperties.com/contact?lang=zh" >/dev/null
+          curl -fsSL https://lecrownproperties.com/data/site.en.json >/dev/null
+          curl -fsSL https://www.lecrownproperties.com/ >/dev/null
 
       - name: Deployment Summary
         shell: bash

@@ -1,9 +1,19 @@
 services:
   lecrown-properties-site:
     image: ${LECROWNPROPERTIES_IMAGE:?LECROWNPROPERTIES_IMAGE is required}
+    container_name: lecrown-properties-site
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      HOST: "0.0.0.0"
+      GRIDSCOPE_EXTERNAL_API_URL: ${GRIDSCOPE_EXTERNAL_API_URL:-}
+      GRIDSCOPE_EXTERNAL_API_KEY: ${GRIDSCOPE_EXTERNAL_API_KEY:-}
+      GRIDSCOPE_EXTERNAL_API_AUTH_MODE: ${GRIDSCOPE_EXTERNAL_API_AUTH_MODE:-header}
+      GRIDSCOPE_EXTERNAL_API_HEADER_NAME: ${GRIDSCOPE_EXTERNAL_API_HEADER_NAME:-X-API-Key}
+      GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS: ${GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS:-15000}
+      GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS: ${GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS:-300}
     ports:
       - "127.0.0.1:18033:8080"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1"]
       interval: 30s

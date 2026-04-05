@@ -16,6 +16,8 @@ release_types:
   - rollback
 healthchecks:
   - type: http
+    url: http://127.0.0.1:18033/health
+  - type: http
     url: http://127.0.0.1:18033/
   - type: http
     url: http://127.0.0.1:18033/contact?lang=zh
