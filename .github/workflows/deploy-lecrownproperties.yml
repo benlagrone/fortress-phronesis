@@ -55,20 +55,46 @@ jobs:
         run: |
           set -euo pipefail
 
-          pick() {
-            if [ -n "${1:-}" ]; then
-              printf '%s' "${1}"
+          primary_required=(
+            PRIMARY_DEPLOY_HOST
+            PRIMARY_DEPLOY_USER
+            PRIMARY_DEPLOY_ROOT
+            PRIMARY_DEPLOY_SSH_KEY
+            PRIMARY_DEPLOY_KNOWN_HOSTS
+            PRIMARY_GHCR_READ_TOKEN
+          )
+          primary_all_set=true
+          primary_any_set=false
+          for name in "${primary_required[@]}"; do
+            if [ -n "${!name:-}" ]; then
+              primary_any_set=true
             else
-              printf '%s' "${2:-}"
+              primary_all_set=false
             fi
-          }
+          done
 
-          DEPLOY_HOST="$(pick "${PRIMARY_DEPLOY_HOST:-}" "${FALLBACK_DEPLOY_HOST:-}")"
-          DEPLOY_USER="$(pick "${PRIMARY_DEPLOY_USER:-}" "${FALLBACK_DEPLOY_USER:-}")"
-          DEPLOY_ROOT="$(pick "${PRIMARY_DEPLOY_ROOT:-}" "${FALLBACK_DEPLOY_ROOT:-}")"
-          DEPLOY_SSH_KEY="$(pick "${PRIMARY_DEPLOY_SSH_KEY:-}" "${FALLBACK_DEPLOY_SSH_KEY:-}")"
-          DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${FALLBACK_DEPLOY_KNOWN_HOSTS:-}")"
-          GHCR_READ_TOKEN="$(pick "${PRIMARY_GHCR_READ_TOKEN:-}" "${FALLBACK_GHCR_READ_TOKEN:-}")"
+          if [ "${primary_all_set}" = "true" ]; then
+            DEPLOY_HOST="${PRIMARY_DEPLOY_HOST}"
+            DEPLOY_USER="${PRIMARY_DEPLOY_USER}"
+            DEPLOY_ROOT="${PRIMARY_DEPLOY_ROOT}"
+            DEPLOY_SSH_KEY="${PRIMARY_DEPLOY_SSH_KEY}"
+            DEPLOY_KNOWN_HOSTS="${PRIMARY_DEPLOY_KNOWN_HOSTS}"
+            GHCR_READ_TOKEN="${PRIMARY_GHCR_READ_TOKEN}"
+            CREDENTIAL_SOURCE="lecrownproperties-dedicated"
+          else
+            DEPLOY_HOST="${FALLBACK_DEPLOY_HOST:-}"
+            DEPLOY_USER="${FALLBACK_DEPLOY_USER:-}"
+            DEPLOY_ROOT="${FALLBACK_DEPLOY_ROOT:-}"
+            DEPLOY_SSH_KEY="${FALLBACK_DEPLOY_SSH_KEY:-}"
+            DEPLOY_KNOWN_HOSTS="${FALLBACK_DEPLOY_KNOWN_HOSTS:-}"
+            GHCR_READ_TOKEN="${FALLBACK_GHCR_READ_TOKEN:-}"
+
+            if [ "${primary_any_set}" = "true" ]; then
+              CREDENTIAL_SOURCE="partial-lecrownproperties-secrets-ignored-using-solomonic-clock-shared"
+            else
+              CREDENTIAL_SOURCE="solomonic-clock-shared"
+            fi
+          fi
 
           required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
           missing=()
@@ -103,6 +129,8 @@ jobs:
             echo "${GHCR_READ_TOKEN}"
             echo "EOF"
           } >> "$GITHUB_ENV"
+
+          echo "credential_source=${CREDENTIAL_SOURCE}" >> "$GITHUB_OUTPUT"
 
       - name: Prepare SSH
         shell: bash
@@ -214,5 +242,6 @@ jobs:
             echo "- Environment: \`${{ inputs.environment }}\`"
             echo "- Source SHA: \`${{ inputs.source_sha }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Deploy credential source: \`${{ steps.resolve_deploy.outputs.credential_source }}\`"
             echo "- Public URL: https://lecrownproperties.com/"
           } >> "$GITHUB_STEP_SUMMARY"
