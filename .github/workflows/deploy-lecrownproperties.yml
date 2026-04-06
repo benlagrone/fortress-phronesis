@@ -90,6 +90,8 @@ jobs:
             echo "EOF"
             echo "REMOTE_SYNC_SCRIPT=/tmp/lecrownproperties-sync-prod-repo-${GITHUB_RUN_ID}.sh"
             echo "REMOTE_ENV_FILE=/tmp/lecrownproperties-gridscope-${GITHUB_RUN_ID}.env"
+            echo "HOST_GRIDSCOPE_ENV_FILE=/opt/lecrownproperties/env/gridscope.prod.env"
+            echo "UPLOADED_GRIDSCOPE_ENV=false"
           } >> "$GITHUB_ENV"
 
           echo "credential_source=${CREDENTIAL_SOURCE}" >> "$GITHUB_OUTPUT"
@@ -142,6 +144,7 @@ jobs:
             chmod 600 "${LOCAL_ENV_FILE}"
             scp -i ~/.ssh/id_ed25519 "${LOCAL_ENV_FILE}" "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_ENV_FILE}"
             rm -f "${LOCAL_ENV_FILE}"
+            echo "UPLOADED_GRIDSCOPE_ENV=true" >> "$GITHUB_ENV"
           fi
 
       - name: Remote Connectivity Check
@@ -149,6 +152,22 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "echo connected"
+
+      - name: Check Host GridScope Env
+        id: check_host_gridscope_env
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "[ -f '${HOST_GRIDSCOPE_ENV_FILE}' ]"
+
+      - name: Require GridScope Runtime
+        if: ${{ steps.check_host_gridscope_env.conclusion != 'success' && env.UPLOADED_GRIDSCOPE_ENV != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "GridScope runtime is missing on the host and no workflow secrets were uploaded." >&2
+          exit 1
 
       - name: Remote Sync Fortress Repo
         shell: bash
@@ -175,15 +194,21 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' HOST_GRIDSCOPE_ENV_FILE='${HOST_GRIDSCOPE_ENV_FILE}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           cd "${DEPLOY_ROOT}"
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
-          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
-            chmod 600 "${REMOTE_ENV_FILE}"
-            COMPOSE_CMD=(docker compose --env-file "${REMOTE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          ACTIVE_ENV_FILE=""
+          if [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
+          elif [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          fi
+          if [ -n "${ACTIVE_ENV_FILE}" ]; then
+            chmod 600 "${ACTIVE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${ACTIVE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           fi
 
           LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" "${COMPOSE_CMD[@]}" pull lecrown-properties-site
@@ -194,51 +219,90 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' HOST_GRIDSCOPE_ENV_FILE='${HOST_GRIDSCOPE_ENV_FILE}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           cd "${DEPLOY_ROOT}"
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
-          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
-            chmod 600 "${REMOTE_ENV_FILE}"
-            COMPOSE_CMD=(docker compose --env-file "${REMOTE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          ACTIVE_ENV_FILE=""
+          if [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
+          elif [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          fi
+          if [ -n "${ACTIVE_ENV_FILE}" ]; then
+            chmod 600 "${ACTIVE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${ACTIVE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           fi
 
           LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" "${COMPOSE_CMD[@]}" up -d lecrown-properties-site
           REMOTE
 
-      - name: Remote Local Smoke
+      - name: Remote Health Smoke
         shell: bash
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' bash -s" <<'REMOTE'
+            "bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          body=""
+          for attempt in $(seq 1 20); do
+            body="$(curl -fsS http://127.0.0.1:18033/health 2>/dev/null || true)"
+            if printf '%s' "${body}" | grep -q '"gridscope_configured":true'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          printf '%s\n' "${body}" >&2
+          exit 1
+          REMOTE
+
+      - name: Remote Home Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl -fsS http://127.0.0.1:18033/ >/dev/null"
+
+      - name: Remote Contact Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl -fsS 'http://127.0.0.1:18033/contact?lang=zh' >/dev/null"
+
+      - name: Remote Site Data Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl -fsS http://127.0.0.1:18033/data/site.en.json >/dev/null"
+
+      - name: Remote Compose Status
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' HOST_GRIDSCOPE_ENV_FILE='${HOST_GRIDSCOPE_ENV_FILE}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           cd "${DEPLOY_ROOT}"
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
-          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
-            chmod 600 "${REMOTE_ENV_FILE}"
-            COMPOSE_CMD=(docker compose --env-file "${REMOTE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          ACTIVE_ENV_FILE=""
+          if [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
+          elif [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          fi
+          if [ -n "${ACTIVE_ENV_FILE}" ]; then
+            chmod 600 "${ACTIVE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${ACTIVE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           fi
 
           "${COMPOSE_CMD[@]}" ps lecrown-properties-site
-
-          for url in \
-            http://127.0.0.1:18033/health \
-            http://127.0.0.1:18033/ \
-            "http://127.0.0.1:18033/contact?lang=zh" \
-            http://127.0.0.1:18033/data/site.en.json; do
-            for attempt in $(seq 1 20); do
-              if curl -fsS "$url" >/dev/null 2>&1; then
-                break
-              fi
-              sleep 2
-            done
-            curl -fsS "$url" >/dev/null
-          done
           REMOTE
 
       - name: Remote Cleanliness Check
