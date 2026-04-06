@@ -42,7 +42,6 @@ jobs:
         env:
           SHARED_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_HOST || '89.117.151.145' }}
           SHARED_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_USER || 'root' }}
-          SHARED_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT || '/root/workspace/fortress-phronesis' }}
           SHARED_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
           SHARED_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
           SHARED_GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
@@ -51,13 +50,13 @@ jobs:
 
           DEPLOY_HOST="${SHARED_DEPLOY_HOST:-}"
           DEPLOY_USER="${SHARED_DEPLOY_USER:-}"
-          DEPLOY_ROOT="${SHARED_DEPLOY_ROOT:-}"
+          DEPLOY_ROOT="/tmp/fortress-phronesis-lecrown-${GITHUB_RUN_ID}"
           DEPLOY_SSH_KEY="${SHARED_DEPLOY_SSH_KEY:-}"
           DEPLOY_KNOWN_HOSTS="${SHARED_DEPLOY_KNOWN_HOSTS:-}"
           GHCR_READ_TOKEN="${SHARED_GHCR_READ_TOKEN:-}"
           CREDENTIAL_SOURCE="solomonic-clock-shared"
 
-          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
           missing=()
           for name in "${required[@]}"; do
             if [ -z "${!name:-}" ]; then
@@ -255,7 +254,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "rm -f '${REMOTE_SYNC_SCRIPT}' '${REMOTE_ENV_FILE}'" || true
+            "rm -rf '${DEPLOY_ROOT}' '${REMOTE_SYNC_SCRIPT}' '${REMOTE_ENV_FILE}'" || true
 
       - name: Public Smoke
         shell: bash
