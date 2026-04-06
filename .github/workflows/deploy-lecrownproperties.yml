@@ -40,61 +40,22 @@ jobs:
         id: resolve_deploy
         shell: bash
         env:
-          PRIMARY_DEPLOY_HOST: ${{ secrets.LECROWNPROPERTIES_DEPLOY_HOST }}
-          PRIMARY_DEPLOY_USER: ${{ secrets.LECROWNPROPERTIES_DEPLOY_USER }}
-          PRIMARY_DEPLOY_ROOT: ${{ secrets.LECROWNPROPERTIES_DEPLOY_ROOT }}
-          PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.LECROWNPROPERTIES_DEPLOY_SSH_KEY }}
-          PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.LECROWNPROPERTIES_DEPLOY_KNOWN_HOSTS }}
-          PRIMARY_GHCR_READ_TOKEN: ${{ secrets.LECROWNPROPERTIES_GHCR_READ_TOKEN }}
-          FALLBACK_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
-          FALLBACK_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
-          FALLBACK_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
-          FALLBACK_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
-          FALLBACK_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
-          FALLBACK_GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+          SHARED_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_HOST || '89.117.151.145' }}
+          SHARED_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_USER || 'root' }}
+          SHARED_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT || '/root/workspace/fortress-phronesis' }}
+          SHARED_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          SHARED_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+          SHARED_GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
         run: |
           set -euo pipefail
 
-          primary_required=(
-            PRIMARY_DEPLOY_HOST
-            PRIMARY_DEPLOY_USER
-            PRIMARY_DEPLOY_ROOT
-            PRIMARY_DEPLOY_SSH_KEY
-            PRIMARY_DEPLOY_KNOWN_HOSTS
-            PRIMARY_GHCR_READ_TOKEN
-          )
-          primary_all_set=true
-          primary_any_set=false
-          for name in "${primary_required[@]}"; do
-            if [ -n "${!name:-}" ]; then
-              primary_any_set=true
-            else
-              primary_all_set=false
-            fi
-          done
-
-          if [ "${primary_all_set}" = "true" ]; then
-            DEPLOY_HOST="${PRIMARY_DEPLOY_HOST}"
-            DEPLOY_USER="${PRIMARY_DEPLOY_USER}"
-            DEPLOY_ROOT="${PRIMARY_DEPLOY_ROOT}"
-            DEPLOY_SSH_KEY="${PRIMARY_DEPLOY_SSH_KEY}"
-            DEPLOY_KNOWN_HOSTS="${PRIMARY_DEPLOY_KNOWN_HOSTS}"
-            GHCR_READ_TOKEN="${PRIMARY_GHCR_READ_TOKEN}"
-            CREDENTIAL_SOURCE="lecrownproperties-dedicated"
-          else
-            DEPLOY_HOST="${FALLBACK_DEPLOY_HOST:-}"
-            DEPLOY_USER="${FALLBACK_DEPLOY_USER:-}"
-            DEPLOY_ROOT="${FALLBACK_DEPLOY_ROOT:-}"
-            DEPLOY_SSH_KEY="${FALLBACK_DEPLOY_SSH_KEY:-}"
-            DEPLOY_KNOWN_HOSTS="${FALLBACK_DEPLOY_KNOWN_HOSTS:-}"
-            GHCR_READ_TOKEN="${FALLBACK_GHCR_READ_TOKEN:-}"
-
-            if [ "${primary_any_set}" = "true" ]; then
-              CREDENTIAL_SOURCE="partial-lecrownproperties-secrets-ignored-using-solomonic-clock-shared"
-            else
-              CREDENTIAL_SOURCE="solomonic-clock-shared"
-            fi
-          fi
+          DEPLOY_HOST="${SHARED_DEPLOY_HOST:-}"
+          DEPLOY_USER="${SHARED_DEPLOY_USER:-}"
+          DEPLOY_ROOT="${SHARED_DEPLOY_ROOT:-}"
+          DEPLOY_SSH_KEY="${SHARED_DEPLOY_SSH_KEY:-}"
+          DEPLOY_KNOWN_HOSTS="${SHARED_DEPLOY_KNOWN_HOSTS:-}"
+          GHCR_READ_TOKEN="${SHARED_GHCR_READ_TOKEN:-}"
+          CREDENTIAL_SOURCE="solomonic-clock-shared"
 
           required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
           missing=()
@@ -128,6 +89,8 @@ jobs:
             echo "GHCR_READ_TOKEN<<EOF"
             echo "${GHCR_READ_TOKEN}"
             echo "EOF"
+            echo "REMOTE_SYNC_SCRIPT=/tmp/lecrownproperties-sync-prod-repo-${GITHUB_RUN_ID}.sh"
+            echo "REMOTE_ENV_FILE=/tmp/lecrownproperties-gridscope-${GITHUB_RUN_ID}.env"
           } >> "$GITHUB_ENV"
 
           echo "credential_source=${CREDENTIAL_SOURCE}" >> "$GITHUB_OUTPUT"
@@ -142,7 +105,13 @@ jobs:
           printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Deploy On Server
+      - name: Upload Sync Script
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
+
+      - name: Upload GridScope Env
         shell: bash
         env:
           GRIDSCOPE_EXTERNAL_API_URL: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_URL }}
@@ -153,11 +122,6 @@ jobs:
           GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS }}
         run: |
           set -euo pipefail
-          REMOTE_SYNC_SCRIPT="/tmp/lecrownproperties-sync-prod-repo-${GITHUB_RUN_ID}.sh"
-          REMOTE_ENV_FILE=""
-
-          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
-
           if [ -n "${GRIDSCOPE_EXTERNAL_API_URL:-}" ] && [ -n "${GRIDSCOPE_EXTERNAL_API_KEY:-}" ]; then
             LOCAL_ENV_FILE="$(mktemp)"
             {
@@ -177,34 +141,90 @@ jobs:
               fi
             } > "${LOCAL_ENV_FILE}"
             chmod 600 "${LOCAL_ENV_FILE}"
-            REMOTE_ENV_FILE="/tmp/lecrownproperties-gridscope-${GITHUB_RUN_ID}.env"
             scp -i ~/.ssh/id_ed25519 "${LOCAL_ENV_FILE}" "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_ENV_FILE}"
             rm -f "${LOCAL_ENV_FILE}"
           fi
 
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' GRIDSCOPE_ENV_FILE='${REMOTE_ENV_FILE}' bash -s" <<'REMOTE'
+      - name: Remote Connectivity Check
+        shell: bash
+        run: |
           set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "echo connected"
 
-          chmod 700 "${SYNC_SCRIPT}"
-          trap 'rm -f "${SYNC_SCRIPT}" "${GRIDSCOPE_ENV_FILE:-}"' EXIT
+      - name: Remote Sync Fortress Repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "chmod 700 '${REMOTE_SYNC_SCRIPT}' && bash '${REMOTE_SYNC_SCRIPT}' '${DEPLOY_ROOT}' 'https://github.com/benlagrone/fortress-phronesis.git' main 'fortress-phronesis'"
 
-          bash "${SYNC_SCRIPT}" "${DEPLOY_ROOT}" "https://github.com/benlagrone/fortress-phronesis.git" main "fortress-phronesis"
+      - name: Remote GHCR Login
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' bash -s" <<'REMOTE'
+          set -euo pipefail
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
           fi
+          REMOTE
+
+      - name: Remote Compose Pull
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' bash -s" <<'REMOTE'
+          set -euo pipefail
 
           cd "${DEPLOY_ROOT}"
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
-          if [ -n "${GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${GRIDSCOPE_ENV_FILE}" ]; then
-            chmod 600 "${GRIDSCOPE_ENV_FILE}"
-            COMPOSE_CMD=(docker compose --env-file "${GRIDSCOPE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            chmod 600 "${REMOTE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${REMOTE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           fi
 
           LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" "${COMPOSE_CMD[@]}" pull lecrown-properties-site
+          REMOTE
+
+      - name: Remote Compose Up
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' LECROWNPROPERTIES_IMAGE='${IMAGE_REF}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          cd "${DEPLOY_ROOT}"
+
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            chmod 600 "${REMOTE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${REMOTE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          fi
+
           LECROWNPROPERTIES_IMAGE="${LECROWNPROPERTIES_IMAGE}" "${COMPOSE_CMD[@]}" up -d lecrown-properties-site
+          REMOTE
+
+      - name: Remote Local Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          cd "${DEPLOY_ROOT}"
+
+          COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            chmod 600 "${REMOTE_ENV_FILE}"
+            COMPOSE_CMD=(docker compose --env-file "${REMOTE_ENV_FILE}" -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
+          fi
+
           "${COMPOSE_CMD[@]}" ps lecrown-properties-site
 
           for url in \
@@ -220,9 +240,22 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
-
-          bash "${SYNC_SCRIPT}" --check-clean "${DEPLOY_ROOT}" "fortress-phronesis"
           REMOTE
+
+      - name: Remote Cleanliness Check
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "bash '${REMOTE_SYNC_SCRIPT}' --check-clean '${DEPLOY_ROOT}' 'fortress-phronesis'"
+
+      - name: Cleanup Remote Deploy Files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "rm -f '${REMOTE_SYNC_SCRIPT}' '${REMOTE_ENV_FILE}'" || true
 
       - name: Public Smoke
         shell: bash
