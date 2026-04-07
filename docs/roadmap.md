@@ -467,6 +467,11 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - Similarity edges are versioned and queryable without blocking core explicit-reference flows.
 - Runtime retrieval can return: primary passage, explicit related references, and semantic related passages in one response contract.
 
+**Status Note (`2026-04-06`)**
+- Stage 1, Stage 2, and Stage 3 are live in production.
+- Normalized passage records and explicit edges persist in the service database, and semantic neighbors now persist in `passage_semantic_similarity` with score/version metadata.
+- `/api/v1/services/{service_id}/context`, `/api/v1/chat`, and `/api/v2/chat` now return `semantic_related_passages` beside explicit `derived_references`, and prompt assembly includes compact semantic-neighbor context as a supplemental signal.
+
 ### v1.3.5 — Committed Expansion Scope (Snapshot: 2026-03-09)
 **Goal:** Convert v1.3 roadmap intent into explicit committed deliverables for features and author rollout.
 
@@ -538,6 +543,10 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - The UI labels source text, canonical translation, and derived explanation as separate layers.
 - Verse-level lookup is grounded by canonical reference and does not depend on paragraph-only RAG resolution.
 - Conversational answers about a verse can be grounded in the verse bundle instead of relying only on English excerpt retrieval and persona prompting.
+
+**Status Note (`2026-04-06`)**
+- `SCR-001` is live in production.
+- `/api/v1/scripture/verse` now returns structured verse bundles with source witness metadata, canonical translation witnesses, derived notes, and commentary layers, and the References UI can open those bundles directly.
 
 
 ### v1.3.7 — `local_tools` Model Release Watch + MDE Test Handoff
