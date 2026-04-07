@@ -176,6 +176,30 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "chmod 700 '${REMOTE_SYNC_SCRIPT}' && bash '${REMOTE_SYNC_SCRIPT}' '${DEPLOY_ROOT}' 'https://github.com/benlagrone/fortress-phronesis.git' main 'fortress-phronesis'"
 
+      - name: Validate Active GridScope Env
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "HOST_GRIDSCOPE_ENV_FILE='${HOST_GRIDSCOPE_ENV_FILE}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          ACTIVE_ENV_FILE=""
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          elif [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
+          fi
+
+          if [ -z "${ACTIVE_ENV_FILE}" ]; then
+            echo "No active GridScope env file found." >&2
+            exit 1
+          fi
+
+          grep -q '^GRIDSCOPE_EXTERNAL_API_URL=.' "${ACTIVE_ENV_FILE}"
+          grep -q '^GRIDSCOPE_EXTERNAL_API_KEY=.' "${ACTIVE_ENV_FILE}"
+          REMOTE
+
       - name: Remote GHCR Login
         shell: bash
         run: |
@@ -201,10 +225,10 @@ jobs:
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           ACTIVE_ENV_FILE=""
-          if [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
-            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
-          elif [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
             ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          elif [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
           fi
           if [ -n "${ACTIVE_ENV_FILE}" ]; then
             chmod 600 "${ACTIVE_ENV_FILE}"
@@ -226,10 +250,10 @@ jobs:
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           ACTIVE_ENV_FILE=""
-          if [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
-            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
-          elif [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
             ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          elif [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
           fi
           if [ -n "${ACTIVE_ENV_FILE}" ]; then
             chmod 600 "${ACTIVE_ENV_FILE}"
@@ -292,10 +316,10 @@ jobs:
 
           COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.lecrownproperties.yml)
           ACTIVE_ENV_FILE=""
-          if [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
-            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
-          elif [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
+          if [ -n "${REMOTE_ENV_FILE:-}" ] && [ -f "${REMOTE_ENV_FILE}" ]; then
             ACTIVE_ENV_FILE="${REMOTE_ENV_FILE}"
+          elif [ -n "${HOST_GRIDSCOPE_ENV_FILE:-}" ] && [ -f "${HOST_GRIDSCOPE_ENV_FILE}" ]; then
+            ACTIVE_ENV_FILE="${HOST_GRIDSCOPE_ENV_FILE}"
           fi
           if [ -n "${ACTIVE_ENV_FILE}" ]; then
             chmod 600 "${ACTIVE_ENV_FILE}"
