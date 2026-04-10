@@ -89,6 +89,12 @@ jobs:
           git -C "${DEPLOY_ROOT}" checkout main
           git -C "${DEPLOY_ROOT}" merge --ff-only FETCH_HEAD
 
+          if ! git -C "${FE_ROOT}" diff --quiet || ! git -C "${FE_ROOT}" diff --cached --quiet; then
+            stash_label="pericope-frontend-predeploy-${SOURCE_SHA}-$(date -u +%Y%m%dT%H%M%SZ)"
+            git -C "${FE_ROOT}" stash push --message "${stash_label}" >/dev/null
+            echo "Stashed tracked AugustineFE changes as ${stash_label}."
+          fi
+
           git -C "${FE_ROOT}" fetch origin master
           git -C "${FE_ROOT}" checkout master
           git -C "${FE_ROOT}" merge --ff-only FETCH_HEAD
