@@ -81,6 +81,13 @@ jobs:
 
           git -C "${SERVICE_ROOT}" fetch origin "${SERVICE_REF}"
           git -C "${SERVICE_ROOT}" checkout "${SERVICE_REF}"
+
+          if ! git -C "${SERVICE_ROOT}" diff --quiet || ! git -C "${SERVICE_ROOT}" diff --cached --quiet; then
+            stash_label="pericope-api-predeploy-${SOURCE_SHA:-${SERVICE_REF}}-$(date -u +%Y%m%dT%H%M%SZ)"
+            git -C "${SERVICE_ROOT}" stash push --message "${stash_label}" >/dev/null
+            echo "Stashed tracked AugustineService changes as ${stash_label}."
+          fi
+
           git -C "${SERVICE_ROOT}" pull --ff-only origin "${SERVICE_REF}"
 
           if [ -n "${SOURCE_SHA:-}" ]; then
