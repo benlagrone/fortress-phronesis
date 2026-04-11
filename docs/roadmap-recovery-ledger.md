@@ -45,7 +45,8 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 7. [Completed 2026-03-31] All `v1.1.x` UI carry-over work is closed; forward roadmap work may resume.
 8. [Completed 2026-04-04] Close `v1.3.0` bootstrap cross-reference surface (`XREF-001`) and `v1.3.3` public graph boundary (`XREF-002`).
 9. [Completed 2026-04-06] Close `v1.3.4` Stage 1/Stage 2/Stage 3 text-first graph pipeline (normalized passages + explicit reference extraction + semantic neighbors).
-10. [Next 2026-04-06] Start `v1.3.5` committed author rollout (remaining committed promotions with profile + chat smokes).
+10. [Completed 2026-04-11] Close `v1.1.6` saved author preferences (authenticated favorites + default author persistence with signed-in launch/new-chat preselection and degraded-default handling).
+11. [Next 2026-04-11] Start `v1.3.7` `local_tools` model release watch + MDE test handoff.
 
 ## Update Rule
 

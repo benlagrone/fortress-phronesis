@@ -203,6 +203,38 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 - `UI-007` desktop right-side context/references layout with mobile single-column behavior is live and verified.
 - Verification artifact: [ui-006-ui-007-public-verification-20260331.md](../tests/ui-006-ui-007-public-verification-20260331.md)
 
+### v1.1.6 — Saved Author Preferences
+**Goal:** Let authenticated users keep a durable author preference without letting saved state override stronger route or session context.
+
+- Add authenticated author preference persistence:
+  - favorite authors
+  - exactly one default author
+  - graceful handling when a saved default author is no longer production-visible
+- Expose a dedicated authenticated preference surface:
+  - `GET /api/v1/user/preferences/authors`
+  - `PUT /api/v1/user/preferences/authors`
+- Make saved preferences available across the main author-selection surfaces:
+  - chat persona panel
+  - `/authors` browse page
+  - `/authors/:slug` detail page
+  - signed-in profile page
+- Apply the saved default author only when no stronger context exists:
+  - signed-in `/` and `/chat` launch with no explicit author route
+  - new chat reset
+  - never override `/author/:slug`, session resume, or launch-driven chat state
+
+**Definition of Done**
+- Authenticated users can favorite authors and set a default author.
+- The default author persists across sessions/devices.
+- Signed-in landing and new chat preselect the saved default author when no stronger route/session context exists.
+- Invalid or hidden saved defaults degrade safely and are surfaced as warnings instead of silently breaking launch behavior.
+- Author preference management is available from chat, browse, detail, and profile surfaces.
+
+**Status (`2026-04-11`)**
+- `v1.1.6` is live on the public stack.
+- Favorites/default-author persistence is backed by authenticated service endpoints and rendered in chat, browse, detail, and profile surfaces.
+- Signed-in landing and new chat now preselect the saved default author without overriding explicit author routes or resumed sessions.
+
 ---
 
 ## v1.2.x — Memory (Scoped and Explicit)
