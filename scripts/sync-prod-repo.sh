@@ -25,6 +25,23 @@ print_repo_status() {
   git -C "$repo_path" status --short --branch --untracked-files=all || true
 }
 
+filtered_repo_status() {
+  local repo_path="$1"
+  local line
+
+  # Allow root-level server-local env files that are intentionally untracked on the host.
+  while IFS= read -r line; do
+    case "$line" in
+      "?? .env"*.local)
+        continue
+        ;;
+      *)
+        printf '%s\n' "$line"
+        ;;
+    esac
+  done < <(git -C "$repo_path" status --porcelain --untracked-files=all || true)
+}
+
 fail_repo() {
   local message="$1"
   local repo_path="$2"
@@ -40,7 +57,7 @@ require_clean_repo() {
   local repo_label="$2"
   local phase="$3"
 
-  if [[ -n "$(git -C "$repo_path" status --porcelain --untracked-files=all)" ]]; then
+  if [[ -n "$(filtered_repo_status "$repo_path")" ]]; then
     fail_repo "${repo_label} is dirty ${phase}" "$repo_path"
   fi
 }
