@@ -54,38 +54,138 @@ jobs:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
+      - name: Resolve Deploy Credentials
+        id: resolve_deploy
+        shell: bash
+        env:
+          PRIMARY_DEPLOY_HOST: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_HOST }}
+          PRIMARY_DEPLOY_USER: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_USER }}
+          PRIMARY_DEPLOY_ROOT: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_ROOT }}
+          PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_SSH_KEY }}
+          PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_KNOWN_HOSTS }}
+          PRIMARY_GHCR_READ_TOKEN: ${{ secrets.SOLARPOTENTIAL_BACKEND_GHCR_READ_TOKEN }}
+          FALLBACK_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          FALLBACK_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          FALLBACK_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          FALLBACK_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          FALLBACK_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+          FALLBACK_GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          pick() {
+            if [ -n "${1:-}" ]; then
+              printf '%s' "${1}"
+            else
+              printf '%s' "${2:-}"
+            fi
+          }
+
+          DEPLOY_HOST="$(pick "${PRIMARY_DEPLOY_HOST:-}" "${FALLBACK_DEPLOY_HOST:-}")"
+          DEPLOY_USER="$(pick "${PRIMARY_DEPLOY_USER:-}" "${FALLBACK_DEPLOY_USER:-}")"
+          DEPLOY_ROOT="$(pick "${PRIMARY_DEPLOY_ROOT:-}" "${FALLBACK_DEPLOY_ROOT:-}")"
+          DEPLOY_SSH_KEY="$(pick "${PRIMARY_DEPLOY_SSH_KEY:-}" "${FALLBACK_DEPLOY_SSH_KEY:-}")"
+          DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${FALLBACK_DEPLOY_KNOWN_HOSTS:-}")"
+          GHCR_READ_TOKEN="$(pick "${PRIMARY_GHCR_READ_TOKEN:-}" "${FALLBACK_GHCR_READ_TOKEN:-}")"
+
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Solar Potential backend deploy configuration after fallback: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          primary_all_set=true
+          for name in \
+            PRIMARY_DEPLOY_HOST \
+            PRIMARY_DEPLOY_USER \
+            PRIMARY_DEPLOY_ROOT \
+            PRIMARY_DEPLOY_SSH_KEY \
+            PRIMARY_DEPLOY_KNOWN_HOSTS \
+            PRIMARY_GHCR_READ_TOKEN; do
+            if [ -z "${!name:-}" ]; then
+              primary_all_set=false
+              break
+            fi
+          done
+
+          primary_any_set=false
+          for name in \
+            PRIMARY_DEPLOY_HOST \
+            PRIMARY_DEPLOY_USER \
+            PRIMARY_DEPLOY_ROOT \
+            PRIMARY_DEPLOY_SSH_KEY \
+            PRIMARY_DEPLOY_KNOWN_HOSTS \
+            PRIMARY_GHCR_READ_TOKEN; do
+            if [ -n "${!name:-}" ]; then
+              primary_any_set=true
+              break
+            fi
+          done
+
+          if [ "${primary_all_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="solarpotential-backend-dedicated"
+          elif [ "${primary_any_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="mixed-dedicated-and-shared"
+          else
+            CREDENTIAL_SOURCE="solomonic-clock-shared"
+          fi
+
+          {
+            echo "DEPLOY_HOST<<EOF"
+            echo "${DEPLOY_HOST}"
+            echo "EOF"
+            echo "DEPLOY_USER<<EOF"
+            echo "${DEPLOY_USER}"
+            echo "EOF"
+            echo "DEPLOY_ROOT<<EOF"
+            echo "${DEPLOY_ROOT}"
+            echo "EOF"
+            echo "DEPLOY_SSH_KEY<<EOF"
+            echo "${DEPLOY_SSH_KEY}"
+            echo "EOF"
+            echo "DEPLOY_KNOWN_HOSTS<<EOF"
+            echo "${DEPLOY_KNOWN_HOSTS}"
+            echo "EOF"
+            echo "GHCR_READ_TOKEN<<EOF"
+            echo "${GHCR_READ_TOKEN}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+          echo "credential_source=${CREDENTIAL_SOURCE}" >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
         shell: bash
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy On Server
         shell: bash
-        env:
-          DEPLOY_HOST: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_ROOT }}
-          GHCR_READ_TOKEN: ${{ secrets.SOLARPOTENTIAL_BACKEND_GHCR_READ_TOKEN }}
         run: |
           set -euo pipefail
+          REMOTE_SYNC_SCRIPT="/tmp/solar-potential-backend-sync-prod-repo-${GITHUB_RUN_ID}.sh"
+
+          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOLARPOTENTIAL_BACKEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "SOLARPOTENTIAL_BACKEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
-          fi
+          chmod 700 "${SYNC_SCRIPT}"
+          trap 'rm -f "${SYNC_SCRIPT}"' EXIT
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          bash "${SYNC_SCRIPT}" "${DEPLOY_ROOT}" "https://github.com/benlagrone/fortress-phronesis.git" main "fortress-phronesis"
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
@@ -113,6 +213,8 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+
+          bash "${SYNC_SCRIPT}" --check-clean "${DEPLOY_ROOT}" "fortress-phronesis"
           REMOTE
 
       - name: Deployment Summary
@@ -124,6 +226,7 @@ jobs:
             echo "- Environment: \`${{ steps.resolve.outputs.deploy_environment }}\`"
             echo "- Source SHA: \`${{ steps.resolve.outputs.source_sha }}\`"
             echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Credential source: \`${{ steps.resolve_deploy.outputs.credential_source }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
             echo "- Local health targets: \`http://127.0.0.1:18031/health\`, \`/openapi.json\`"
           } >> "$GITHUB_STEP_SUMMARY"

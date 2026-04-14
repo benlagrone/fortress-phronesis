@@ -48,7 +48,7 @@ Backend runtime:
 - Host bind: `127.0.0.1:18031`
 - Container port: `8000`
 - Host Nginx upstream: `http://127.0.0.1:18031`
-- Image contract: `ghcr.io/benlagrone/solar-potential-backend:sha-<commit>`
+- Image contract: `ghcr.io/benlagrone/solar-potential-api:sha-<commit>`
 
 Expected host routing after cutover:
 
@@ -155,10 +155,10 @@ SOLARPOTENTIAL_FRONTEND_IMAGE=ghcr.io/benlagrone/solar-potential-frontend:sha-<c
 Backend:
 
 ```bash
-SOLARPOTENTIAL_BACKEND_IMAGE=ghcr.io/benlagrone/solar-potential-backend:sha-<commit> \
+SOLARPOTENTIAL_BACKEND_IMAGE=ghcr.io/benlagrone/solar-potential-api:sha-<commit> \
 "${COMPOSE[@]}" pull solar-potential-backend
 
-SOLARPOTENTIAL_BACKEND_IMAGE=ghcr.io/benlagrone/solar-potential-backend:sha-<commit> \
+SOLARPOTENTIAL_BACKEND_IMAGE=ghcr.io/benlagrone/solar-potential-api:sha-<commit> \
 "${COMPOSE[@]}" up -d solar-potential-backend
 
 "${COMPOSE[@]}" ps solar-potential-backend
@@ -176,7 +176,7 @@ These workflows accept either:
 - manual `workflow_dispatch` in the fortress repo
 - `repository_dispatch` events sent to the fortress repo from the source repos
 
-Expected production secrets for frontend:
+Preferred dedicated production secrets for frontend:
 
 - `SOLARPOTENTIAL_FRONTEND_DEPLOY_HOST`
 - `SOLARPOTENTIAL_FRONTEND_DEPLOY_USER`
@@ -185,7 +185,7 @@ Expected production secrets for frontend:
 - `SOLARPOTENTIAL_FRONTEND_DEPLOY_KNOWN_HOSTS`
 - `SOLARPOTENTIAL_FRONTEND_GHCR_READ_TOKEN`
 
-Expected production secrets for backend:
+Preferred dedicated production secrets for backend:
 
 - `SOLARPOTENTIAL_BACKEND_DEPLOY_HOST`
 - `SOLARPOTENTIAL_BACKEND_DEPLOY_USER`
@@ -196,6 +196,23 @@ Expected production secrets for backend:
 
 These workflows are the fortress-side deployment entrypoints. The source repos
 own image publication and then dispatch fortress after the images exist.
+
+Credential resolution order in the fortress workflows:
+
+1. use the dedicated `SOLARPOTENTIAL_*` secret family when it is fully populated
+2. otherwise fall back to the shared Contabo `SOLOMONIC_CLOCK_*` secret family already used by other working fortress deploy jobs
+
+The fallback secret family is:
+
+- `SOLOMONIC_CLOCK_DEPLOY_HOST`
+- `SOLOMONIC_CLOCK_DEPLOY_USER`
+- `SOLOMONIC_CLOCK_DEPLOY_ROOT`
+- `SOLOMONIC_CLOCK_DEPLOY_SSH_KEY`
+- `SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS`
+- `SOLOMONIC_CLOCK_GHCR_READ_TOKEN`
+
+If neither set resolves all required values, the workflow fails before it tries
+to open SSH so the error is explicit instead of producing an empty host target.
 
 ## Source-To-Fortress Handoff
 

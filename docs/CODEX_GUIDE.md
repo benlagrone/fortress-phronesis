@@ -22,6 +22,8 @@ This repo expects service code in sibling paths on the host:
 - Corpus service: `/root/workspace/AugustineCorpus`
 - AMA calculators: `/root/workspace/calculator.askmortgageauthority.com`
 - AMA WordPress: `/root/workspace/askmortgageauthority.com`
+- Solar Potential frontend: image-only deploy via `ghcr.io/benlagrone/solar-potential-frontend`
+- Solar Potential backend: image-only deploy via `ghcr.io/benlagrone/solar-potential-api`
 
 ## Services and ports (host mappings)
 PericopeAI stack (`docker-compose.pericope.yml`):
