@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: solar-potential-backend-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+  group: solar-potential-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
   cancel-in-progress: false
 
 jobs:
