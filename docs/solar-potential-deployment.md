@@ -147,7 +147,7 @@ SOLARPOTENTIAL_FRONTEND_IMAGE=ghcr.io/benlagrone/solar-potential-frontend:sha-<c
 "${COMPOSE[@]}" pull solar-potential-frontend
 
 SOLARPOTENTIAL_FRONTEND_IMAGE=ghcr.io/benlagrone/solar-potential-frontend:sha-<commit> \
-"${COMPOSE[@]}" up -d solar-potential-frontend
+"${COMPOSE[@]}" up -d --no-deps solar-potential-frontend
 
 "${COMPOSE[@]}" ps solar-potential-frontend
 ```
@@ -159,7 +159,7 @@ SOLARPOTENTIAL_BACKEND_IMAGE=ghcr.io/benlagrone/solar-potential-api:sha-<commit>
 "${COMPOSE[@]}" pull solar-potential-backend
 
 SOLARPOTENTIAL_BACKEND_IMAGE=ghcr.io/benlagrone/solar-potential-api:sha-<commit> \
-"${COMPOSE[@]}" up -d solar-potential-backend
+"${COMPOSE[@]}" up -d --no-deps solar-potential-backend
 
 "${COMPOSE[@]}" ps solar-potential-backend
 ```

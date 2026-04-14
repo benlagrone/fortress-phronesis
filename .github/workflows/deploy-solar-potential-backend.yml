@@ -199,7 +199,7 @@ jobs:
           fi
 
           SOLARPOTENTIAL_BACKEND_IMAGE="${SOLARPOTENTIAL_BACKEND_IMAGE}" "${COMPOSE_CMD[@]}" pull solar-potential-backend
-          SOLARPOTENTIAL_BACKEND_IMAGE="${SOLARPOTENTIAL_BACKEND_IMAGE}" "${COMPOSE_CMD[@]}" up -d solar-potential-backend
+          SOLARPOTENTIAL_BACKEND_IMAGE="${SOLARPOTENTIAL_BACKEND_IMAGE}" "${COMPOSE_CMD[@]}" up -d --no-deps solar-potential-backend
           "${COMPOSE_CMD[@]}" ps solar-potential-backend
 
           for url in \

@@ -199,7 +199,7 @@ jobs:
           fi
 
           SOLARPOTENTIAL_FRONTEND_IMAGE="${SOLARPOTENTIAL_FRONTEND_IMAGE}" "${COMPOSE_CMD[@]}" pull solar-potential-frontend
-          SOLARPOTENTIAL_FRONTEND_IMAGE="${SOLARPOTENTIAL_FRONTEND_IMAGE}" "${COMPOSE_CMD[@]}" up -d solar-potential-frontend
+          SOLARPOTENTIAL_FRONTEND_IMAGE="${SOLARPOTENTIAL_FRONTEND_IMAGE}" "${COMPOSE_CMD[@]}" up -d --no-deps solar-potential-frontend
           "${COMPOSE_CMD[@]}" ps solar-potential-frontend
 
           for url in \
