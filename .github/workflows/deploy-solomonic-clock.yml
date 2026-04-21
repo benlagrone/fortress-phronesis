@@ -7,6 +7,11 @@ on:
         description: Commit SHA built by Solomonic Clock CI
         required: true
         type: string
+      source_version:
+        description: Human-visible source version shown in the footer
+        required: false
+        default: ""
+        type: string
       environment:
         description: Target environment
         required: true
@@ -29,6 +34,7 @@ jobs:
     env:
       COMPOSE_PROJECT: fortress-phronesis
       IMAGE_REF: ghcr.io/benlagrone/solomonic-seals:sha-${{ inputs.source_sha }}
+      SOURCE_VERSION: ${{ inputs.source_version }}
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
@@ -52,19 +58,22 @@ jobs:
           GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
         run: |
           set -euo pipefail
+          RELEASED_AT_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          REMOTE_SYNC_SCRIPT="/tmp/solomonic-clock-sync-prod-repo-${GITHUB_RUN_ID}.sh"
+
+          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOLOMONIC_CLOCK_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "SOLOMONIC_CLOCK_IMAGE='${IMAGE_REF}' SOLOMONIC_APP_VERSION='${SOURCE_VERSION}' SOLOMONIC_RELEASE='sha-${{ inputs.source_sha }}' SOLOMONIC_RELEASED_AT='${RELEASED_AT_UTC}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
-          fi
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CLOCK_ROOT="${WORKSPACE_ROOT}/Solomonic_Seals"
+          chmod 700 "${SYNC_SCRIPT}"
+          trap 'rm -f "${SYNC_SCRIPT}"' EXIT
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+          bash "${SYNC_SCRIPT}" "${DEPLOY_ROOT}" "https://github.com/benlagrone/fortress-phronesis.git" main "fortress-phronesis"
+          bash "${SYNC_SCRIPT}" "${CLOCK_ROOT}" "https://github.com/benlagrone/Solomonic_Seals.git" main "Solomonic_Seals"
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
             echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
@@ -72,8 +81,16 @@ jobs:
 
           cd "${DEPLOY_ROOT}"
 
-          SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull solomonic-clock
-          SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d solomonic-clock
+          SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" \
+            SOLOMONIC_APP_VERSION="${SOLOMONIC_APP_VERSION:-}" \
+            SOLOMONIC_RELEASE="${SOLOMONIC_RELEASE:-}" \
+            SOLOMONIC_RELEASED_AT="${SOLOMONIC_RELEASED_AT:-}" \
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull solomonic-clock
+          SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" \
+            SOLOMONIC_APP_VERSION="${SOLOMONIC_APP_VERSION:-}" \
+            SOLOMONIC_RELEASE="${SOLOMONIC_RELEASE:-}" \
+            SOLOMONIC_RELEASED_AT="${SOLOMONIC_RELEASED_AT:-}" \
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps solomonic-clock
 
           for url in http://127.0.0.1:8086/api/clock http://127.0.0.1:8086/; do
@@ -85,6 +102,9 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+
+          bash "${SYNC_SCRIPT}" --check-clean "${DEPLOY_ROOT}" "fortress-phronesis"
+          bash "${SYNC_SCRIPT}" --check-clean "${CLOCK_ROOT}" "Solomonic_Seals"
           REMOTE
 
       - name: Public Smoke
@@ -102,6 +122,8 @@ jobs:
             echo ""
             echo "- Environment: \`${{ inputs.environment }}\`"
             echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Source version: \`${{ inputs.source_version || 'not provided' }}\`"
+            echo "- Release label: \`sha-${{ inputs.source_sha }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
             echo "- Public URL: https://truevineos.cloud/"
           } >> "$GITHUB_STEP_SUMMARY"
