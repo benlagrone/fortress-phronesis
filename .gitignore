@@ -5,3 +5,4 @@ scripts/*
 .env
 .env*.local
 scripts/.env
+runtime/solar-potential-backend/

@@ -101,7 +101,7 @@ apps:
     public_urls:
       - https://api.energydataexplorer.com/
   solar-potential-frontend:
-    enabled: false
+    enabled: true
     release_channel: stable
     image_repo: ghcr.io/benlagrone/solar-potential-frontend
     compose_file: docker-compose.solar-potential.yml
@@ -112,7 +112,7 @@ apps:
       - http://127.0.0.1:18030/runtime-config.js
       - http://127.0.0.1:18030/release-history.html
   solar-potential-backend:
-    enabled: false
+    enabled: true
     release_channel: stable
     image_repo: ghcr.io/benlagrone/solar-potential-api
     compose_file: docker-compose.solar-potential.yml

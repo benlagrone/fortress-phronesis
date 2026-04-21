@@ -28,6 +28,8 @@ print_repo_status() {
 filtered_repo_status() {
   local repo_path="$1"
   local line
+  local path
+  local allowed_path
 
   # Allow root-level server-local env files that are intentionally untracked on the host.
   while IFS= read -r line; do
@@ -35,10 +37,21 @@ filtered_repo_status() {
       "?? .env"*.local)
         continue
         ;;
-      *)
-        printf '%s\n' "$line"
-        ;;
     esac
+
+    if [[ "$line" == "?? "* ]]; then
+      path="${line:3}"
+      while IFS= read -r allowed_path; do
+        [[ -n "${allowed_path}" ]] || continue
+        case "$path" in
+          "${allowed_path}"|"${allowed_path}"/*)
+            continue 2
+            ;;
+        esac
+      done <<< "${SYNC_PROD_ALLOWED_DIRTY_PATHS:-}"
+    fi
+
+    printf '%s\n' "$line"
   done < <(git -C "$repo_path" status --porcelain --untracked-files=all || true)
 }
 
