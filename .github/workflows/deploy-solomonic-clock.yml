@@ -61,7 +61,8 @@ jobs:
           RELEASED_AT_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           REMOTE_SYNC_SCRIPT="/tmp/solomonic-clock-sync-prod-repo-${GITHUB_RUN_ID}.sh"
 
-          scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "umask 077 && cat > '${REMOTE_SYNC_SCRIPT}'" < scripts/sync-prod-repo.sh
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "SOLOMONIC_CLOCK_IMAGE='${IMAGE_REF}' SOLOMONIC_APP_VERSION='${SOURCE_VERSION}' SOLOMONIC_RELEASE='sha-${{ inputs.source_sha }}' SOLOMONIC_RELEASED_AT='${RELEASED_AT_UTC}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' bash -s" <<'REMOTE'
