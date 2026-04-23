@@ -108,6 +108,11 @@ jobs:
             exit 1
           fi
 
+          install -d "${WORKSPACE_ROOT}/AugustineCorpus"
+          if [ ! -f "${WORKSPACE_ROOT}/AugustineCorpus/.env" ]; then
+            : > "${WORKSPACE_ROOT}/AugustineCorpus/.env"
+          fi
+
           cd "${DEPLOY_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh
