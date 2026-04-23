@@ -81,6 +81,10 @@ jobs:
             git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
           fi
 
+          if [ -d "${FE_ROOT}" ] && [ ! -d "${FE_ROOT}/.git" ]; then
+            mv "${FE_ROOT}" "${FE_ROOT}.pre-git-$(date -u +%Y%m%dT%H%M%SZ)"
+          fi
+
           if [ ! -d "${FE_ROOT}/.git" ]; then
             git clone https://github.com/benlagrone/AugustineFE.git "${FE_ROOT}"
           fi
