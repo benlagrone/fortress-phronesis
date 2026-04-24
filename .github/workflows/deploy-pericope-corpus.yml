@@ -124,6 +124,35 @@ jobs:
             exit 1
           }
 
+          extract_key_from_file() {
+            local env_path="${1:-}"
+            [ -f "${env_path}" ] || return 0
+            ENV_PATH="${env_path}" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          env_path = Path(os.environ["ENV_PATH"])
+          for line in env_path.read_text(encoding="utf-8").splitlines():
+              if line.startswith("OPENAI_API_KEY="):
+                  print(line.split("=", 1)[1].strip())
+                  break
+          PY
+          }
+
+          append_candidate() {
+            local candidate_label="${1:-}"
+            local candidate_key="${2:-}"
+            if [ -z "${candidate_key}" ]; then
+              return 0
+            fi
+            if [ -n "${seen_candidate_keys["${candidate_key}"]+x}" ]; then
+              return 0
+            fi
+            seen_candidate_keys["${candidate_key}"]=1
+            candidate_labels+=("${candidate_label}")
+            candidate_keys+=("${candidate_key}")
+          }
+
           write_corpus_key() {
             local candidate_key="${1:-}"
             [ -n "${candidate_key}" ] || {
@@ -163,6 +192,33 @@ jobs:
               sleep 2
             done
             curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null
+          }
+
+          wait_corpus_health() {
+            for _ in $(seq 1 30); do
+              if docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+                python - <<'PY' >/dev/null 2>&1
+          import urllib.request
+
+          with urllib.request.urlopen("http://127.0.0.1:8001/healthz", timeout=5) as response:
+              if response.status != 200:
+                  raise SystemExit(1)
+          PY
+              then
+                return 0
+              fi
+              sleep 2
+            done
+
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+              python - <<'PY'
+          import urllib.request
+
+          with urllib.request.urlopen("http://127.0.0.1:8001/healthz", timeout=5) as response:
+              if response.status != 200:
+                  raise SystemExit(1)
+          print("corpus-health-ok")
+          PY
           }
 
           run_internal_generate_smoke() {
@@ -207,11 +263,6 @@ jobs:
           }
 
           run_internal_chat_smoke() {
-            if [ ! -f "${FE_ROOT}/.env" ]; then
-              return 0
-            fi
-
-            FE_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
             if [ -z "${FE_KEY:-}" ]; then
               return 0
             fi
@@ -246,20 +297,60 @@ jobs:
           PY
           }
 
+          run_public_chat_smoke() {
+            if [ -z "${FE_KEY:-}" ]; then
+              return 0
+            fi
+
+            CHAT_PAYLOAD='{"question":"why do we work so hard?","mode":"conversation","persona":"solomon"}'
+            CHAT_RESPONSE="$(curl -fsS https://pericopeai.com/api/v2/chat \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${FE_KEY}" \
+              -d "${CHAT_PAYLOAD}")"
+            CHAT_RESPONSE="${CHAT_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["CHAT_RESPONSE"])
+          segments = payload.get("segments") or []
+          answer = ""
+          for segment in segments:
+              if segment.get("type") == "answer":
+                  answer = str((segment.get("payload") or {}).get("answer") or "")
+                  break
+          if not answer:
+              answer = str(payload.get("response") or "")
+          lowered = answer.lower()
+          if (
+              "api_key client option must be set" in lowered
+              or "openai_api_key" in lowered
+              or "incorrect api key" in lowered
+              or "error with openai api" in lowered
+          ):
+              raise SystemExit(f"public-edge-chat-smoke failed: {answer}")
+          print("public-chat-smoke-ok")
+          PY
+          }
+
           cd "${FORTRESS_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh
 
+          FE_KEY=""
+          if [ -f "${FE_ROOT}/.env" ]; then
+            FE_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
+          fi
+
+          declare -A seen_candidate_keys=()
           candidate_labels=()
           candidate_keys=()
-          if [ -n "${CORPUS_OPENAI_API_KEY_PRIMARY:-}" ]; then
-            candidate_labels+=("pericope")
-            candidate_keys+=("${CORPUS_OPENAI_API_KEY_PRIMARY}")
-          fi
-          if [ -n "${CORPUS_OPENAI_API_KEY_FALLBACK:-}" ] && [ "${CORPUS_OPENAI_API_KEY_FALLBACK}" != "${CORPUS_OPENAI_API_KEY_PRIMARY:-}" ]; then
-            candidate_labels+=("jester")
-            candidate_keys+=("${CORPUS_OPENAI_API_KEY_FALLBACK}")
-          fi
+          append_candidate "pericope-secret" "${CORPUS_OPENAI_API_KEY_PRIMARY:-}"
+          append_candidate "jester-secret" "${CORPUS_OPENAI_API_KEY_FALLBACK:-}"
+          append_candidate "service-env" "$(extract_key_from_file "${WORKSPACE_ROOT}/AugustineService/.env")"
+          append_candidate "corpus-env-current" "$(extract_key_from_file "${CORPUS_ROOT}/.env")"
+          for backup_root in $(ls -1dt "${CORPUS_ROOT}.pre-git-"* 2>/dev/null || true); do
+            append_candidate "corpus-backup:$(basename "${backup_root}")" "$(extract_key_from_file "${backup_root}/.env")"
+          done
 
           validated_label=""
           for idx in "${!candidate_keys[@]}"; do
@@ -275,21 +366,33 @@ jobs:
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
               python -c "import os; key=(os.getenv('OPENAI_API_KEY') or '').strip(); assert key, 'OPENAI_API_KEY missing'; print('openai-key-present')"
 
+            wait_corpus_health
             wait_api_health
 
-            if run_internal_generate_smoke && run_internal_chat_smoke; then
-              validated_label="${candidate_label}"
-              echo "Validated corpus LLM key source: ${validated_label}"
-              break
+            if ! run_internal_generate_smoke; then
+              echo "Corpus LLM key source failed internal generate smoke: ${candidate_label}"
+              continue
             fi
 
-            echo "Corpus LLM key source failed validation: ${candidate_label}"
+            if ! run_internal_chat_smoke; then
+              echo "Corpus LLM key source failed internal chat smoke: ${candidate_label}"
+              continue
+            fi
+
+            if ! run_public_chat_smoke; then
+              echo "Corpus LLM key source failed public chat smoke: ${candidate_label}"
+              continue
+            fi
+
+            validated_label="${candidate_label}"
+            echo "Validated corpus LLM key source: ${validated_label}"
+            break
           done
 
-          [ -n "${validated_label}" ] || {
+          if [ -z "${validated_label}" ]; then
             echo "::error::No configured corpus OpenAI key source passed validation."
             exit 1
-          }
+          fi
           REMOTE
 
       - name: Public Smoke
