@@ -46,7 +46,8 @@ jobs:
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
-          CORPUS_OPENAI_API_KEY: ${{ secrets.PERICOPE_CORPUS_OPENAI_API_KEY }}
+          CORPUS_OPENAI_API_KEY_PRIMARY: ${{ secrets.PERICOPE_CORPUS_OPENAI_API_KEY }}
+          CORPUS_OPENAI_API_KEY_FALLBACK: ${{ secrets.JESTER_OPENAI_API_KEY }}
           INPUT_CORPUS_REF: ${{ github.event.inputs.corpus_ref }}
           INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
         run: |
@@ -54,13 +55,15 @@ jobs:
 
           CORPUS_REF="${INPUT_CORPUS_REF:-master}"
           SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
-          [ -n "${CORPUS_OPENAI_API_KEY:-}" ] || {
-            echo "::error::PERICOPE_CORPUS_OPENAI_API_KEY secret is missing."
+          PRIMARY_KEY="${CORPUS_OPENAI_API_KEY_PRIMARY:-}"
+          FALLBACK_KEY="${CORPUS_OPENAI_API_KEY_FALLBACK:-}"
+          [ -n "${PRIMARY_KEY}${FALLBACK_KEY}" ] || {
+            echo "::error::No corpus OpenAI key secret is configured."
             exit 1
           }
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' CORPUS_REF='${CORPUS_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' CORPUS_OPENAI_API_KEY='${CORPUS_OPENAI_API_KEY}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' CORPUS_REF='${CORPUS_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' CORPUS_OPENAI_API_KEY_PRIMARY='${PRIMARY_KEY}' CORPUS_OPENAI_API_KEY_FALLBACK='${FALLBACK_KEY}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
@@ -121,14 +124,20 @@ jobs:
             exit 1
           }
 
-          CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_OPENAI_API_KEY="${CORPUS_OPENAI_API_KEY}" python3 - <<'PY'
+          write_corpus_key() {
+            local candidate_key="${1:-}"
+            [ -n "${candidate_key}" ] || {
+              echo "::error::Candidate corpus key is empty."
+              return 1
+            }
+            CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_OPENAI_API_KEY_CANDIDATE="${candidate_key}" python3 - <<'PY'
           import os
           from pathlib import Path
 
           env_path = Path(os.environ["CORPUS_ROOT"]) / ".env"
-          key = os.environ.get("CORPUS_OPENAI_API_KEY", "").strip()
+          key = os.environ.get("CORPUS_OPENAI_API_KEY_CANDIDATE", "").strip()
           if not key:
-              raise SystemExit("PERICOPE_CORPUS_OPENAI_API_KEY is empty")
+              raise SystemExit("CORPUS_OPENAI_API_KEY_CANDIDATE is empty")
 
           lines = env_path.read_text(encoding="utf-8").splitlines()
           updated = []
@@ -144,27 +153,21 @@ jobs:
           env_path.write_text("\\n".join(updated) + "\\n", encoding="utf-8")
           print("corpus-env-key-written")
           PY
+          }
 
-          cd "${FORTRESS_ROOT}"
+          wait_api_health() {
+            for _ in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null 2>&1; then
+                return 0
+              fi
+              sleep 2
+            done
+            curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null
+          }
 
-          bash scripts/verify-pericope-deploy-lock.sh
-
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate augustine-corpus-live pericopeai-api
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
-
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
-            python -c "import os; key=(os.getenv('OPENAI_API_KEY') or '').strip(); assert key, 'OPENAI_API_KEY missing'; print('openai-key-present')"
-
-          for _ in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null 2>&1; then
-              break
-            fi
-            sleep 2
-          done
-          curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null
-
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
-            python - <<'PY'
+          run_internal_generate_smoke() {
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+              python - <<'PY'
           import json
           import urllib.request
 
@@ -192,20 +195,33 @@ jobs:
           if not completion:
               raise SystemExit("corpus generate returned empty completion")
           lowered = completion.lower()
-          if "api_key client option must be set" in lowered or "openai_api_key" in lowered:
-              raise SystemExit(f"corpus generate still missing llm key: {completion}")
+          if (
+              "api_key client option must be set" in lowered
+              or "openai_api_key" in lowered
+              or "incorrect api key" in lowered
+              or "error with openai api" in lowered
+          ):
+              raise SystemExit(f"corpus generate still failing llm auth: {completion}")
           print("generate-smoke-ok")
           PY
+          }
 
-          if [ -f "${FE_ROOT}/.env" ]; then
+          run_internal_chat_smoke() {
+            if [ ! -f "${FE_ROOT}/.env" ]; then
+              return 0
+            fi
+
             FE_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
-            if [ -n "${FE_KEY:-}" ]; then
-              CHAT_PAYLOAD='{"question":"why do we work so hard?","mode":"conversation","persona":"solomon"}'
-              CHAT_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v2/chat \
-                -H "Content-Type: application/json" \
-                -H "x-api-key: ${FE_KEY}" \
-                -d "${CHAT_PAYLOAD}")"
-              CHAT_RESPONSE="${CHAT_RESPONSE}" python3 - <<'PY'
+            if [ -z "${FE_KEY:-}" ]; then
+              return 0
+            fi
+
+            CHAT_PAYLOAD='{"question":"why do we work so hard?","mode":"conversation","persona":"solomon"}'
+            CHAT_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v2/chat \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${FE_KEY}" \
+              -d "${CHAT_PAYLOAD}")"
+            CHAT_RESPONSE="${CHAT_RESPONSE}" python3 - <<'PY'
           import json
           import os
 
@@ -219,18 +235,73 @@ jobs:
           if not answer:
               answer = str(payload.get("response") or "")
           lowered = answer.lower()
-          if "api_key client option must be set" in lowered or "openai_api_key" in lowered:
+          if (
+              "api_key client option must be set" in lowered
+              or "openai_api_key" in lowered
+              or "incorrect api key" in lowered
+              or "error with openai api" in lowered
+          ):
               raise SystemExit(f"public-chat-smoke failed: {answer}")
           print("chat-smoke-ok")
           PY
-            fi
+          }
+
+          cd "${FORTRESS_ROOT}"
+
+          bash scripts/verify-pericope-deploy-lock.sh
+
+          candidate_labels=()
+          candidate_keys=()
+          if [ -n "${CORPUS_OPENAI_API_KEY_PRIMARY:-}" ]; then
+            candidate_labels+=("pericope")
+            candidate_keys+=("${CORPUS_OPENAI_API_KEY_PRIMARY}")
           fi
+          if [ -n "${CORPUS_OPENAI_API_KEY_FALLBACK:-}" ] && [ "${CORPUS_OPENAI_API_KEY_FALLBACK}" != "${CORPUS_OPENAI_API_KEY_PRIMARY:-}" ]; then
+            candidate_labels+=("jester")
+            candidate_keys+=("${CORPUS_OPENAI_API_KEY_FALLBACK}")
+          fi
+
+          validated_label=""
+          for idx in "${!candidate_keys[@]}"; do
+            candidate_label="${candidate_labels[$idx]}"
+            candidate_key="${candidate_keys[$idx]}"
+            echo "Trying corpus LLM key source: ${candidate_label}"
+
+            write_corpus_key "${candidate_key}"
+
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate augustine-corpus-live pericopeai-api
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
+
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+              python -c "import os; key=(os.getenv('OPENAI_API_KEY') or '').strip(); assert key, 'OPENAI_API_KEY missing'; print('openai-key-present')"
+
+            wait_api_health
+
+            if run_internal_generate_smoke && run_internal_chat_smoke; then
+              validated_label="${candidate_label}"
+              echo "Validated corpus LLM key source: ${validated_label}"
+              break
+            fi
+
+            echo "Corpus LLM key source failed validation: ${candidate_label}"
+          done
+
+          [ -n "${validated_label}" ] || {
+            echo "::error::No configured corpus OpenAI key source passed validation."
+            exit 1
+          }
           REMOTE
 
       - name: Public Smoke
         shell: bash
         run: |
           set -euo pipefail
+          for _ in $(seq 1 20); do
+            if curl -fsS https://pericopeai.com/api/healthz >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 3
+          done
           curl -fsS https://pericopeai.com/api/healthz >/dev/null
 
       - name: Deployment Summary
