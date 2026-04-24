@@ -121,7 +121,7 @@ jobs:
             exit 1
           }
 
-          CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_OPENAI_API_KEY="${CORPUS_OPENAI_API_KEY}" python - <<'PY'
+          CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_OPENAI_API_KEY="${CORPUS_OPENAI_API_KEY}" python3 - <<'PY'
           import os
           from pathlib import Path
 
@@ -205,7 +205,7 @@ jobs:
                 -H "Content-Type: application/json" \
                 -H "x-api-key: ${FE_KEY}" \
                 -d "${CHAT_PAYLOAD}")"
-              CHAT_RESPONSE="${CHAT_RESPONSE}" python - <<'PY'
+              CHAT_RESPONSE="${CHAT_RESPONSE}" python3 - <<'PY'
           import json
           import os
 
