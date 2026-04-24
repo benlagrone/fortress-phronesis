@@ -18,6 +18,7 @@ concurrency:
 jobs:
   repair:
     runs-on: ubuntu-latest
+    environment: prod
     timeout-minutes: 15
     steps:
       - name: Resolve Deploy Credentials
@@ -128,6 +129,6 @@ jobs:
           {
             echo "## AMA MariaDB Tempdir Repair"
             echo ""
-            echo "- Host: \\`${DEPLOY_HOST}\\`"
+            echo "- Host: \`${DEPLOY_HOST}\`"
             echo "- Outcome: repair script completed and homepage no longer emitted raw database errors"
           } >> "$GITHUB_STEP_SUMMARY"
