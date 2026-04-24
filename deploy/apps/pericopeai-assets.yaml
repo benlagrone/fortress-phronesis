@@ -1,0 +1,24 @@
+schema_version: 1
+app_id: pericopeai-assets
+display_name: PericopeAI Shared Assets
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/pericopeai-assets
+artifacts:
+  image: ghcr.io/benlagrone/pericopeai-assets
+runtime:
+  compose_file: docker-compose.pericope.yml
+  project_name: fortress-phronesis
+  service: pericopeai-assets
+  host_bind: 127.0.0.1:13084
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:13084/healthz
+  - type: http
+    url: http://127.0.0.1:13084/scriptorium-icons/v1/manifest.json
+public_urls:
+  - https://assets.pericopeai.com/healthz
+  - https://assets.pericopeai.com/scriptorium-icons/v1/manifest.json

@@ -121,3 +121,18 @@ apps:
     local_health_urls:
       - http://127.0.0.1:18031/health
       - http://127.0.0.1:18031/openapi.json
+
+
+  pericopeai-assets:
+    enabled: false
+    release_channel: stable
+    image_repo: ghcr.io/benlagrone/pericopeai-assets
+    compose_file: docker-compose.pericope.yml
+    compose_project: fortress-phronesis
+    service: pericopeai-assets
+    local_health_urls:
+      - http://127.0.0.1:13084/healthz
+      - http://127.0.0.1:13084/scriptorium-icons/v1/manifest.json
+    public_urls:
+      - https://assets.pericopeai.com/healthz
+      - https://assets.pericopeai.com/scriptorium-icons/v1/manifest.json

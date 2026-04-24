@@ -1,0 +1,114 @@
+name: Deploy PericopeAI Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit SHA built by the PericopeAI assets CI
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      run_public_smoke:
+        description: Run public DNS/HTTPS smoke checks after deploy
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pericopeai-assets-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+      IMAGE_REF: ghcr.io/benlagrone/pericopeai-assets:sha-${{ inputs.source_sha }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "PERICOPEAI_ASSETS_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            install -d "$(dirname "${DEPLOY_ROOT}")"
+            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          fi
+
+          git -C "${DEPLOY_ROOT}" fetch origin main
+          git -C "${DEPLOY_ROOT}" checkout main
+          git -C "${DEPLOY_ROOT}" pull --ff-only origin main
+
+          if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+            echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          fi
+
+          cd "${DEPLOY_ROOT}"
+
+          PERICOPEAI_ASSETS_IMAGE="${PERICOPEAI_ASSETS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull pericopeai-assets
+          PERICOPEAI_ASSETS_IMAGE="${PERICOPEAI_ASSETS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d pericopeai-assets
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-assets
+
+          for url in http://127.0.0.1:13084/healthz http://127.0.0.1:13084/scriptorium-icons/v1/manifest.json; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS "$url" >/dev/null
+          done
+          REMOTE
+
+      - name: Public Smoke
+        if: ${{ inputs.run_public_smoke }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSI https://assets.pericopeai.com/healthz >/dev/null
+          curl -fsS https://assets.pericopeai.com/scriptorium-icons/v1/manifest.json >/dev/null
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## PericopeAI Assets Deploy"
+            echo ""
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
+            echo "- Image: \`${IMAGE_REF}\`"
+            echo "- Public smoke: \`${{ inputs.run_public_smoke }}\`"
+            echo "- Public URL: https://assets.pericopeai.com/"
+          } >> "$GITHUB_STEP_SUMMARY"
