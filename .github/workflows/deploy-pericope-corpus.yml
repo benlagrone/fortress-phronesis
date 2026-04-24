@@ -120,7 +120,7 @@ jobs:
 
           bash scripts/verify-pericope-deploy-lock.sh
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate augustine-corpus-live pericopeai-api
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
 
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
