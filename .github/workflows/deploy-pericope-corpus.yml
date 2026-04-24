@@ -46,6 +46,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          CORPUS_OPENAI_API_KEY: ${{ secrets.PERICOPE_CORPUS_OPENAI_API_KEY }}
           INPUT_CORPUS_REF: ${{ github.event.inputs.corpus_ref }}
           INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
         run: |
@@ -53,9 +54,13 @@ jobs:
 
           CORPUS_REF="${INPUT_CORPUS_REF:-master}"
           SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
+          [ -n "${CORPUS_OPENAI_API_KEY:-}" ] || {
+            echo "::error::PERICOPE_CORPUS_OPENAI_API_KEY secret is missing."
+            exit 1
+          }
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' CORPUS_REF='${CORPUS_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' CORPUS_REF='${CORPUS_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' CORPUS_OPENAI_API_KEY='${CORPUS_OPENAI_API_KEY}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
@@ -115,6 +120,30 @@ jobs:
             echo "::error::AugustineCorpus/.env is missing on the server."
             exit 1
           }
+
+          CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_OPENAI_API_KEY="${CORPUS_OPENAI_API_KEY}" python - <<'PY'
+          import os
+          from pathlib import Path
+
+          env_path = Path(os.environ["CORPUS_ROOT"]) / ".env"
+          key = os.environ.get("CORPUS_OPENAI_API_KEY", "").strip()
+          if not key:
+              raise SystemExit("PERICOPE_CORPUS_OPENAI_API_KEY is empty")
+
+          lines = env_path.read_text(encoding="utf-8").splitlines()
+          updated = []
+          replaced = False
+          for line in lines:
+              if line.startswith("OPENAI_API_KEY="):
+                  updated.append(f"OPENAI_API_KEY={key}")
+                  replaced = True
+              else:
+                  updated.append(line)
+          if not replaced:
+              updated.append(f"OPENAI_API_KEY={key}")
+          env_path.write_text("\\n".join(updated) + "\\n", encoding="utf-8")
+          print("corpus-env-key-written")
+          PY
 
           cd "${FORTRESS_ROOT}"
 
