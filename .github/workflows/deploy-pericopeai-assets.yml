@@ -77,16 +77,16 @@ jobs:
 
           cd "${DEPLOY_ROOT}"
 
-          echo "Current Docker bindings for port 13084:"
-          docker ps -a --format "table {{.Names}}	{{.Status}}	{{.Ports}}" | (grep 13084 || true)
-          echo "Current socket listeners for port 13084:"
-          (sudo ss -ltnp '( sport = :13084 )' || ss -ltn '( sport = :13084 )' || true)
+          echo "Current Docker bindings for port 13085:"
+          docker ps -a --format "table {{.Names}}	{{.Status}}	{{.Ports}}" | (grep 13085 || true)
+          echo "Current socket listeners for port 13085:"
+          (sudo ss -ltnp '( sport = :13085 )' || ss -ltn '( sport = :13085 )' || true)
 
           PERICOPEAI_ASSETS_IMAGE="${PERICOPEAI_ASSETS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull pericopeai-assets
           PERICOPEAI_ASSETS_IMAGE="${PERICOPEAI_ASSETS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d pericopeai-assets
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-assets
 
-          for url in http://127.0.0.1:13084/healthz http://127.0.0.1:13084/scriptorium-icons/v1/manifest.json; do
+          for url in http://127.0.0.1:13085/healthz http://127.0.0.1:13085/scriptorium-icons/v1/manifest.json; do
             for attempt in $(seq 1 20); do
               if curl -fsS "$url" >/dev/null 2>&1; then
                 break

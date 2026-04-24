@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Backup and replace the assets.pericopeai.com nginx vhost to point at the shared asset container.
-# Assumes the container is bound on 127.0.0.1:13084.
+# Assumes the container is bound on 127.0.0.1:13085.
 
 set -euo pipefail
 
@@ -8,7 +8,7 @@ VHOST="/etc/nginx/sites-available/assets.pericopeai.com"
 BACKUP="${VHOST}.bak.$(date +%Y%m%d%H%M%S)"
 
 cat <<'CONF' | sudo tee "${VHOST}.new" >/dev/null
-upstream pericopeai_assets { server 127.0.0.1:13084; }
+upstream pericopeai_assets { server 127.0.0.1:13085; }
 
 server {
     listen 80;
@@ -43,7 +43,7 @@ echo "Reloading nginx"
 sudo nginx -s reload
 
 echo "Done. To verify:"
-echo "  curl -I http://127.0.0.1:13084/healthz"
-echo "  curl -I http://127.0.0.1:13084/scriptorium-icons/v1/manifest.json"
+echo "  curl -I http://127.0.0.1:13085/healthz"
+echo "  curl -I http://127.0.0.1:13085/scriptorium-icons/v1/manifest.json"
 echo "  curl -I https://assets.pericopeai.com/healthz"
 echo "  curl -I https://assets.pericopeai.com/scriptorium-icons/v1/manifest.json"

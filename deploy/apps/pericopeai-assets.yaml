@@ -10,15 +10,15 @@ runtime:
   compose_file: docker-compose.pericope.yml
   project_name: fortress-phronesis
   service: pericopeai-assets
-  host_bind: 127.0.0.1:13084
+  host_bind: 127.0.0.1:13085
 release_types:
   - code_release
   - rollback
 healthchecks:
   - type: http
-    url: http://127.0.0.1:13084/healthz
+    url: http://127.0.0.1:13085/healthz
   - type: http
-    url: http://127.0.0.1:13084/scriptorium-icons/v1/manifest.json
+    url: http://127.0.0.1:13085/scriptorium-icons/v1/manifest.json
 public_urls:
   - https://assets.pericopeai.com/healthz
   - https://assets.pericopeai.com/scriptorium-icons/v1/manifest.json

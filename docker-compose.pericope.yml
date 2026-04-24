@@ -417,7 +417,7 @@ services:
       dockerfile: Dockerfile
     image: ${PERICOPEAI_ASSETS_IMAGE:-pericopeai-assets:latest}
     ports:
-      - "13084:80"
+      - "13085:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz"]
       interval: 15s

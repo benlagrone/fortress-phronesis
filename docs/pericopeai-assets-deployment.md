@@ -12,7 +12,7 @@ This deploy path serves shared SVG and static assets from the sibling `pericopea
 
 ## What Fortress owns
 
-- Compose service: `pericopeai-assets` on `127.0.0.1:13084`
+- Compose service: `pericopeai-assets` on `127.0.0.1:13085`
 - Deployment workflow: `.github/workflows/deploy-pericopeai-assets.yml`
 - App manifest: `deploy/apps/pericopeai-assets.yaml`
 - Prod registry entry: `deploy/environments/prod.yaml` (currently `enabled: false`)
