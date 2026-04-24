@@ -1,0 +1,133 @@
+name: Repair AMA MariaDB Tempdir
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repair-ama-db-tempdir.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repair-ama-db-tempdir
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve Deploy Credentials
+        shell: bash
+        env:
+          PRIMARY_DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          PRIMARY_DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+          PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.AMA_CALCULATORS_DEPLOY_SSH_KEY }}
+          PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.AMA_CALCULATORS_DEPLOY_KNOWN_HOSTS }}
+          FALLBACK_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          FALLBACK_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          FALLBACK_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          FALLBACK_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          pick() {
+            if [ -n "${1:-}" ]; then
+              printf '%s' "$1"
+            else
+              printf '%s' "${2:-}"
+            fi
+          }
+
+          DEPLOY_HOST="$(pick "${PRIMARY_DEPLOY_HOST:-}" "${FALLBACK_DEPLOY_HOST:-}")"
+          DEPLOY_USER="$(pick "${PRIMARY_DEPLOY_USER:-}" "${FALLBACK_DEPLOY_USER:-}")"
+          DEPLOY_SSH_KEY="$(pick "${PRIMARY_DEPLOY_SSH_KEY:-}" "${FALLBACK_DEPLOY_SSH_KEY:-}")"
+          DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${FALLBACK_DEPLOY_KNOWN_HOSTS:-}")"
+
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing repair deploy configuration: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          {
+            echo "DEPLOY_HOST<<EOF"
+            echo "${DEPLOY_HOST}"
+            echo "EOF"
+            echo "DEPLOY_USER<<EOF"
+            echo "${DEPLOY_USER}"
+            echo "EOF"
+            echo "DEPLOY_SSH_KEY<<EOF"
+            echo "${DEPLOY_SSH_KEY}"
+            echo "EOF"
+            echo "DEPLOY_KNOWN_HOSTS<<EOF"
+            echo "${DEPLOY_KNOWN_HOSTS}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Repair MariaDB tempdir permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+
+          echo "== Host =="
+          hostname
+          whoami
+
+          echo "== /tmp before =="
+          ls -ld /tmp
+          df -h /tmp || true
+          df -i /tmp || true
+
+          echo "== MariaDB tmp variables before =="
+          mysql -NBe "SHOW VARIABLES LIKE 'tmpdir'; SHOW VARIABLES LIKE 'aria_tmpdir';" || true
+
+          chown root:root /tmp
+          chmod 1777 /tmp
+
+          echo "== /tmp after =="
+          ls -ld /tmp
+
+          echo "== MariaDB validation =="
+          mysql wordpress -e "SHOW FULL COLUMNS FROM \`Rei_options\`;" >/dev/null
+
+          echo "== Public site validation =="
+          curl -fsS https://askmortgageauthority.com/ >/tmp/ama-home.html
+          if grep -Eq 'WordPress database error|class=["'"'"']wpdberror["'"'"']|Permission denied' /tmp/ama-home.html; then
+            echo "AMA homepage still contains database errors." >&2
+            exit 1
+          fi
+          REMOTE
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "## AMA MariaDB Tempdir Repair"
+            echo ""
+            echo "- Host: \\`${DEPLOY_HOST}\\`"
+            echo "- Outcome: repair script completed and homepage no longer emitted raw database errors"
+          } >> "$GITHUB_STEP_SUMMARY"
