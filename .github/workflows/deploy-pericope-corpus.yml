@@ -72,31 +72,36 @@ jobs:
             git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
           fi
 
-          if [ -d "${CORPUS_ROOT}" ] && [ ! -d "${CORPUS_ROOT}/.git" ]; then
-            mv "${CORPUS_ROOT}" "${CORPUS_ROOT}.pre-git-$(date -u +%Y%m%dT%H%M%SZ)"
-          fi
-
-          if [ ! -d "${CORPUS_ROOT}/.git" ]; then
-            git clone "${CORPUS_REPO_URL}" "${CORPUS_ROOT}"
+          if [ ! -d "${CORPUS_ROOT}" ]; then
+            echo "::error::AugustineCorpus workspace is missing on the server."
+            exit 1
           fi
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
-          git -C "${CORPUS_ROOT}" fetch origin "${CORPUS_REF}"
-          git -C "${CORPUS_ROOT}" checkout "${CORPUS_REF}"
+          if [ -d "${CORPUS_ROOT}/.git" ]; then
+            git -C "${CORPUS_ROOT}" fetch origin "${CORPUS_REF}"
+            git -C "${CORPUS_ROOT}" checkout "${CORPUS_REF}"
 
-          if ! git -C "${CORPUS_ROOT}" diff --quiet || ! git -C "${CORPUS_ROOT}" diff --cached --quiet; then
-            stash_label="pericope-corpus-predeploy-${SOURCE_SHA:-${CORPUS_REF}}-$(date -u +%Y%m%dT%H%M%SZ)"
-            git -C "${CORPUS_ROOT}" stash push --message "${stash_label}" >/dev/null
-            echo "Stashed tracked AugustineCorpus changes as ${stash_label}."
-          fi
+            if ! git -C "${CORPUS_ROOT}" diff --quiet || ! git -C "${CORPUS_ROOT}" diff --cached --quiet; then
+              stash_label="pericope-corpus-predeploy-${SOURCE_SHA:-${CORPUS_REF}}-$(date -u +%Y%m%dT%H%M%SZ)"
+              git -C "${CORPUS_ROOT}" stash push --message "${stash_label}" >/dev/null
+              echo "Stashed tracked AugustineCorpus changes as ${stash_label}."
+            fi
 
-          git -C "${CORPUS_ROOT}" pull --ff-only origin "${CORPUS_REF}"
+            git -C "${CORPUS_ROOT}" pull --ff-only origin "${CORPUS_REF}"
 
-          if [ -n "${SOURCE_SHA:-}" ]; then
-            git -C "${CORPUS_ROOT}" checkout "${SOURCE_SHA}"
+            if [ -n "${SOURCE_SHA:-}" ]; then
+              git -C "${CORPUS_ROOT}" checkout "${SOURCE_SHA}"
+            fi
+          else
+            echo "Using existing non-git AugustineCorpus workspace."
+            if [ -n "${SOURCE_SHA:-}" ]; then
+              echo "::error::Cannot target a specific source SHA without a git checkout."
+              exit 1
+            fi
           fi
 
           [ -f "${CORPUS_ROOT}/.env" ] || {
