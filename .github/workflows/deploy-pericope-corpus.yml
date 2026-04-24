@@ -72,6 +72,10 @@ jobs:
             git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
           fi
 
+          if [ -d "${CORPUS_ROOT}" ] && [ ! -d "${CORPUS_ROOT}/.git" ]; then
+            mv "${CORPUS_ROOT}" "${CORPUS_ROOT}.pre-git-$(date -u +%Y%m%dT%H%M%SZ)"
+          fi
+
           if [ ! -d "${CORPUS_ROOT}/.git" ]; then
             git clone "${CORPUS_REPO_URL}" "${CORPUS_ROOT}"
           fi
