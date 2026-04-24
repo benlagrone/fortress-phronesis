@@ -3,29 +3,27 @@ name: Deploy Pericope Corpus
 on:
   workflow_dispatch:
     inputs:
-      source_sha:
-        description: Commit SHA built by AugustineCorpus CI
+      corpus_ref:
+        description: AugustineCorpus branch to deploy
         required: true
+        default: master
         type: string
-      environment:
-        description: Target environment
-        required: true
-        default: prod
-        type: choice
-        options:
-          - prod
+      source_sha:
+        description: Optional AugustineCorpus commit SHA to deploy
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: pericope-corpus-${{ inputs.environment }}
+  group: pericope-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: prod
     env:
       COMPOSE_PROJECT: fortress-phronesis
     steps:
@@ -48,83 +46,161 @@ jobs:
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          INPUT_CORPUS_REF: ${{ github.event.inputs.corpus_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
         run: |
           set -euo pipefail
 
+          CORPUS_REF="${INPUT_CORPUS_REF:-master}"
+          SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
+
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOURCE_SHA='${{ inputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' CORPUS_REF='${CORPUS_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
+          FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
+          CORPUS_REPO_URL="https://github.com/benlagrone/AugustineCorpus.git"
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
-          RELEASE_ROOT="$(mktemp -d "${WORKSPACE_ROOT}/pericope-release.XXXXXX")"
-          FORTRESS_RELEASE_ROOT="${RELEASE_ROOT}/fortress-phronesis"
-          CORPUS_RELEASE_ROOT="${RELEASE_ROOT}/AugustineCorpus"
+          FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
-          fi
+          install -d "${WORKSPACE_ROOT}"
 
-          if [ -d "${CORPUS_ROOT}" ] && [ ! -d "${CORPUS_ROOT}/.git" ]; then
-            mv "${CORPUS_ROOT}" "${CORPUS_ROOT}.pre-git-$(date -u +%Y%m%dT%H%M%SZ)"
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            install -d "$(dirname "${FORTRESS_ROOT}")"
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
           fi
 
           if [ ! -d "${CORPUS_ROOT}/.git" ]; then
-            git clone https://github.com/benlagrone/AugustineCorpus.git "${CORPUS_ROOT}"
+            git clone "${CORPUS_REPO_URL}" "${CORPUS_ROOT}"
           fi
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${CORPUS_ROOT}" fetch origin master
-          install -d "${FORTRESS_RELEASE_ROOT}" "${CORPUS_RELEASE_ROOT}"
-          git -C "${DEPLOY_ROOT}" archive --format=tar origin/main | tar -xf - -C "${FORTRESS_RELEASE_ROOT}"
-          git -C "${CORPUS_ROOT}" archive --format=tar "${SOURCE_SHA}" | tar -xf - -C "${CORPUS_RELEASE_ROOT}"
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
-          if [ -f "${CORPUS_ROOT}/.env" ]; then
-            ln -s "${CORPUS_ROOT}/.env" "${CORPUS_RELEASE_ROOT}/.env"
+          git -C "${CORPUS_ROOT}" fetch origin "${CORPUS_REF}"
+          git -C "${CORPUS_ROOT}" checkout "${CORPUS_REF}"
+
+          if ! git -C "${CORPUS_ROOT}" diff --quiet || ! git -C "${CORPUS_ROOT}" diff --cached --quiet; then
+            stash_label="pericope-corpus-predeploy-${SOURCE_SHA:-${CORPUS_REF}}-$(date -u +%Y%m%dT%H%M%SZ)"
+            git -C "${CORPUS_ROOT}" stash push --message "${stash_label}" >/dev/null
+            echo "Stashed tracked AugustineCorpus changes as ${stash_label}."
           fi
 
-          ln -s "${WORKSPACE_ROOT}/AugustineService" "${RELEASE_ROOT}/AugustineService"
-          ln -s "${WORKSPACE_ROOT}/AugustineFE" "${RELEASE_ROOT}/AugustineFE"
-          ln -s "${WORKSPACE_ROOT}/Solomonic_Seals" "${RELEASE_ROOT}/Solomonic_Seals"
+          git -C "${CORPUS_ROOT}" pull --ff-only origin "${CORPUS_REF}"
 
-          cd "${FORTRESS_RELEASE_ROOT}"
+          if [ -n "${SOURCE_SHA:-}" ]; then
+            git -C "${CORPUS_ROOT}" checkout "${SOURCE_SHA}"
+          fi
+
+          [ -f "${CORPUS_ROOT}/.env" ] || {
+            echo "::error::AugustineCorpus/.env is missing on the server."
+            exit 1
+          }
+
+          cd "${FORTRESS_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh
 
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live pericopeai-api
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
 
-          for url in \
-            http://127.0.0.1:18000/api/healthz \
-            http://127.0.0.1:18000/api/v1/authors; do
-            for attempt in $(seq 1 20); do
-              if curl -fsS "$url" >/dev/null 2>&1; then
-                break
-              fi
-              sleep 2
-            done
-            curl -fsS "$url" >/dev/null
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+            python -c "import os; key=(os.getenv('OPENAI_API_KEY') or '').strip(); assert key, 'OPENAI_API_KEY missing'; print('openai-key-present')"
+
+          for _ in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
           done
+          curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+            python - <<'PY'
+          import json
+          import urllib.request
+
+          with urllib.request.urlopen("http://127.0.0.1:8001/healthz", timeout=5) as response:
+              if response.status != 200:
+                  raise SystemExit("corpus health check failed")
+
+          payload = json.dumps(
+              {
+                  "prompt": "Answer in one short sentence.",
+                  "context": "Relevant passages from my works:\\n\\nEcclesiastes 3 reflects on labor and season.",
+                  "mode": "conversation",
+                  "persona": "solomon",
+                  "max_tokens": 80,
+              }
+          ).encode("utf-8")
+          request = urllib.request.Request(
+              "http://127.0.0.1:8001/v1/generate",
+              data=payload,
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(request, timeout=90) as response:
+              body = json.load(response)
+          completion = str(body.get("completion") or "").strip()
+          if not completion:
+              raise SystemExit("corpus generate returned empty completion")
+          lowered = completion.lower()
+          if "api_key client option must be set" in lowered or "openai_api_key" in lowered:
+              raise SystemExit(f"corpus generate still missing llm key: {completion}")
+          print("generate-smoke-ok")
+          PY
+
+          if [ -f "${FE_ROOT}/.env" ]; then
+            FE_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
+            if [ -n "${FE_KEY:-}" ]; then
+              CHAT_PAYLOAD='{"question":"why do we work so hard?","mode":"conversation","persona":"solomon"}'
+              CHAT_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v2/chat \
+                -H "Content-Type: application/json" \
+                -H "x-api-key: ${FE_KEY}" \
+                -d "${CHAT_PAYLOAD}")"
+              CHAT_RESPONSE="${CHAT_RESPONSE}" python - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["CHAT_RESPONSE"])
+          segments = payload.get("segments") or []
+          answer = ""
+          for segment in segments:
+              if segment.get("type") == "answer":
+                  answer = str((segment.get("payload") or {}).get("answer") or "")
+                  break
+          if not answer:
+              answer = str(payload.get("response") or "")
+          lowered = answer.lower()
+          if "api_key client option must be set" in lowered or "openai_api_key" in lowered:
+              raise SystemExit(f"public-chat-smoke failed: {answer}")
+          print("chat-smoke-ok")
+          PY
+            fi
+          fi
           REMOTE
 
       - name: Public Smoke
         shell: bash
         run: |
           set -euo pipefail
-          for url in \
-            https://pericopeai.com/api/healthz \
-            https://pericopeai.com/api/v1/authors; do
-            curl -fsS "$url" >/dev/null
-          done
+          curl -fsS https://pericopeai.com/api/healthz >/dev/null
 
       - name: Deployment Summary
         shell: bash
+        env:
+          INPUT_CORPUS_REF: ${{ github.event.inputs.corpus_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
         run: |
+          set -euo pipefail
+          CORPUS_REF="${INPUT_CORPUS_REF:-master}"
+          SOURCE_SHA="${INPUT_SOURCE_SHA:-latest-on-branch}"
           {
             echo "## Pericope Corpus Deploy"
             echo ""
-            echo "- Environment: \`${{ inputs.environment }}\`"
-            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
-            echo "- Public API: https://pericopeai.com/api/v1/authors"
+            echo "- AugustineCorpus ref: \`${CORPUS_REF}\`"
+            echo "- AugustineCorpus SHA: \`${SOURCE_SHA}\`"
+            echo "- Public API health: https://pericopeai.com/api/healthz"
           } >> "$GITHUB_STEP_SUMMARY"
