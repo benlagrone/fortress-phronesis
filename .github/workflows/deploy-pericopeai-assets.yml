@@ -77,6 +77,11 @@ jobs:
 
           cd "${DEPLOY_ROOT}"
 
+          echo "Current Docker bindings for port 13084:"
+          docker ps -a --format "table {{.Names}}	{{.Status}}	{{.Ports}}" | (grep 13084 || true)
+          echo "Current socket listeners for port 13084:"
+          (sudo ss -ltnp '( sport = :13084 )' || ss -ltn '( sport = :13084 )' || true)
+
           PERICOPEAI_ASSETS_IMAGE="${PERICOPEAI_ASSETS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull pericopeai-assets
           PERICOPEAI_ASSETS_IMAGE="${PERICOPEAI_ASSETS_IMAGE}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d pericopeai-assets
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-assets
