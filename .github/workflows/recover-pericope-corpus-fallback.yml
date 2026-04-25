@@ -1,0 +1,202 @@
+name: Recover Pericope Corpus Fallback
+
+on:
+  workflow_dispatch:
+    inputs:
+      corpus_ref:
+        description: AugustineCorpus branch or SHA to source the llm_router hotfix from
+        required: true
+        default: codex/corpus-extractive-fallback
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Checkout AugustineCorpus Hotfix
+        uses: actions/checkout@v4
+        with:
+          repository: benlagrone/AugustineCorpus
+          ref: ${{ github.event.inputs.corpus_ref }}
+          path: AugustineCorpus-hotfix
+          token: ${{ secrets.JESTER_REPO_TOKEN }}
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload Hotfix File
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 AugustineCorpus-hotfix/llm_router.py "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/pericope-llm_router.py"
+
+      - name: Enable Fallback On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
+          FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          HOTFIX_FILE="/tmp/pericope-llm_router.py"
+
+          [ -f "${HOTFIX_FILE}" ] || {
+            echo "::error::Hotfix file is missing on the server."
+            exit 1
+          }
+
+          [ -f "${CORPUS_ROOT}/.env" ] || {
+            echo "::error::AugustineCorpus/.env is missing on the server."
+            exit 1
+          }
+
+          CORPUS_ROOT="${CORPUS_ROOT}" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          env_path = Path(os.environ["CORPUS_ROOT"]) / ".env"
+          lines = env_path.read_text(encoding="utf-8").splitlines()
+          updated = []
+          replaced = False
+          for line in lines:
+              if line.startswith("USE_MOCK_LLM="):
+                  updated.append("USE_MOCK_LLM=true")
+                  replaced = True
+              else:
+                  updated.append(line)
+          if not replaced:
+              updated.append("USE_MOCK_LLM=true")
+          env_path.write_text("\n".join(updated) + "\n", encoding="utf-8")
+          print("corpus-fallback-enabled")
+          PY
+
+          install -m 0644 "${HOTFIX_FILE}" "${CORPUS_ROOT}/llm_router.py"
+
+          cd "${FORTRESS_ROOT}"
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build augustine-corpus-live pericopeai-api
+
+          container_id="$(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps -q augustine-corpus-live)"
+          [ -n "${container_id}" ] || {
+            echo "::error::augustine-corpus-live container is not running."
+            exit 1
+          }
+
+          docker cp "${HOTFIX_FILE}" "${container_id}:/app/llm_router.py"
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml restart augustine-corpus-live
+
+          for _ in $(seq 1 30); do
+            if docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+              python - <<'PY' >/dev/null 2>&1
+          import urllib.request
+
+          with urllib.request.urlopen("http://127.0.0.1:8001/healthz", timeout=5) as response:
+              if response.status != 200:
+                  raise SystemExit(1)
+          PY
+            then
+              break
+            fi
+            sleep 2
+          done
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
+            python -c "import os; print('use_mock_llm=' + str(os.getenv('USE_MOCK_LLM')))"
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null
+
+          FE_KEY=""
+          if [ -f "${FE_ROOT}/.env" ]; then
+            FE_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
+          fi
+
+          if [ -n "${FE_KEY:-}" ]; then
+            CHAT_PAYLOAD='{"question":"why do we have to work so hard?","mode":"conversation","persona":"solomon"}'
+            CHAT_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v2/chat \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${FE_KEY}" \
+              -d "${CHAT_PAYLOAD}")"
+            CHAT_RESPONSE="${CHAT_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["CHAT_RESPONSE"])
+          segments = payload.get("segments") or []
+          answer = ""
+          for segment in segments:
+              if segment.get("type") == "answer":
+                  answer = str((segment.get("payload") or {}).get("answer") or "")
+                  break
+          if not answer:
+              answer = str(payload.get("response") or "")
+          lowered = answer.lower()
+          if "incorrect api key" in lowered or "error with openai api" in lowered or "api_key client option must be set" in lowered:
+              raise SystemExit(f"internal chat still failing auth: {answer}")
+          print("internal-chat-smoke-ok")
+          PY
+
+            PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/v2/chat \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${FE_KEY}" \
+              -d "${CHAT_PAYLOAD}")"
+            PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["PUBLIC_RESPONSE"])
+          segments = payload.get("segments") or []
+          answer = ""
+          for segment in segments:
+              if segment.get("type") == "answer":
+                  answer = str((segment.get("payload") or {}).get("answer") or "")
+                  break
+          if not answer:
+              answer = str(payload.get("response") or "")
+          lowered = answer.lower()
+          if "incorrect api key" in lowered or "error with openai api" in lowered or "api_key client option must be set" in lowered:
+              raise SystemExit(f"public chat still failing auth: {answer}")
+          print("public-chat-smoke-ok")
+          print(answer[:240])
+          PY
+          fi
+          REMOTE
+
+      - name: Public Health Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://pericopeai.com/api/healthz >/dev/null
