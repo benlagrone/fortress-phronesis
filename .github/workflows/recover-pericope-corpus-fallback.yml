@@ -102,7 +102,7 @@ jobs:
 
           cd "${FORTRESS_ROOT}"
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build augustine-corpus-live pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate augustine-corpus-live pericopeai-api
 
           container_id="$(docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps -q augustine-corpus-live)"
           [ -n "${container_id}" ] || {
