@@ -78,6 +78,20 @@ jobs:
             exit 1
           }
 
+          HOTFIX_FILE="${HOTFIX_FILE}" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["HOTFIX_FILE"])
+          text = path.read_text(encoding="utf-8")
+          old = 'USE_MOCK_LLM = os.getenv("USE_MOCK_LLM", "true").lower() == "true"'
+          new = "USE_MOCK_LLM = True  # emergency prod fallback"
+          if old not in text:
+              raise SystemExit("Could not find USE_MOCK_LLM assignment in hotfix file")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          print("hotfix-file-forced-mock")
+          PY
+
           CORPUS_ROOT="${CORPUS_ROOT}" python3 - <<'PY'
           import os
           from pathlib import Path
@@ -129,7 +143,12 @@ jobs:
           done
 
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
-            python -c "import os; print('use_mock_llm=' + str(os.getenv('USE_MOCK_LLM')))"
+            python - <<'PY'
+          import llm_router
+
+          print("use_mock_llm=" + str(llm_router.USE_MOCK_LLM))
+          print("llm_router_file=" + str(llm_router.__file__))
+          PY
 
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null 2>&1; then
