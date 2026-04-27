@@ -1,0 +1,139 @@
+name: Recover Pericope Book Partial
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Recover Book Partial On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
+          CORPUS_REPO_URL="https://github.com/benlagrone/AugustineCorpus.git"
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
+          FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+
+          install -d "${WORKSPACE_ROOT}"
+
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            install -d "$(dirname "${FORTRESS_ROOT}")"
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+
+          bash "${FORTRESS_ROOT}/scripts/sync-prod-repo.sh" \
+            "${CORPUS_ROOT}" \
+            "${CORPUS_REPO_URL}" \
+            "master" \
+            "AugustineCorpus"
+
+          for required_path in \
+            "${CORPUS_ROOT}/texts/augustine_texts/city-of-god-v2.txt" \
+            "${CORPUS_ROOT}/texts/augustine_texts/doctrine.txt" \
+            "${CORPUS_ROOT}/texts/augustine_texts/the_predestination_of_the_saints_gift_of_perseverance_FULL_TEXT.txt"; do
+            [ -f "${required_path}" ] || {
+              echo "::error::Missing required Augustine text: ${required_path}"
+              exit 1
+            }
+          done
+
+          cd "${FORTRESS_ROOT}"
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live python - <<'PY'
+          import json
+          import urllib.request
+
+          body = json.dumps({
+              "author_slug": "augustine",
+              "book": "City-Of-God-V2",
+              "source": "city-of-god-v2.txt",
+              "chapter": "",
+              "page": "",
+              "start_position": 1217,
+              "end_position": 1218,
+          }).encode("utf-8")
+          req = urllib.request.Request(
+              "http://127.0.0.1:8001/v1/book_partial",
+              data=body,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=20) as resp:
+              payload = json.load(resp)
+          content = str(payload.get("content") or "").strip()
+          if not content:
+              raise SystemExit(f"empty local payload: {payload}")
+          if str(payload.get("source") or "") != "city-of-god-v2.txt":
+              raise SystemExit(f"unexpected local source: {payload}")
+          print("local-book-partial-ok")
+          PY
+
+          API_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
+          [ -n "${API_KEY}" ] || {
+            echo "::error::Missing REACT_APP_AUGUSTINE_API_KEY in ${FE_ROOT}/.env"
+            exit 1
+          }
+
+          PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/v1/book_partial \
+            -H 'Content-Type: application/json' \
+            -H "X-API-Key: ${API_KEY}" \
+            -d '{"author_slug":"augustine","book":"City-Of-God-V2","source":"city-of-god-v2.txt","chapter":"","page":"","start_position":1217,"end_position":1218}')"
+          PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["PUBLIC_RESPONSE"])
+          content = str(payload.get("content") or "").strip()
+          if not content:
+              raise SystemExit(f"empty public payload: {payload}")
+          if str(payload.get("source") or "") != "city-of-god-v2.txt":
+              raise SystemExit(f"unexpected public source: {payload}")
+          print("public-book-partial-ok")
+          PY
+          REMOTE
+
+      - name: Public Health Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://pericopeai.com/api/healthz >/dev/null
+
