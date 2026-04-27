@@ -1,0 +1,197 @@
+name: Recover Pericope Author Acquisition
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_ref:
+        description: AugustineService branch or SHA to source the author acquisition fix from
+        required: false
+        default: master
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Checkout AugustineService Fix
+        uses: actions/checkout@v4
+        with:
+          repository: benlagrone/AugustineService
+          ref: ${{ inputs.service_ref }}
+          path: AugustineService-source
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Copy Service Fix Files
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 AugustineService-source/main.py "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/pericope-main.py"
+          scp -i ~/.ssh/id_ed25519 AugustineService-source/metadata/author_acquisition.json "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/pericope-author_acquisition.json"
+
+      - name: Recover Author Acquisition On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
+          SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
+          SERVICE_MAIN_FIX="/tmp/pericope-main.py"
+          SERVICE_TRACKER_FIX="/tmp/pericope-author_acquisition.json"
+
+          [ -f "${SERVICE_MAIN_FIX}" ] || {
+            echo "::error::Missing /tmp/pericope-main.py on server."
+            exit 1
+          }
+          [ -f "${SERVICE_TRACKER_FIX}" ] || {
+            echo "::error::Missing /tmp/pericope-author_acquisition.json on server."
+            exit 1
+          }
+
+          install -d "${WORKSPACE_ROOT}"
+
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            install -d "$(dirname "${FORTRESS_ROOT}")"
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+
+          if [ ! -d "${CORPUS_ROOT}" ] || [ ! -f "${CORPUS_ROOT}/.env" ]; then
+            if [ -d "${CORPUS_ROOT}" ]; then
+              BROKEN_CORPUS_ROOT="${CORPUS_ROOT}.pre-author-acquisition-recover-$(date -u +%Y%m%dT%H%M%SZ)"
+              mv "${CORPUS_ROOT}" "${BROKEN_CORPUS_ROOT}"
+              echo "Moved incomplete AugustineCorpus workspace to ${BROKEN_CORPUS_ROOT}"
+            fi
+            BACKUP_PATH="$(ls -dt "${WORKSPACE_ROOT}"/AugustineCorpus.pre-codex-* "${WORKSPACE_ROOT}"/AugustineCorpus.pre-git-* 2>/dev/null | head -n1 || true)"
+            [ -n "${BACKUP_PATH}" ] || {
+              echo "::error::AugustineCorpus workspace is missing and no backup directory was found."
+              exit 1
+            }
+            mv "${BACKUP_PATH}" "${CORPUS_ROOT}"
+            echo "Restored AugustineCorpus from ${BACKUP_PATH}"
+          fi
+
+          if [ ! -d "${SERVICE_ROOT}" ]; then
+            BACKUP_PATH="$(ls -dt "${WORKSPACE_ROOT}"/AugustineService.pre-codex-* 2>/dev/null | head -n1 || true)"
+            [ -n "${BACKUP_PATH}" ] || {
+              echo "::error::AugustineService checkout is missing and no backup directory was found."
+              exit 1
+            }
+            mv "${BACKUP_PATH}" "${SERVICE_ROOT}"
+            echo "Restored AugustineService from ${BACKUP_PATH}"
+          fi
+
+          [ -f "${CORPUS_ROOT}/.env" ] || {
+            echo "::error::AugustineCorpus/.env is missing on the server."
+            exit 1
+          }
+          [ -f "${SERVICE_ROOT}/.env" ] || {
+            echo "::error::AugustineService/.env is missing on the server."
+            exit 1
+          }
+
+          install -d "${SERVICE_ROOT}/metadata"
+          cp "${SERVICE_MAIN_FIX}" "${SERVICE_ROOT}/main.py"
+          cp "${SERVICE_TRACKER_FIX}" "${SERVICE_ROOT}/metadata/author_acquisition.json"
+
+          cd "${FORTRESS_ROOT}"
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py </dev/null
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-api
+
+          INTERNAL_RESPONSE=""
+          for attempt in $(seq 1 20); do
+            if INTERNAL_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v1/author-acquisition)"; then
+              break
+            fi
+            sleep 2
+          done
+          [ -n "${INTERNAL_RESPONSE}" ] || {
+            echo "::error::Internal author-acquisition smoke did not return a successful response."
+            exit 1
+          }
+          INTERNAL_RESPONSE="${INTERNAL_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["INTERNAL_RESPONSE"])
+          summary = payload.get("summary") or {}
+          items = payload.get("items") or []
+          if int(summary.get("total_count") or 0) <= 0:
+              raise SystemExit(f"unexpected internal summary: {payload}")
+          if not items:
+              raise SystemExit(f"unexpected empty internal items: {payload}")
+          print("internal-author-acquisition-ok")
+          PY
+
+          PUBLIC_RESPONSE=""
+          for attempt in $(seq 1 20); do
+            if PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/v1/author-acquisition)"; then
+              break
+            fi
+            sleep 2
+          done
+          [ -n "${PUBLIC_RESPONSE}" ] || {
+            echo "::error::Public author-acquisition smoke did not return a successful response."
+            exit 1
+          }
+          PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["PUBLIC_RESPONSE"])
+          summary = payload.get("summary") or {}
+          items = payload.get("items") or []
+          if int(summary.get("total_count") or 0) <= 0:
+              raise SystemExit(f"unexpected public summary: {payload}")
+          if not items:
+              raise SystemExit(f"unexpected empty public items: {payload}")
+          print("public-author-acquisition-ok")
+          PY
+          REMOTE
+
+      - name: Public Health Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            if curl -fsS https://pericopeai.com/api/healthz >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          curl -fsS https://pericopeai.com/api/healthz >/dev/null
