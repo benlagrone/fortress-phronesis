@@ -40,48 +40,63 @@ jobs:
           set -euo pipefail
 
           FORTRESS_ROOT="${DEPLOY_ROOT}"
-          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
-          CLOCK_ROOT="${WORKSPACE_ROOT}/Solomonic_Seals"
           FORTRESS_ENV_FILE="${FORTRESS_ROOT}/.env"
 
-          [ -f "${CLOCK_ROOT}/.env" ] || {
-            echo "::error::Solomonic_Seals/.env is missing on the server."
-            exit 1
-          }
+          install -m 600 /dev/null "${FORTRESS_ENV_FILE}" 2>/dev/null || touch "${FORTRESS_ENV_FILE}"
 
-          CLOCK_ROOT="${CLOCK_ROOT}" python3 - <<'PY'
+          FORTRESS_ENV_FILE="${FORTRESS_ENV_FILE}" python3 - <<'PY'
           import os
           from pathlib import Path
+          import secrets
 
-          clock_env = Path(os.environ["CLOCK_ROOT"]) / ".env"
-          key = ""
-          for line in clock_env.read_text(encoding="utf-8").splitlines():
-              if line.startswith("SOLOMONIC_GUIDED_PROMPTS_API_KEY="):
-                  key = line.split("=", 1)[1].strip()
-                  break
-          if not key:
-              raise SystemExit("Missing SOLOMONIC_GUIDED_PROMPTS_API_KEY in Solomonic_Seals/.env")
-
-          fortress_env = Path(os.environ["CLOCK_ROOT"]).parent / "fortress-phronesis" / ".env"
+          fortress_env = Path(os.environ["FORTRESS_ENV_FILE"])
           lines = fortress_env.read_text(encoding="utf-8").splitlines() if fortress_env.exists() else []
-          updated = []
-          replaced = False
+          current = {}
           for line in lines:
-              if line.startswith("SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY="):
-                  updated.append(f"SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY={key}")
-                  replaced = True
+              if "=" not in line or line.lstrip().startswith("#"):
+                  continue
+              key, value = line.split("=", 1)
+              current[key] = value.strip()
+
+          shared_secret = (
+              current.get("SOLOMONIC_GUIDED_PROMPTS_API_KEY")
+              or current.get("SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY")
+              or secrets.token_urlsafe(48)
+          )
+
+          updated = []
+          seen_clock = False
+          seen_upstream = False
+          for line in lines:
+              if line.startswith("SOLOMONIC_GUIDED_PROMPTS_API_KEY="):
+                  updated.append(f"SOLOMONIC_GUIDED_PROMPTS_API_KEY={shared_secret}")
+                  seen_upstream = True
+              elif line.startswith("SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY="):
+                  updated.append(f"SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY={shared_secret}")
+                  seen_clock = True
               else:
                   updated.append(line)
-          if not replaced:
-              updated.append(f"SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY={key}")
+          if not seen_upstream:
+              updated.append(f"SOLOMONIC_GUIDED_PROMPTS_API_KEY={shared_secret}")
+          if not seen_clock:
+              updated.append(f"SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY={shared_secret}")
           fortress_env.write_text("\n".join(updated) + "\n", encoding="utf-8")
           print("guided-prompts-key-synced")
-          print("guided-prompts-key-length=" + str(len(key)))
+          print("guided-prompts-key-length=" + str(len(shared_secret)))
           PY
 
           cd "${FORTRESS_ROOT}"
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate pericopeai-frontend
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate solomonic-clock pericopeai-frontend
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps solomonic-clock pericopeai-frontend
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8086/api/clock >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8086/api/clock >/dev/null
 
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:13080 >/dev/null 2>&1; then
