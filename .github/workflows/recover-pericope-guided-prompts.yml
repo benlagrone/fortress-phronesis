@@ -108,7 +108,7 @@ jobs:
 
           INTERNAL_RESPONSE="$(curl -fsS http://127.0.0.1:13080/api/pericope/guided-prompts \
             -H 'Content-Type: application/json' \
-            -d '{\"timezone\":\"America/Chicago\",\"as_of\":\"2026-04-27T11:40:00-05:00\",\"limit\":4,\"mode\":\"landing\",\"persona_hint\":\"augustine\"}')"
+            -d '{"timezone":"America/Chicago","as_of":"2026-04-27T11:40:00-05:00","limit":4,"mode":"landing","persona_hint":"augustine"}')"
           INTERNAL_RESPONSE="${INTERNAL_RESPONSE}" python3 - <<'PY'
           import json
           import os
@@ -122,7 +122,7 @@ jobs:
 
           PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/pericope/guided-prompts \
             -H 'Content-Type: application/json' \
-            -d '{\"timezone\":\"America/Chicago\",\"as_of\":\"2026-04-27T11:40:00-05:00\",\"limit\":4,\"mode\":\"landing\",\"persona_hint\":\"augustine\"}')"
+            -d '{"timezone":"America/Chicago","as_of":"2026-04-27T11:40:00-05:00","limit":4,"mode":"landing","persona_hint":"augustine"}')"
           PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
           import json
           import os
