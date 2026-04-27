@@ -42,6 +42,7 @@ jobs:
           FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
 
@@ -56,6 +57,21 @@ jobs:
           git -C "${FORTRESS_ROOT}" checkout main
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
+          if [ ! -d "${CORPUS_ROOT}" ] || [ ! -f "${CORPUS_ROOT}/.env" ]; then
+            if [ -d "${CORPUS_ROOT}" ]; then
+              BROKEN_CORPUS_ROOT="${CORPUS_ROOT}.pre-book-partial-recover-$(date -u +%Y%m%dT%H%M%SZ)"
+              mv "${CORPUS_ROOT}" "${BROKEN_CORPUS_ROOT}"
+              echo "Moved incomplete AugustineCorpus workspace to ${BROKEN_CORPUS_ROOT}"
+            fi
+            BACKUP_PATH="$(ls -dt "${WORKSPACE_ROOT}"/AugustineCorpus.pre-codex-* "${WORKSPACE_ROOT}"/AugustineCorpus.pre-git-* 2>/dev/null | head -n1 || true)"
+            [ -n "${BACKUP_PATH}" ] || {
+              echo "::error::AugustineCorpus workspace is missing and no backup directory was found."
+              exit 1
+            }
+            mv "${BACKUP_PATH}" "${CORPUS_ROOT}"
+            echo "Restored AugustineCorpus from ${BACKUP_PATH}"
+          fi
+
           if [ ! -d "${SERVICE_ROOT}" ]; then
             BACKUP_PATH="$(ls -dt "${WORKSPACE_ROOT}"/AugustineService.pre-codex-* 2>/dev/null | head -n1 || true)"
             [ -n "${BACKUP_PATH}" ] || {
@@ -67,11 +83,13 @@ jobs:
           fi
 
           for required_path in \
+            "${CORPUS_ROOT}/.env" \
+            "${CORPUS_ROOT}/texts/augustine_texts/city-of-god-v2.txt" \
             "${SERVICE_ROOT}/texts/augustine_texts/city-of-god-v2.txt" \
             "${SERVICE_ROOT}/texts/augustine_texts/doctrine.txt" \
             "${SERVICE_ROOT}/texts/augustine_texts/the_predestination_of_the_saints_gift_of_perseverance_FULL_TEXT.txt"; do
             [ -f "${required_path}" ] || {
-              echo "::error::Missing required AugustineService text: ${required_path}"
+              echo "::error::Missing required recovery file: ${required_path}"
               exit 1
             }
           done
