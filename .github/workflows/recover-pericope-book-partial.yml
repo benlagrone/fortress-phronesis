@@ -78,68 +78,69 @@ jobs:
 
           SERVICE_ROOT="${SERVICE_ROOT}" python3 - <<'PY'
           import os
+          import textwrap
           from pathlib import Path
 
           path = Path(os.environ["SERVICE_ROOT"]) / "main.py"
           text = path.read_text(encoding="utf-8")
 
           if "_build_local_book_partial_payload" not in text:
-              helper_block = """
+              helper_block = textwrap.dedent("""
 
-def _resolve_service_local_texts_dir(author_slug: str) -> str:
-    slug = str(author_slug or "").strip().lower()
-    if not slug:
-        raise HTTPException(status_code=400, detail="author_slug is required")
-    return os.path.join(os.path.dirname(__file__), "texts", f"{slug}_texts")
-
-
-def _resolve_service_local_text_path(author_slug: str, source: str) -> str:
-    safe_source = os.path.basename(str(source or "").strip())
-    if not safe_source:
-        raise HTTPException(status_code=400, detail="source is required")
-    return os.path.join(_resolve_service_local_texts_dir(author_slug), safe_source)
+                  def _resolve_service_local_texts_dir(author_slug: str) -> str:
+                      slug = str(author_slug or "").strip().lower()
+                      if not slug:
+                          raise HTTPException(status_code=400, detail="author_slug is required")
+                      return os.path.join(os.path.dirname(__file__), "texts", f"{slug}_texts")
 
 
-def _build_local_book_partial_payload(request: BookPartialRequest) -> dict[str, Any]:
-    file_path = _resolve_service_local_text_path(request.author_slug, request.source)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Book not found")
+                  def _resolve_service_local_text_path(author_slug: str, source: str) -> str:
+                      safe_source = os.path.basename(str(source or "").strip())
+                      if not safe_source:
+                          raise HTTPException(status_code=400, detail="source is required")
+                      return os.path.join(_resolve_service_local_texts_dir(author_slug), safe_source)
 
-    with open(file_path, "r", encoding="utf-8") as handle:
-        content = handle.read()
 
-    entries = _split_into_positions(content, os.path.basename(request.source))
-    if request.start_position < 1 or request.end_position < request.start_position:
-        raise HTTPException(status_code=400, detail="Invalid position range")
-    if not entries:
-        raise HTTPException(status_code=404, detail="Book content not available")
+                  def _build_local_book_partial_payload(request: BookPartialRequest) -> dict[str, Any]:
+                      file_path = _resolve_service_local_text_path(request.author_slug, request.source)
+                      if not os.path.exists(file_path):
+                          raise HTTPException(status_code=404, detail="Book not found")
 
-    span = max(0, request.end_position - request.start_position)
-    start = min(max(1, request.start_position), len(entries))
-    end = min(start + span, len(entries))
-    selected = [entry for position, entry in entries if start <= position <= end]
-    if not selected:
-        raise HTTPException(status_code=404, detail="Book content not available")
+                      with open(file_path, "r", encoding="utf-8") as handle:
+                          content = handle.read()
 
-    book = str(request.book or "").strip() or os.path.splitext(os.path.basename(request.source))[0]
-    chapter = str(request.chapter or "").strip() or None
-    page = str(request.page or "").strip() or None
-    reference = f"{book} {chapter}" if chapter else book
+                      entries = _split_into_positions(content, os.path.basename(request.source))
+                      if request.start_position < 1 or request.end_position < request.start_position:
+                          raise HTTPException(status_code=400, detail="Invalid position range")
+                      if not entries:
+                          raise HTTPException(status_code=404, detail="Book content not available")
 
-    return {
-        "author_slug": str(request.author_slug or "").strip().lower(),
-        "book": book,
-        "source": os.path.basename(request.source),
-        "chapter": chapter or "Unknown Chapter",
-        "page": page or "Unknown Page",
-        "start_position": start,
-        "end_position": end,
-        "reference": reference,
-        "section": "",
-        "testament": "",
-        "content": "\\n\\n".join(selected),
-    }
-"""
+                      span = max(0, request.end_position - request.start_position)
+                      start = min(max(1, request.start_position), len(entries))
+                      end = min(start + span, len(entries))
+                      selected = [entry for position, entry in entries if start <= position <= end]
+                      if not selected:
+                          raise HTTPException(status_code=404, detail="Book content not available")
+
+                      book = str(request.book or "").strip() or os.path.splitext(os.path.basename(request.source))[0]
+                      chapter = str(request.chapter or "").strip() or None
+                      page = str(request.page or "").strip() or None
+                      reference = f"{book} {chapter}" if chapter else book
+
+                      return {
+                          "author_slug": str(request.author_slug or "").strip().lower(),
+                          "book": book,
+                          "source": os.path.basename(request.source),
+                          "chapter": chapter or "Unknown Chapter",
+                          "page": page or "Unknown Page",
+                          "start_position": start,
+                          "end_position": end,
+                          "reference": reference,
+                          "section": "",
+                          "testament": "",
+                          "content": "\\n\\n".join(selected),
+                      }
+              """)
               marker = "\n\ndef _make_summary("
               if marker not in text:
                   raise SystemExit("Unable to locate _make_summary marker in AugustineService/main.py")
