@@ -45,6 +45,7 @@ jobs:
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          CORPUS_ENV_BACKUP=""
 
           install -d "${WORKSPACE_ROOT}"
 
@@ -57,11 +58,24 @@ jobs:
           git -C "${FORTRESS_ROOT}" checkout main
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
+          if [ -d "${CORPUS_ROOT}" ] && [ ! -d "${CORPUS_ROOT}/.git" ]; then
+            BACKUP_PATH="${CORPUS_ROOT}.pre-codex-$(date +%Y%m%d%H%M%S)"
+            if [ -f "${CORPUS_ROOT}/.env" ]; then
+              CORPUS_ENV_BACKUP="${BACKUP_PATH}/.env"
+            fi
+            mv "${CORPUS_ROOT}" "${BACKUP_PATH}"
+            echo "Moved non-git corpus directory to ${BACKUP_PATH}"
+          fi
+
           bash "${FORTRESS_ROOT}/scripts/sync-prod-repo.sh" \
             "${CORPUS_ROOT}" \
             "${CORPUS_REPO_URL}" \
             "master" \
             "AugustineCorpus"
+
+          if [ -n "${CORPUS_ENV_BACKUP}" ] && [ -f "${CORPUS_ENV_BACKUP}" ] && [ ! -f "${CORPUS_ROOT}/.env" ]; then
+            cp "${CORPUS_ENV_BACKUP}" "${CORPUS_ROOT}/.env"
+          fi
 
           for required_path in \
             "${CORPUS_ROOT}/texts/augustine_texts/city-of-god-v2.txt" \
@@ -136,4 +150,3 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsS https://pericopeai.com/api/healthz >/dev/null
-
