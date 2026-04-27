@@ -218,10 +218,22 @@ jobs:
             exit 1
           }
 
-          INTERNAL_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v1/book_partial \
-            -H 'Content-Type: application/json' \
-            -H "X-API-Key: ${API_KEY}" \
-            -d '{"author_slug":"augustine","book":"City-Of-God-V2","source":"city-of-god-v2.txt","chapter":"","page":"","start_position":1217,"end_position":1218}')"
+          BOOK_PARTIAL_PAYLOAD='{"author_slug":"augustine","book":"City-Of-God-V2","source":"city-of-god-v2.txt","chapter":"","page":"","start_position":1217,"end_position":1218}'
+
+          INTERNAL_RESPONSE=""
+          for attempt in $(seq 1 20); do
+            if INTERNAL_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v1/book_partial \
+              -H 'Content-Type: application/json' \
+              -H "X-API-Key: ${API_KEY}" \
+              -d "${BOOK_PARTIAL_PAYLOAD}")"; then
+              break
+            fi
+            sleep 2
+          done
+          [ -n "${INTERNAL_RESPONSE}" ] || {
+            echo "::error::Internal book_partial smoke did not return a successful response."
+            exit 1
+          }
           INTERNAL_RESPONSE="${INTERNAL_RESPONSE}" python3 - <<'PY'
           import json
           import os
@@ -235,10 +247,20 @@ jobs:
           print("internal-book-partial-ok")
           PY
 
-          PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/v1/book_partial \
-            -H 'Content-Type: application/json' \
-            -H "X-API-Key: ${API_KEY}" \
-            -d '{"author_slug":"augustine","book":"City-Of-God-V2","source":"city-of-god-v2.txt","chapter":"","page":"","start_position":1217,"end_position":1218}')"
+          PUBLIC_RESPONSE=""
+          for attempt in $(seq 1 20); do
+            if PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/v1/book_partial \
+              -H 'Content-Type: application/json' \
+              -H "X-API-Key: ${API_KEY}" \
+              -d "${BOOK_PARTIAL_PAYLOAD}")"; then
+              break
+            fi
+            sleep 2
+          done
+          [ -n "${PUBLIC_RESPONSE}" ] || {
+            echo "::error::Public book_partial smoke did not return a successful response."
+            exit 1
+          }
           PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
           import json
           import os
