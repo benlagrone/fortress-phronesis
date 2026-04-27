@@ -63,12 +63,22 @@ jobs:
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
+          SERVICE_ENV_BACKUP=""
 
           install -d "${WORKSPACE_ROOT}"
 
           if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
             install -d "$(dirname "${FORTRESS_ROOT}")"
             git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+
+          if [ -d "${SERVICE_ROOT}" ] && [ ! -d "${SERVICE_ROOT}/.git" ]; then
+            BACKUP_PATH="${SERVICE_ROOT}.pre-codex-$(date +%Y%m%d%H%M%S)"
+            if [ -f "${SERVICE_ROOT}/.env" ]; then
+              SERVICE_ENV_BACKUP="${BACKUP_PATH}/.env"
+            fi
+            mv "${SERVICE_ROOT}" "${BACKUP_PATH}"
+            echo "Moved non-git AugustineService directory to ${BACKUP_PATH}"
           fi
 
           if [ ! -d "${SERVICE_ROOT}/.git" ]; then
@@ -92,6 +102,10 @@ jobs:
 
           if [ -n "${SOURCE_SHA:-}" ]; then
             git -C "${SERVICE_ROOT}" checkout "${SOURCE_SHA}"
+          fi
+
+          if [ -n "${SERVICE_ENV_BACKUP}" ] && [ -f "${SERVICE_ENV_BACKUP}" ] && [ ! -f "${SERVICE_ROOT}/.env" ]; then
+            cp "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
           fi
 
           cd "${FORTRESS_ROOT}"
