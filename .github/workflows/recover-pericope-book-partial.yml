@@ -163,12 +163,44 @@ jobs:
                   raise SystemExit("Unable to locate _make_summary marker in AugustineService/main.py")
               text = text.replace(marker, helper_block + marker, 1)
 
-          old_handler = """    except httpx.HTTPStatusError as e:\n        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)\n"""
-          new_handler = """    except httpx.HTTPStatusError as e:\n        if e.response.status_code == 404:\n            return _build_local_book_partial_payload(request)\n        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)\n"""
-          if new_handler not in text:
-              if old_handler not in text:
-                  raise SystemExit("Unable to locate book_partial HTTPStatusError handler in AugustineService/main.py")
-              text = text.replace(old_handler, new_handler, 1)
+          old_function = textwrap.dedent("""
+          @api_v1_router.post("/book_partial")
+          async def get_book_partial(request: BookPartialRequest):
+              try:
+                  resp = httpx.post(
+                      f"{CORPUS_API_URL}/v1/book_partial",
+                      json=_model_dump(request),
+                      timeout=30.0,
+                  )
+                  resp.raise_for_status()
+                  return resp.json()
+              except httpx.HTTPStatusError as e:
+                  raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+              except Exception as e:
+                  raise HTTPException(status_code=500, detail=str(e))
+          """).strip()
+          new_function = textwrap.dedent("""
+          @api_v1_router.post("/book_partial")
+          async def get_book_partial(request: BookPartialRequest):
+              try:
+                  resp = httpx.post(
+                      f"{CORPUS_API_URL}/v1/book_partial",
+                      json=_model_dump(request),
+                      timeout=30.0,
+                  )
+                  resp.raise_for_status()
+                  return resp.json()
+              except httpx.HTTPStatusError as e:
+                  if e.response.status_code == 404:
+                      return _build_local_book_partial_payload(request)
+                  raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+              except Exception as e:
+                  raise HTTPException(status_code=500, detail=str(e))
+          """).strip()
+          if new_function not in text:
+              if old_function not in text:
+                  raise SystemExit("Unable to locate book_partial function in AugustineService/main.py")
+              text = text.replace(old_function, new_function, 1)
 
           path.write_text(text, encoding="utf-8")
           print("service-main-patched")
