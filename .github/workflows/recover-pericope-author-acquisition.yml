@@ -333,10 +333,12 @@ jobs:
               }
           """)
           if "build_author_acquisition_tracker_payload(" not in text:
-              marker = "\n\ndef _merge_author_portrait_metadata("
-              if marker not in text:
+              helper_anchor = text.find("def _merge_author_portrait_metadata(")
+              if helper_anchor < 0:
+                  helper_anchor = text.find("def load_author_index(")
+              if helper_anchor < 0:
                   raise SystemExit("Unable to locate author tracker helper insertion point in AugustineService/main.py")
-              text = text.replace(marker, helper_block + marker, 1)
+              text = text[:helper_anchor] + helper_block + text[helper_anchor:]
 
           route_block = textwrap.dedent("""
 
@@ -353,10 +355,14 @@ jobs:
               )
           """)
           if '@api_v1_router.get("/author-acquisition")' not in text:
-              marker = '\n\n@api_v1_router.get("/authors/{author_slug}/profile")\n'
-              if marker not in text:
+              route_anchor = text.find('@api_v1_router.get("/authors/{author_slug}/profile")')
+              if route_anchor < 0:
+                  route_anchor = text.find("async def get_author_profile_endpoint(")
+              if route_anchor < 0:
+                  route_anchor = text.find('@api_v1_router.get("/authors/browse")')
+              if route_anchor < 0:
                   raise SystemExit("Unable to locate author acquisition route insertion point in AugustineService/main.py")
-              text = text.replace(marker, route_block + marker, 1)
+              text = text[:route_anchor] + route_block + text[route_anchor:]
 
           path.write_text(text, encoding="utf-8")
           print("service-main-patched")
