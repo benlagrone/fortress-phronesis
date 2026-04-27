@@ -1,0 +1,127 @@
+name: Recover Pericope Guided Prompts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Recover Guided Prompts On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CLOCK_ROOT="${WORKSPACE_ROOT}/Solomonic_Seals"
+          FORTRESS_ENV_FILE="${FORTRESS_ROOT}/.env"
+
+          [ -f "${CLOCK_ROOT}/.env" ] || {
+            echo "::error::Solomonic_Seals/.env is missing on the server."
+            exit 1
+          }
+
+          CLOCK_ROOT="${CLOCK_ROOT}" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          clock_env = Path(os.environ["CLOCK_ROOT"]) / ".env"
+          key = ""
+          for line in clock_env.read_text(encoding="utf-8").splitlines():
+              if line.startswith("SOLOMONIC_GUIDED_PROMPTS_API_KEY="):
+                  key = line.split("=", 1)[1].strip()
+                  break
+          if not key:
+              raise SystemExit("Missing SOLOMONIC_GUIDED_PROMPTS_API_KEY in Solomonic_Seals/.env")
+
+          fortress_env = Path(os.environ["CLOCK_ROOT"]).parent / "fortress-phronesis" / ".env"
+          lines = fortress_env.read_text(encoding="utf-8").splitlines() if fortress_env.exists() else []
+          updated = []
+          replaced = False
+          for line in lines:
+              if line.startswith("SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY="):
+                  updated.append(f"SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY={key}")
+                  replaced = True
+              else:
+                  updated.append(line)
+          if not replaced:
+              updated.append(f"SOLOMONIC_CLOCK_GUIDED_PROMPTS_API_KEY={key}")
+          fortress_env.write_text("\n".join(updated) + "\n", encoding="utf-8")
+          print("guided-prompts-key-synced")
+          print("guided-prompts-key-length=" + str(len(key)))
+          PY
+
+          cd "${FORTRESS_ROOT}"
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate pericopeai-frontend
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:13080 >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:13080 >/dev/null
+
+          INTERNAL_RESPONSE="$(curl -fsS http://127.0.0.1:13080/api/pericope/guided-prompts \
+            -H 'Content-Type: application/json' \
+            -d '{\"timezone\":\"America/Chicago\",\"as_of\":\"2026-04-27T11:40:00-05:00\",\"limit\":4,\"mode\":\"landing\",\"persona_hint\":\"augustine\"}')"
+          INTERNAL_RESPONSE="${INTERNAL_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["INTERNAL_RESPONSE"])
+          prompts = payload.get("guided_prompts") or []
+          if not prompts:
+              raise SystemExit(f"guided prompts missing internally: {payload}")
+          print("internal-guided-prompts-ok")
+          PY
+
+          PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/pericope/guided-prompts \
+            -H 'Content-Type: application/json' \
+            -d '{\"timezone\":\"America/Chicago\",\"as_of\":\"2026-04-27T11:40:00-05:00\",\"limit\":4,\"mode\":\"landing\",\"persona_hint\":\"augustine\"}')"
+          PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["PUBLIC_RESPONSE"])
+          prompts = payload.get("guided_prompts") or []
+          if not prompts:
+              raise SystemExit(f"guided prompts missing publicly: {payload}")
+          print("public-guided-prompts-ok")
+          PY
+          REMOTE
+
+      - name: Public Health Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://pericopeai.com/api/healthz >/dev/null
