@@ -84,7 +84,6 @@ jobs:
 
           for required_path in \
             "${CORPUS_ROOT}/.env" \
-            "${CORPUS_ROOT}/texts/augustine_texts/city-of-god-v2.txt" \
             "${SERVICE_ROOT}/texts/augustine_texts/city-of-god-v2.txt" \
             "${SERVICE_ROOT}/texts/augustine_texts/doctrine.txt" \
             "${SERVICE_ROOT}/texts/augustine_texts/the_predestination_of_the_saints_gift_of_perseverance_FULL_TEXT.txt"; do
