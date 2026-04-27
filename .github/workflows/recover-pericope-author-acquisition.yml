@@ -2,11 +2,6 @@ name: Recover Pericope Author Acquisition
 
 on:
   workflow_dispatch:
-    inputs:
-      service_ref:
-        description: AugustineService branch or SHA to source the author acquisition fix from
-        required: false
-        default: master
 
 permissions:
   contents: read
@@ -21,13 +16,6 @@ jobs:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
-      - name: Checkout AugustineService Fix
-        uses: actions/checkout@v4
-        with:
-          repository: benlagrone/AugustineService
-          ref: ${{ inputs.service_ref }}
-          path: AugustineService-source
-
       - name: Prepare SSH
         shell: bash
         run: |
@@ -37,16 +25,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-
-      - name: Copy Service Fix Files
-        shell: bash
-        env:
-          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          scp -i ~/.ssh/id_ed25519 AugustineService-source/main.py "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/pericope-main.py"
-          scp -i ~/.ssh/id_ed25519 AugustineService-source/metadata/author_acquisition.json "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/pericope-author_acquisition.json"
 
       - name: Recover Author Acquisition On Server
         shell: bash
@@ -66,17 +44,7 @@ jobs:
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
-          SERVICE_MAIN_FIX="/tmp/pericope-main.py"
-          SERVICE_TRACKER_FIX="/tmp/pericope-author_acquisition.json"
-
-          [ -f "${SERVICE_MAIN_FIX}" ] || {
-            echo "::error::Missing /tmp/pericope-main.py on server."
-            exit 1
-          }
-          [ -f "${SERVICE_TRACKER_FIX}" ] || {
-            echo "::error::Missing /tmp/pericope-author_acquisition.json on server."
-            exit 1
-          }
+          TRACKER_SOURCE="${FORTRESS_ROOT}/docs/author_acquisition.json"
 
           install -d "${WORKSPACE_ROOT}"
 
@@ -122,10 +90,280 @@ jobs:
             echo "::error::AugustineService/.env is missing on the server."
             exit 1
           }
+          [ -f "${TRACKER_SOURCE}" ] || {
+            echo "::error::Missing fortress docs tracker at ${TRACKER_SOURCE}."
+            exit 1
+          }
+
+          SERVICE_ROOT="${SERVICE_ROOT}" python3 - <<'PY'
+          import os
+          import textwrap
+          from pathlib import Path
+
+          path = Path(os.environ["SERVICE_ROOT"]) / "main.py"
+          text = path.read_text(encoding="utf-8")
+
+          if "import unicodedata" not in text:
+              marker = "import time\n"
+              if marker not in text:
+                  raise SystemExit("Unable to locate import insertion point in AugustineService/main.py")
+              text = text.replace(marker, marker + "import unicodedata\n", 1)
+
+          if 'metadata", "author_acquisition.json"' not in text:
+              marker = 'PROMPT_VERSION_MANIFEST_PATH = os.path.join(\n'
+              if marker not in text:
+                  raise SystemExit("Unable to locate tracker path insertion point in AugustineService/main.py")
+              block = textwrap.dedent("""
+              AUTHOR_ACQUISITION_TRACKER_PATH = os.path.join(
+                  os.path.dirname(__file__), "metadata", "author_acquisition.json"
+              )
+              """)
+              text = text.replace(marker, block + marker, 1)
+
+          if 'AUTHOR_ACQUISITION_TRACKER: dict[str, Any] | None' not in text and 'AUTHOR_ACQUISITION_TRACKER: list[dict[str, Any]] | None = None' not in text:
+              marker = "PUBLIC_CROSSREF_BOOK_FIELDS = (\n"
+              if marker not in text:
+                  raise SystemExit("Unable to locate tracker state insertion point in AugustineService/main.py")
+              block = textwrap.dedent("""
+              AUTHOR_ACQUISITION_TRACKER: list[dict[str, Any]] | None = None
+              AUTHOR_ACQUISITION_STATUS_GROUP_LABELS = {
+                  "live_on_prod": "Live on prod",
+                  "seeded_baseline": "Seeded baseline",
+                  "partial": "Partial",
+                  "pending": "Pending",
+              }
+              AUTHOR_ACQUISITION_STATUS_GROUP_ORDER = tuple(AUTHOR_ACQUISITION_STATUS_GROUP_LABELS.keys())
+              """)
+              text = text.replace(marker, block + marker, 1)
+
+          helper_block = textwrap.dedent("""
+
+          def _load_author_acquisition_tracker_entries() -> list[dict[str, Any]]:
+              global AUTHOR_ACQUISITION_TRACKER
+
+              if AUTHOR_ACQUISITION_TRACKER is not None:
+                  return AUTHOR_ACQUISITION_TRACKER
+
+              try:
+                  with open(AUTHOR_ACQUISITION_TRACKER_PATH, "r", encoding="utf-8") as handle:
+                      payload = json.load(handle)
+              except Exception:
+                  AUTHOR_ACQUISITION_TRACKER = []
+                  return AUTHOR_ACQUISITION_TRACKER
+
+              items = payload if isinstance(payload, list) else []
+              AUTHOR_ACQUISITION_TRACKER = [
+                  item for item in items if isinstance(item, dict) and _clean_optional_text(item.get("name"))
+              ]
+              return AUTHOR_ACQUISITION_TRACKER
+
+
+          def _slugify_author_name(value: Any) -> str:
+              text = _clean_optional_text(value) or ""
+              normalized = unicodedata.normalize("NFKD", text)
+              ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+              slug = re.sub(r"[^a-z0-9]+", "_", ascii_text.lower()).strip("_")
+              return slug
+
+
+          def _normalize_author_acquisition_group(status: Any) -> str:
+              text = (_clean_optional_text(status) or "").lower()
+              if "texts present" in text and "index volume wired" in text:
+                  return "seeded_baseline"
+              if "pending runtime wiring" in text:
+                  return "partial"
+              if "pending index prebuild" in text:
+                  return "partial"
+              if "runtime wired" in text:
+                  return "live_on_prod"
+              if "queued" in text or "pending text acquisition" in text or text == "pending":
+                  return "pending"
+              return "partial"
+
+
+          def _extract_author_acquisition_works(raw_entry: dict[str, Any]) -> list[str]:
+              note_prefixes = ("Key Works:", "Key Work:", "Key Texts:", "Key Text:")
+              notes = raw_entry.get("notes")
+              if isinstance(notes, list):
+                  for note in notes:
+                      text = _clean_optional_text(note)
+                      if not text:
+                          continue
+                      for prefix in note_prefixes:
+                          if text.startswith(prefix):
+                              parts = re.split(r"[;,]", text[len(prefix):])
+                              works = [
+                                  _clean_optional_text(part)
+                                  for part in parts
+                              ]
+                              cleaned = [work for work in works if work]
+                              if cleaned:
+                                  return cleaned
+
+              works = raw_entry.get("works")
+              if isinstance(works, list):
+                  cleaned = []
+                  for work in works:
+                      text = _clean_optional_text(work)
+                      if not text or text.startswith("http://") or text.startswith("https://"):
+                          continue
+                      cleaned.append(text)
+                  if cleaned:
+                      return cleaned
+
+              return []
+
+
+          def _has_repeatable_recipe(raw_entry: dict[str, Any]) -> bool:
+              notes = raw_entry.get("notes")
+              if not isinstance(notes, list):
+                  return False
+              note_text = " ".join(
+                  (_clean_optional_text(note) or "").lower()
+                  for note in notes
+              )
+              return any(marker in note_text for marker in ("repeatable", "scripted", "automation", "generic downloader"))
+
+
+          def _author_catalog_lookup(authors: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+              lookup: dict[str, dict[str, Any]] = {}
+              for author in authors or []:
+                  if not isinstance(author, dict):
+                      continue
+                  keys = (
+                      _clean_optional_text(author.get("slug")),
+                      _clean_optional_text(author.get("name")),
+                      _clean_optional_text(author.get("catalog_name")),
+                  )
+                  for key in keys:
+                      if key:
+                          lookup[key.strip().lower()] = author
+              return lookup
+
+
+          def build_author_acquisition_tracker_payload(
+              authors: list[dict[str, Any]] | None = None,
+          ) -> dict[str, Any]:
+              authors = authors or []
+              lookup = _author_catalog_lookup(authors)
+              raw_items = _load_author_acquisition_tracker_entries()
+              items: list[dict[str, Any]] = []
+              group_counts = {key: 0 for key in AUTHOR_ACQUISITION_STATUS_GROUP_ORDER}
+              persona_mode_counts: dict[str, int] = {}
+              repeatable_recipe_count = 0
+
+              for index, raw_entry in enumerate(raw_items, start=1):
+                  ledger_name = _clean_optional_text(raw_entry.get("name")) or "Unnamed author"
+                  matched_author = lookup.get(ledger_name.lower())
+                  if matched_author is None:
+                      matched_author = lookup.get(_slugify_author_name(ledger_name))
+
+                  slug = (
+                      _clean_optional_text((matched_author or {}).get("slug"))
+                      or _slugify_author_name(ledger_name)
+                  )
+                  group_key = _normalize_author_acquisition_group(raw_entry.get("status"))
+                  group_label = AUTHOR_ACQUISITION_STATUS_GROUP_LABELS.get(group_key, "Partial")
+                  works = _extract_author_acquisition_works(raw_entry)
+                  persona_mode = _clean_optional_text(raw_entry.get("persona_mode"))
+                  available_in_catalog = bool(matched_author)
+                  catalog_name = _clean_optional_text((matched_author or {}).get("catalog_name"))
+                  has_repeatable_recipe = _has_repeatable_recipe(raw_entry)
+
+                  group_counts[group_key] = group_counts.get(group_key, 0) + 1
+                  if persona_mode:
+                      persona_mode_counts[persona_mode] = persona_mode_counts.get(persona_mode, 0) + 1
+                  if has_repeatable_recipe:
+                      repeatable_recipe_count += 1
+
+                  items.append(
+                      {
+                          "position": index,
+                          "name": ledger_name,
+                          "slug": slug,
+                          "status": _clean_optional_text(raw_entry.get("status")) or "Status not recorded",
+                          "status_group": group_key,
+                          "status_group_label": group_label,
+                          "persona_mode": persona_mode,
+                          "acquired_date": _clean_optional_text(raw_entry.get("acquired_date")),
+                          "queue_date": _clean_optional_text(raw_entry.get("queue_date")),
+                          "works_count": len(works),
+                          "works": works,
+                          "notes": raw_entry.get("notes") if isinstance(raw_entry.get("notes"), list) else [],
+                          "has_repeatable_recipe": has_repeatable_recipe,
+                          "available_in_catalog": available_in_catalog,
+                          "catalog_name": catalog_name,
+                      }
+                  )
+
+              total_count = len(items)
+              seeded_baseline_count = group_counts.get("seeded_baseline", 0)
+              workflow_total_count = max(total_count - seeded_baseline_count, 0)
+              workflow_complete_count = group_counts.get("live_on_prod", 0)
+              workflow_completion_percent = (
+                  round((workflow_complete_count / workflow_total_count) * 100, 1)
+                  if workflow_total_count
+                  else 0.0
+              )
+
+              groups = [
+                  {
+                      "key": key,
+                      "label": AUTHOR_ACQUISITION_STATUS_GROUP_LABELS[key],
+                      "count": group_counts.get(key, 0),
+                  }
+                  for key in AUTHOR_ACQUISITION_STATUS_GROUP_ORDER
+              ]
+
+              return {
+                  "summary": {
+                      "total_count": total_count,
+                      "live_on_prod_count": group_counts.get("live_on_prod", 0),
+                      "seeded_baseline_count": seeded_baseline_count,
+                      "partial_count": group_counts.get("partial", 0),
+                      "pending_count": group_counts.get("pending", 0),
+                      "workflow_total_count": workflow_total_count,
+                      "workflow_complete_count": workflow_complete_count,
+                      "workflow_completion_percent": workflow_completion_percent,
+                      "repeatable_recipe_count": repeatable_recipe_count,
+                      "persona_mode_counts": persona_mode_counts,
+                  },
+                  "groups": groups,
+                  "items": items,
+              }
+          """)
+          if "build_author_acquisition_tracker_payload(" not in text:
+              marker = "\n\ndef _merge_author_portrait_metadata("
+              if marker not in text:
+                  raise SystemExit("Unable to locate author tracker helper insertion point in AugustineService/main.py")
+              text = text.replace(marker, helper_block + marker, 1)
+
+          route_block = textwrap.dedent("""
+
+          @api_v1_router.get("/author-acquisition")
+          async def get_author_acquisition_tracker():
+              try:
+                  authors = [a for a in load_author_index() if not a.get("hidden")]
+              except Exception:
+                  authors = []
+              payload = build_author_acquisition_tracker_payload(authors=authors)
+              return JSONResponse(
+                  content=jsonable_encoder(payload),
+                  headers={"Cache-Control": f"public, max-age={AUTHOR_CATALOG_CACHE_SECONDS}"},
+              )
+          """)
+          if '@api_v1_router.get("/author-acquisition")' not in text:
+              marker = '\n\n@api_v1_router.get("/authors/{author_slug}/profile")\n'
+              if marker not in text:
+                  raise SystemExit("Unable to locate author acquisition route insertion point in AugustineService/main.py")
+              text = text.replace(marker, route_block + marker, 1)
+
+          path.write_text(text, encoding="utf-8")
+          print("service-main-patched")
+          PY
 
           install -d "${SERVICE_ROOT}/metadata"
-          cp "${SERVICE_MAIN_FIX}" "${SERVICE_ROOT}/main.py"
-          cp "${SERVICE_TRACKER_FIX}" "${SERVICE_ROOT}/metadata/author_acquisition.json"
+          cp "${TRACKER_SOURCE}" "${SERVICE_ROOT}/metadata/author_acquisition.json"
 
           cd "${FORTRESS_ROOT}"
 
