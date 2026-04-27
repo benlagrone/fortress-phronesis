@@ -177,7 +177,7 @@ jobs:
           cd "${FORTRESS_ROOT}"
 
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py </dev/null
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-api
 
           API_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
@@ -225,4 +225,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          for attempt in $(seq 1 20); do
+            if curl -fsS https://pericopeai.com/api/healthz >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
           curl -fsS https://pericopeai.com/api/healthz >/dev/null
