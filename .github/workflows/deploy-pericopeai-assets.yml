@@ -95,6 +95,10 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+
+          if [ "${CONFIGURE_PUBLIC_ROUTE:-false}" = "true" ]; then
+            ./scripts/update-nginx-pericopeai-assets.sh
+          fi
           REMOTE
 
       - name: Public Smoke
