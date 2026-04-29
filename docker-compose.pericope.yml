@@ -23,6 +23,9 @@ volumes:
   corpus_haggai_index:
   corpus_hosea_index:
   corpus_irenaeus_index:
+  corpus_hermes_trismegistus_index:
+  corpus_athanasius_of_alexandria_index:
+  corpus_origen_of_alexandria_index:
   corpus_musonius_rufus_index:
   corpus_seneca_index:
   corpus_epictetus_index:
@@ -125,6 +128,9 @@ services:
       - ../AugustineCorpus/texts/haggai_texts:/app/texts/haggai_texts:ro
       - ../AugustineCorpus/texts/hosea_texts:/app/texts/hosea_texts:ro
       - ../AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ../AugustineCorpus/texts/hermes_trismegistus_texts:/app/texts/hermes_trismegistus_texts:ro
+      - ../AugustineCorpus/texts/athanasius_of_alexandria_texts:/app/texts/athanasius_of_alexandria_texts:ro
+      - ../AugustineCorpus/texts/origen_of_alexandria_texts:/app/texts/origen_of_alexandria_texts:ro
       - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
@@ -184,6 +190,9 @@ services:
       - corpus_haggai_index:/app/indexes/haggai
       - corpus_hosea_index:/app/indexes/hosea
       - corpus_irenaeus_index:/app/indexes/irenaeus
+      - corpus_hermes_trismegistus_index:/app/indexes/hermes_trismegistus
+      - corpus_athanasius_of_alexandria_index:/app/indexes/athanasius_of_alexandria
+      - corpus_origen_of_alexandria_index:/app/indexes/origen_of_alexandria
       - corpus_musonius_rufus_index:/app/indexes/musonius_rufus
       - corpus_seneca_index:/app/indexes/seneca
       - corpus_epictetus_index:/app/indexes/epictetus
@@ -263,6 +272,9 @@ services:
       - ../AugustineCorpus/texts/haggai_texts:/app/texts/haggai_texts:ro
       - ../AugustineCorpus/texts/hosea_texts:/app/texts/hosea_texts:ro
       - ../AugustineCorpus/texts/irenaeus_texts:/app/texts/irenaeus_texts:ro
+      - ../AugustineCorpus/texts/hermes_trismegistus_texts:/app/texts/hermes_trismegistus_texts:ro
+      - ../AugustineCorpus/texts/athanasius_of_alexandria_texts:/app/texts/athanasius_of_alexandria_texts:ro
+      - ../AugustineCorpus/texts/origen_of_alexandria_texts:/app/texts/origen_of_alexandria_texts:ro
       - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
@@ -322,6 +334,9 @@ services:
       - corpus_haggai_index:/app/indexes/haggai
       - corpus_hosea_index:/app/indexes/hosea
       - corpus_irenaeus_index:/app/indexes/irenaeus
+      - corpus_hermes_trismegistus_index:/app/indexes/hermes_trismegistus
+      - corpus_athanasius_of_alexandria_index:/app/indexes/athanasius_of_alexandria
+      - corpus_origen_of_alexandria_index:/app/indexes/origen_of_alexandria
       - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
       - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
       - corpus_machiavelli_index:/app/indexes/machiavelli

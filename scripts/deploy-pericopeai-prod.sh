@@ -10,6 +10,7 @@ API_SERVICE=${API_SERVICE:-api}
 DB_SERVICE=${DB_SERVICE:-mysql}
 HEALTH_URL=${HEALTH_URL:-http://localhost:8080/api/healthz}
 CREATE_TABLES_CMD=${CREATE_TABLES_CMD:-python create_tables.py}
+SYNC_AUTHOR_CATALOG_CMD=${SYNC_AUTHOR_CATALOG_CMD:-python sync_author_catalog.py --exclude-local-only}
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 1; }
@@ -52,6 +53,9 @@ docker compose -f "$COMPOSE_FILE" up -d --build "$API_SERVICE"
 
 echo "==> Applying DB migrations via $API_SERVICE: $CREATE_TABLES_CMD"
 docker compose -f "$COMPOSE_FILE" exec "$API_SERVICE" $CREATE_TABLES_CMD
+
+echo "==> Syncing author catalog via $API_SERVICE: $SYNC_AUTHOR_CATALOG_CMD"
+docker compose -f "$COMPOSE_FILE" exec "$API_SERVICE" $SYNC_AUTHOR_CATALOG_CMD
 
 echo "==> Health check $HEALTH_URL"
 curl -i "$HEALTH_URL"

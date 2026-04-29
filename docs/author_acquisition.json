@@ -43,7 +43,7 @@
   },
   {
     "name": "Hermes Trismegistus",
-    "status": "texts downloaded; index built; pending runtime wiring",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-03-13",
     "persona_mode": "Authority",
     "works": [
@@ -190,7 +190,7 @@
   },
   {
     "name": "Niccolò Machiavelli",
-    "status": "texts downloaded; runtime wired; pending index prebuild",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-03-01",
     "persona_mode": "Political",
     "works": [
@@ -207,7 +207,7 @@
   },
   {
     "name": "Athanasius of Alexandria",
-    "status": "texts downloaded; index built; pending runtime wiring",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-03-13",
     "persona_mode": "Authority",
     "works": [
@@ -225,7 +225,7 @@
   },
   {
     "name": "Origen of Alexandria",
-    "status": "texts downloaded; index built; pending runtime wiring",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-03-13",
     "persona_mode": "Authority",
     "works": [
@@ -402,7 +402,7 @@
   },
   {
     "name": "Epictetus",
-    "status": "texts downloaded; runtime wired; pending index prebuild",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-02-17",
     "persona_mode": "Authority",
     "works": [
@@ -419,7 +419,7 @@
   },
   {
     "name": "Seneca",
-    "status": "texts downloaded; runtime wired; pending index prebuild",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-02-17",
     "persona_mode": "Authority",
     "works": [
@@ -436,7 +436,7 @@
   },
   {
     "name": "Musonius Rufus",
-    "status": "texts downloaded; runtime wired; pending index prebuild",
+    "status": "texts downloaded; index built; runtime wired",
     "acquired_date": "2026-02-17",
     "persona_mode": "Authority",
     "works": [
@@ -650,6 +650,9 @@
     "name": "Tacitus",
     "status": "pending",
     "persona_mode": "Authority",
+    "works": [
+      "Germania"
+    ],
     "notes": [
       "Video extract timestamp: 15:09",
       "Roman historian cited for observing imperial decline dynamics",
