@@ -68,7 +68,6 @@ jobs:
 
           FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
           SERVICE_REPO_URL="https://github.com/benlagrone/AugustineService.git"
-          CORPUS_REPO_URL="https://github.com/benlagrone/AugustineCorpus.git"
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
@@ -85,10 +84,6 @@ jobs:
             git clone "${SERVICE_REPO_URL}" "${SERVICE_ROOT}"
           fi
 
-          if [ ! -d "${CORPUS_ROOT}/.git" ]; then
-            git clone "${CORPUS_REPO_URL}" "${CORPUS_ROOT}"
-          fi
-
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
@@ -96,10 +91,6 @@ jobs:
           git -C "${SERVICE_ROOT}" fetch origin "${SERVICE_REF}"
           git -C "${SERVICE_ROOT}" checkout "${SERVICE_REF}"
           git -C "${SERVICE_ROOT}" pull --ff-only origin "${SERVICE_REF}"
-
-          git -C "${CORPUS_ROOT}" fetch origin master
-          git -C "${CORPUS_ROOT}" checkout master
-          git -C "${CORPUS_ROOT}" pull --ff-only origin master
 
           if [ -n "${SOURCE_SHA:-}" ]; then
             git -C "${SERVICE_ROOT}" checkout "${SOURCE_SHA}"
