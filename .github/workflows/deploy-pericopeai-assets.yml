@@ -14,6 +14,11 @@ on:
         type: choice
         options:
           - prod
+      configure_public_route:
+        description: Configure nginx and certificate for assets.pericopeai.com on the host
+        required: false
+        default: false
+        type: boolean
       run_public_smoke:
         description: Run public DNS/HTTPS smoke checks after deploy
         required: false
@@ -59,7 +64,7 @@ jobs:
           set -euo pipefail
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "PERICOPEAI_ASSETS_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "PERICOPEAI_ASSETS_IMAGE='${IMAGE_REF}' CONFIGURE_PUBLIC_ROUTE='${{ inputs.configure_public_route }}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
