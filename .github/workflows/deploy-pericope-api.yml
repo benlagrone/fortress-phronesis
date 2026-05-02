@@ -95,6 +95,7 @@ jobs:
           FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
           SERVICE_BUNDLE="/tmp/augustine-service-source.tgz"
           SERVICE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-service.env.restore"
@@ -133,11 +134,35 @@ jobs:
           git -C "${FORTRESS_ROOT}" checkout main
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
+          if [ ! -d "${CORPUS_ROOT}" ] || [ ! -f "${CORPUS_ROOT}/Dockerfile" ] || [ ! -f "${CORPUS_ROOT}/.env" ]; then
+            if [ -d "${CORPUS_ROOT}" ]; then
+              broken_corpus_root="${CORPUS_ROOT}.pre-api-deploy-${timestamp}"
+              mv "${CORPUS_ROOT}" "${broken_corpus_root}"
+              echo "Moved incomplete AugustineCorpus workspace to ${broken_corpus_root}"
+            fi
+            backup_root="$(ls -1dt "${CORPUS_ROOT}".pre-codex-* "${CORPUS_ROOT}".pre-git-* 2>/dev/null | head -n 1 || true)"
+            [ -n "${backup_root:-}" ] || {
+              echo "::error::AugustineCorpus workspace is missing and no backup directory was found."
+              exit 1
+            }
+            mv "${backup_root}" "${CORPUS_ROOT}"
+            echo "Restored AugustineCorpus from ${backup_root}"
+          fi
+
           install -d "${SERVICE_ROOT}"
           tar -xzf "${SERVICE_BUNDLE}" -C "${SERVICE_ROOT}"
           if [ -f "${SERVICE_ENV_BACKUP}" ]; then
             mv "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
           fi
+
+          [ -f "${CORPUS_ROOT}/Dockerfile" ] || {
+            echo "::error::AugustineCorpus/Dockerfile is missing on the server."
+            exit 1
+          }
+          [ -f "${CORPUS_ROOT}/.env" ] || {
+            echo "::error::AugustineCorpus/.env is missing on the server."
+            exit 1
+          }
 
           cd "${FORTRESS_ROOT}"
 
