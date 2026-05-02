@@ -119,6 +119,16 @@ jobs:
             : > "${WORKSPACE_ROOT}/AugustineCorpus/.env"
           fi
 
+          install -d "${WORKSPACE_ROOT}/AugustineService"
+          if [ ! -f "${WORKSPACE_ROOT}/AugustineService/.env" ]; then
+            service_backup_root="$(ls -1dt "${WORKSPACE_ROOT}"/AugustineService.pre-deploy-* "${WORKSPACE_ROOT}"/AugustineService.pre-git-* "${WORKSPACE_ROOT}"/AugustineService.pre-codex-* 2>/dev/null | head -n 1 || true)"
+            if [ -n "${service_backup_root:-}" ] && [ -f "${service_backup_root}/.env" ]; then
+              cp "${service_backup_root}/.env" "${WORKSPACE_ROOT}/AugustineService/.env"
+            else
+              : > "${WORKSPACE_ROOT}/AugustineService/.env"
+            fi
+          fi
+
           cd "${DEPLOY_ROOT}"
 
           bash scripts/verify-pericope-deploy-lock.sh

@@ -38,6 +38,22 @@ jobs:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
+      - name: Checkout AugustineService Source
+        uses: actions/checkout@v4
+        with:
+          repository: benlagrone/AugustineService
+          ref: ${{ github.event.inputs.service_ref }}
+          fetch-depth: 0
+          path: AugustineService-source
+          token: ${{ secrets.JESTER_REPO_TOKEN }}
+
+      - name: Pin AugustineService Source SHA
+        if: ${{ github.event.inputs.source_sha != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C AugustineService-source checkout "${{ github.event.inputs.source_sha }}"
+
       - name: Prepare SSH
         shell: bash
         run: |
@@ -47,6 +63,16 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload AugustineService Source Bundle
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          tar -C AugustineService-source --exclude=.git -czf /tmp/augustine-service-source.tgz .
+          scp -i ~/.ssh/id_ed25519 /tmp/augustine-service-source.tgz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/augustine-service-source.tgz"
 
       - name: Deploy On Server
         shell: bash
@@ -67,13 +93,19 @@ jobs:
           set -euo pipefail
 
           FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
-          SERVICE_REPO_URL="https://github.com/benlagrone/AugustineService.git"
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
+          SERVICE_BUNDLE="/tmp/augustine-service-source.tgz"
+          SERVICE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-service.env.restore"
           timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
           install -d "${WORKSPACE_ROOT}"
+
+          [ -f "${SERVICE_BUNDLE}" ] || {
+            echo "::error::AugustineService source bundle is missing on the server."
+            exit 1
+          }
 
           if [ -d "${FORTRESS_ROOT}" ] && [ ! -d "${FORTRESS_ROOT}/.git" ]; then
             mv "${FORTRESS_ROOT}" "${FORTRESS_ROOT}.pre-git-${timestamp}"
@@ -84,31 +116,27 @@ jobs:
             git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
           fi
 
-          if [ -d "${SERVICE_ROOT}" ] && [ ! -d "${SERVICE_ROOT}/.git" ]; then
-            mv "${SERVICE_ROOT}" "${SERVICE_ROOT}.pre-git-${timestamp}"
+          if [ -f "${SERVICE_ROOT}/.env" ]; then
+            cp "${SERVICE_ROOT}/.env" "${SERVICE_ENV_BACKUP}"
+          else
+            backup_root="$(ls -1dt "${SERVICE_ROOT}".pre-deploy-* "${SERVICE_ROOT}".pre-git-* "${SERVICE_ROOT}".pre-codex-* 2>/dev/null | head -n 1 || true)"
+            if [ -n "${backup_root:-}" ] && [ -f "${backup_root}/.env" ]; then
+              cp "${backup_root}/.env" "${SERVICE_ENV_BACKUP}"
+            fi
           fi
 
-          if [ ! -d "${SERVICE_ROOT}/.git" ]; then
-            git clone "${SERVICE_REPO_URL}" "${SERVICE_ROOT}"
+          if [ -d "${SERVICE_ROOT}" ]; then
+            mv "${SERVICE_ROOT}" "${SERVICE_ROOT}.pre-deploy-${timestamp}"
           fi
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
-          if ! git -C "${SERVICE_ROOT}" diff --quiet || ! git -C "${SERVICE_ROOT}" diff --cached --quiet; then
-            stash_label="pericope-api-predeploy-${SOURCE_SHA:-${SERVICE_REF}}-${timestamp}"
-            git -C "${SERVICE_ROOT}" stash push --message "${stash_label}" >/dev/null
-            echo "Stashed tracked AugustineService changes as ${stash_label}."
-          fi
-
-          git -C "${SERVICE_ROOT}" fetch origin "${SERVICE_REF}"
-          git -C "${SERVICE_ROOT}" checkout "${SERVICE_REF}"
-          git -C "${SERVICE_ROOT}" merge --ff-only FETCH_HEAD
-
-          if [ -n "${SOURCE_SHA:-}" ]; then
-            resolved_source_sha="$(git -C "${SERVICE_ROOT}" rev-parse --verify "${SOURCE_SHA}^{commit}")"
-            git -C "${SERVICE_ROOT}" checkout "${resolved_source_sha}"
+          install -d "${SERVICE_ROOT}"
+          tar -xzf "${SERVICE_BUNDLE}" -C "${SERVICE_ROOT}"
+          if [ -f "${SERVICE_ENV_BACKUP}" ]; then
+            mv "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
           fi
 
           cd "${FORTRESS_ROOT}"
