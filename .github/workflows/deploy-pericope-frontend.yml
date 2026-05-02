@@ -75,6 +75,11 @@ jobs:
           set -euo pipefail
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+
+          if [ -d "${DEPLOY_ROOT}" ] && [ ! -d "${DEPLOY_ROOT}/.git" ]; then
+            mv "${DEPLOY_ROOT}" "${DEPLOY_ROOT}.pre-git-${timestamp}"
+          fi
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
             install -d "$(dirname "${DEPLOY_ROOT}")"
@@ -82,7 +87,7 @@ jobs:
           fi
 
           if [ -d "${FE_ROOT}" ] && [ ! -d "${FE_ROOT}/.git" ]; then
-            mv "${FE_ROOT}" "${FE_ROOT}.pre-git-$(date -u +%Y%m%dT%H%M%SZ)"
+            mv "${FE_ROOT}" "${FE_ROOT}.pre-git-${timestamp}"
           fi
 
           if [ ! -d "${FE_ROOT}/.git" ]; then
@@ -102,9 +107,10 @@ jobs:
           git -C "${FE_ROOT}" fetch origin master
           git -C "${FE_ROOT}" checkout master
           git -C "${FE_ROOT}" merge --ff-only FETCH_HEAD
+          resolved_source_sha="$(git -C "${FE_ROOT}" rev-parse --verify "${SOURCE_SHA}^{commit}")"
           actual_sha="$(git -C "${FE_ROOT}" rev-parse HEAD)"
-          if [ "${actual_sha}" != "${SOURCE_SHA}" ]; then
-            echo "::error::AugustineFE HEAD ${actual_sha} does not match requested source SHA ${SOURCE_SHA}."
+          if [ "${actual_sha}" != "${resolved_source_sha}" ]; then
+            echo "::error::AugustineFE HEAD ${actual_sha} does not match requested source SHA ${resolved_source_sha}."
             exit 1
           fi
 
