@@ -1,0 +1,177 @@
+name: Recover Pericope Synthesis
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_ref:
+        description: AugustineService branch to source the synthesis route from
+        required: true
+        default: master
+        type: string
+      source_sha:
+        description: Optional AugustineService SHA to pin before patching prod
+        required: false
+        default: "1040646"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Checkout AugustineService Source
+        uses: actions/checkout@v4
+        with:
+          repository: benlagrone/AugustineService
+          ref: ${{ github.event.inputs.service_ref }}
+          fetch-depth: 0
+          path: AugustineService-source
+          token: ${{ secrets.JESTER_REPO_TOKEN }}
+
+      - name: Pin AugustineService Source SHA
+        if: ${{ github.event.inputs.source_sha != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C AugustineService-source checkout "${{ github.event.inputs.source_sha }}"
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload AugustineService Main
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 AugustineService-source/main.py "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/pericope-service-main.py"
+
+      - name: Patch Service And Verify Synthesis
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
+          FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          HOTFIX_FILE="/tmp/pericope-service-main.py"
+
+          [ -f "${HOTFIX_FILE}" ] || {
+            echo "::error::Hotfix file is missing on the server."
+            exit 1
+          }
+
+          if [ ! -d "${SERVICE_ROOT}" ]; then
+            backup_root="$(ls -1dt "${WORKSPACE_ROOT}"/AugustineService.pre-deploy-* "${WORKSPACE_ROOT}"/AugustineService.pre-codex-* "${WORKSPACE_ROOT}"/AugustineService.pre-git-* 2>/dev/null | head -n 1 || true)"
+            [ -n "${backup_root:-}" ] || {
+              echo "::error::AugustineService workspace is missing and no backup directory was found."
+              exit 1
+            }
+            mv "${backup_root}" "${SERVICE_ROOT}"
+            echo "Restored AugustineService from ${backup_root}"
+          fi
+
+          install -m 0644 "${HOTFIX_FILE}" "${SERVICE_ROOT}/main.py"
+
+          cd "${FORTRESS_ROOT}"
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py </dev/null
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-api
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null
+
+          API_KEY="$(grep -m1 '^REACT_APP_AUGUSTINE_API_KEY=' "${FE_ROOT}/.env" | cut -d= -f2-)"
+          [ -n "${API_KEY}" ] || {
+            echo "::error::Missing REACT_APP_AUGUSTINE_API_KEY in ${FE_ROOT}/.env"
+            exit 1
+          }
+
+          SYNTHESIS_PAYLOAD='{"matter":"Should I accept the new role or stay where I am?","counsels":[{"author_slug":"augustine","author_name":"Augustine","question":"Should I accept the new role or stay where I am?","response":"Wait, examine, and order desire before acting.","references":["Psalms 1:1"]},{"author_slug":"seneca","author_name":"Seneca","question":"Should I accept the new role or stay where I am?","response":"Choose the role that best serves virtue and steadiness.","references":["Letters 23"]}],"session_id":"prod-recover","user_id":"prod-recover"}'
+
+          INTERNAL_RESPONSE="$(curl -fsS http://127.0.0.1:18000/api/v2/synthesis \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: ${API_KEY}" \
+            -d "${SYNTHESIS_PAYLOAD}")"
+          INTERNAL_RESPONSE="${INTERNAL_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["INTERNAL_RESPONSE"])
+          if payload.get("status") != "done":
+              raise SystemExit(f"unexpected internal payload: {payload}")
+          if int(payload.get("counsels_count") or 0) < 2:
+              raise SystemExit(f"unexpected internal counsel count: {payload}")
+          synthesis = payload.get("synthesis") or {}
+          if not synthesis.get("common_ground") or not synthesis.get("integrated_principle"):
+              raise SystemExit(f"incomplete internal synthesis payload: {payload}")
+          print("internal-synthesis-ok")
+          PY
+
+          PUBLIC_RESPONSE="$(curl -fsS https://pericopeai.com/api/v2/synthesis \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: ${API_KEY}" \
+            -d "${SYNTHESIS_PAYLOAD}")"
+          PUBLIC_RESPONSE="${PUBLIC_RESPONSE}" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["PUBLIC_RESPONSE"])
+          if payload.get("status") != "done":
+              raise SystemExit(f"unexpected public payload: {payload}")
+          if int(payload.get("counsels_count") or 0) < 2:
+              raise SystemExit(f"unexpected public counsel count: {payload}")
+          synthesis = payload.get("synthesis") or {}
+          if not synthesis.get("common_ground") or not synthesis.get("integrated_principle"):
+              raise SystemExit(f"incomplete public synthesis payload: {payload}")
+          print("public-synthesis-ok")
+          print((payload.get("rendered_text") or "")[:240])
+          PY
+          REMOTE
+
+      - name: Public OpenAPI Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import urllib.request
+
+          with urllib.request.urlopen("https://pericopeai.com/api/openapi.json", timeout=30) as response:
+              payload = json.load(response)
+          paths = payload.get("paths") or {}
+          if "/api/v2/synthesis" not in paths:
+              raise SystemExit("missing /api/v2/synthesis in public openapi")
+          print("public-openapi-synthesis-ok")
+          PY
