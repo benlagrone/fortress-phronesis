@@ -26,7 +26,7 @@ permissions:
   contents: read
 
 env:
-  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus
+  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria,polycarp_of_smyrna,gregory_of_nyssa,tertullian
 
 concurrency:
   group: pericope-api-prod
@@ -269,7 +269,7 @@ jobs:
             --base-url http://127.0.0.1:18000 \
             --assets-base-url http://127.0.0.1:13080 \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for augustine
+            --require-books-for "${REQUIRED_PUBLIC_AUTHOR_SLUGS}"
           for url in \
             http://127.0.0.1:13080/ \
             http://127.0.0.1:13080/asset-manifest.json; do
@@ -281,6 +281,10 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+          if command -v sudo >/dev/null 2>&1; then
+            sudo -n true >/dev/null
+          fi
+          bash scripts/update-nginx-pericopeai.sh
           REMOTE
 
       - name: Public Smoke
@@ -302,7 +306,7 @@ jobs:
             --base-url https://pericopeai.com \
             --assets-base-url https://pericopeai.com \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for augustine
+            --require-books-for "${REQUIRED_PUBLIC_AUTHOR_SLUGS}"
           for url in \
             https://pericopeai.com/ \
             https://pericopeai.com/asset-manifest.json; do

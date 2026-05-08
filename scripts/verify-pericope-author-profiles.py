@@ -44,6 +44,14 @@ def _check_asset(url: str, *, timeout: int) -> str | None:
         status, _body, error = _request(url, method="GET", timeout=timeout)
     if error or status != 200:
         return error or f"HTTP {status}"
+    request = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            content_type = str(response.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    except Exception as exc:  # pragma: no cover
+        return f"content-type check failed: {exc!r}"
+    if not content_type.startswith("image/"):
+        return f"unexpected content-type {content_type or '<missing>'}"
     return None
 
 
