@@ -92,9 +92,9 @@ jobs:
             "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
-          FORTRESS_REPO_URL="https://github.com/benlagrone/fortress-phronesis.git"
-          CORPUS_REPO_URL="https://github.com/benlagrone/AugustineCorpus.git"
-          FE_REPO_URL="https://github.com/benlagrone/AugustineFE.git"
+          FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
+          CORPUS_REPO_URL="git@github.com:benlagrone/AugustineCorpus.git"
+          FE_REPO_URL="git@github.com:benlagrone/AugustineFE.git"
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
@@ -119,6 +119,7 @@ jobs:
             install -d "$(dirname "${FORTRESS_ROOT}")"
             git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
           fi
+          git -C "${FORTRESS_ROOT}" remote set-url origin "${FORTRESS_REPO_URL}"
 
           if [ -f "${SERVICE_ROOT}/.env" ]; then
             cp "${SERVICE_ROOT}/.env" "${SERVICE_ENV_BACKUP}"
@@ -139,6 +140,7 @@ jobs:
           if [ ! -d "${FE_ROOT}/.git" ]; then
             git clone "${FE_REPO_URL}" "${FE_ROOT}"
           fi
+          git -C "${FE_ROOT}" remote set-url origin "${FE_REPO_URL}"
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
@@ -165,6 +167,7 @@ jobs:
           if [ ! -d "${CORPUS_ROOT}/.git" ]; then
             git clone "${CORPUS_REPO_URL}" "${CORPUS_ROOT}"
           fi
+          git -C "${CORPUS_ROOT}" remote set-url origin "${CORPUS_REPO_URL}"
 
           git -C "${CORPUS_ROOT}" fetch origin master
           git -C "${CORPUS_ROOT}" checkout master
