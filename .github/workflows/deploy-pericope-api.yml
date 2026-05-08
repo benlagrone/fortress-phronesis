@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/deploy-pericope-api.yml"
       - "docker-compose.pericope.yml"
+      - "scripts/verify-pericope-author-profiles.py"
       - "scripts/verify-pericope-deploy-lock.sh"
       - "docs/pericopeai-deployment.md"
   workflow_dispatch:
@@ -23,6 +24,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus
 
 concurrency:
   group: pericope-api-prod
@@ -253,7 +257,7 @@ jobs:
             http://127.0.0.1:18000/api/healthz \
             http://127.0.0.1:18000/api/v1/services/augustine.en/version \
             http://127.0.0.1:18000/api/v1/services/augustine.en/versions; do
-            for attempt in $(seq 1 20); do
+            for _ in $(seq 1 20); do
               if curl -fsS "$url" >/dev/null 2>&1; then
                 break
               fi
@@ -261,31 +265,15 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
-          python3 - <<'PY'
-          import json
-          import urllib.request
-          
-          for slug in ("augustine", "polycarp_of_smyrna", "gregory_of_nyssa", "tertullian", "machiavelli", "epictetus", "seneca", "musonius_rufus", "hermes_trismegistus", "athanasius_of_alexandria", "origen_of_alexandria"):
-              url = f"http://127.0.0.1:18000/api/v1/authors/{slug}/profile"
-              with urllib.request.urlopen(url, timeout=30) as response:
-                  payload = json.load(response)
-              if not payload.get("catalog_name"):
-                  raise SystemExit(f"{slug}: missing catalog_name")
-              if not payload.get("wikidata_id"):
-                  raise SystemExit(f"{slug}: missing wikidata_id")
-              portrait = payload.get("portrait") or {}
-              if not portrait.get("media_path"):
-                  raise SystemExit(f"{slug}: missing portrait.media_path")
-              if not (payload.get("books") or []):
-                  raise SystemExit(f"{slug}: missing books")
-          PY
+          python3 scripts/verify-pericope-author-profiles.py \
+            --base-url http://127.0.0.1:18000 \
+            --assets-base-url http://127.0.0.1:13080 \
+            --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
+            --require-books-for augustine
           for url in \
             http://127.0.0.1:13080/ \
-            http://127.0.0.1:13080/asset-manifest.json \
-            http://127.0.0.1:13080/media/authors/polycarp_of_smyrna.jpg \
-            http://127.0.0.1:13080/media/authors/gregory_of_nyssa.jpg \
-            http://127.0.0.1:13080/media/authors/tertullian.png; do
-            for attempt in $(seq 1 20); do
+            http://127.0.0.1:13080/asset-manifest.json; do
+            for _ in $(seq 1 20); do
               if curl -fsS "$url" >/dev/null 2>&1; then
                 break
               fi
@@ -302,7 +290,7 @@ jobs:
           for url in \
             https://pericopeai.com/api/v1/services/augustine.en/version \
             https://pericopeai.com/api/v1/services/augustine.en/versions; do
-            for attempt in $(seq 1 20); do
+            for _ in $(seq 1 20); do
               if curl -fsS "$url" >/dev/null 2>&1; then
                 break
               fi
@@ -310,30 +298,14 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
-          python3 - <<'PY'
-          import json
-          import urllib.request
-          
-          for slug in ("augustine", "polycarp_of_smyrna", "gregory_of_nyssa", "tertullian", "machiavelli", "epictetus", "seneca", "musonius_rufus", "hermes_trismegistus", "athanasius_of_alexandria", "origen_of_alexandria"):
-              url = f"https://pericopeai.com/api/v1/authors/{slug}/profile"
-              with urllib.request.urlopen(url, timeout=30) as response:
-                  payload = json.load(response)
-              if not payload.get("catalog_name"):
-                  raise SystemExit(f"{slug}: missing catalog_name")
-              if not payload.get("wikidata_id"):
-                  raise SystemExit(f"{slug}: missing wikidata_id")
-              portrait = payload.get("portrait") or {}
-              if not portrait.get("media_path"):
-                  raise SystemExit(f"{slug}: missing portrait.media_path")
-              if not (payload.get("books") or []):
-                  raise SystemExit(f"{slug}: missing books")
-          PY
+          python3 scripts/verify-pericope-author-profiles.py \
+            --base-url https://pericopeai.com \
+            --assets-base-url https://pericopeai.com \
+            --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
+            --require-books-for augustine
           for url in \
             https://pericopeai.com/ \
-            https://pericopeai.com/asset-manifest.json \
-            https://pericopeai.com/media/authors/polycarp_of_smyrna.jpg \
-            https://pericopeai.com/media/authors/gregory_of_nyssa.jpg \
-            https://pericopeai.com/media/authors/tertullian.png; do
+            https://pericopeai.com/asset-manifest.json; do
             curl -fsSI "$url" >/dev/null
           done
 

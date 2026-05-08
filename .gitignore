@@ -4,6 +4,7 @@ scripts/*
 !scripts/smoke-crossrefs.py
 !scripts/create-pericopeai-assets-remote.sh
 !scripts/update-nginx-pericopeai-assets.sh
+!scripts/verify-pericope-author-profiles.py
 .env
 .env*.local
 scripts/.env
