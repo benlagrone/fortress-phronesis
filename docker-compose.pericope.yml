@@ -26,6 +26,9 @@ volumes:
   corpus_hermes_trismegistus_index:
   corpus_athanasius_of_alexandria_index:
   corpus_origen_of_alexandria_index:
+  corpus_polycarp_of_smyrna_index:
+  corpus_gregory_of_nyssa_index:
+  corpus_tertullian_index:
   corpus_musonius_rufus_index:
   corpus_seneca_index:
   corpus_epictetus_index:
@@ -131,6 +134,9 @@ services:
       - ../AugustineCorpus/texts/hermes_trismegistus_texts:/app/texts/hermes_trismegistus_texts:ro
       - ../AugustineCorpus/texts/athanasius_of_alexandria_texts:/app/texts/athanasius_of_alexandria_texts:ro
       - ../AugustineCorpus/texts/origen_of_alexandria_texts:/app/texts/origen_of_alexandria_texts:ro
+      - ../AugustineCorpus/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
+      - ../AugustineCorpus/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
+      - ../AugustineCorpus/texts/tertullian_texts:/app/texts/tertullian_texts:ro
       - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
@@ -193,6 +199,9 @@ services:
       - corpus_hermes_trismegistus_index:/app/indexes/hermes_trismegistus
       - corpus_athanasius_of_alexandria_index:/app/indexes/athanasius_of_alexandria
       - corpus_origen_of_alexandria_index:/app/indexes/origen_of_alexandria
+      - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
+      - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
+      - corpus_tertullian_index:/app/indexes/tertullian
       - corpus_musonius_rufus_index:/app/indexes/musonius_rufus
       - corpus_seneca_index:/app/indexes/seneca
       - corpus_epictetus_index:/app/indexes/epictetus
@@ -275,6 +284,9 @@ services:
       - ../AugustineCorpus/texts/hermes_trismegistus_texts:/app/texts/hermes_trismegistus_texts:ro
       - ../AugustineCorpus/texts/athanasius_of_alexandria_texts:/app/texts/athanasius_of_alexandria_texts:ro
       - ../AugustineCorpus/texts/origen_of_alexandria_texts:/app/texts/origen_of_alexandria_texts:ro
+      - ../AugustineCorpus/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
+      - ../AugustineCorpus/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
+      - ../AugustineCorpus/texts/tertullian_texts:/app/texts/tertullian_texts:ro
       - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
@@ -337,6 +349,9 @@ services:
       - corpus_hermes_trismegistus_index:/app/indexes/hermes_trismegistus
       - corpus_athanasius_of_alexandria_index:/app/indexes/athanasius_of_alexandria
       - corpus_origen_of_alexandria_index:/app/indexes/origen_of_alexandria
+      - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
+      - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
+      - corpus_tertullian_index:/app/indexes/tertullian
       - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
       - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
       - corpus_machiavelli_index:/app/indexes/machiavelli

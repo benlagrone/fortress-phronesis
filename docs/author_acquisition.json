@@ -330,21 +330,53 @@
   },
   {
     "name": "Polycarp of Smyrna",
-    "status": "pending",
+    "status": "texts downloaded; index built; runtime wired",
+    "acquired_date": "2026-05-03",
     "persona_mode": "Authority",
-    "notes": []
+    "works": [
+      "https://www.newadvent.org/fathers/0102.htm",
+      "https://www.newadvent.org/fathers/0136.htm"
+    ],
+    "notes": [
+      "Time: c. 69-155 AD; Origin: Smyrna",
+      "Role: Apostolic father, bishop, martyr",
+      "Key Works: Epistle to the Philippians; Martyrdom of Polycarp",
+      "Contribution: Apostolic continuity, endurance, church fidelity, martyr witness"
+    ]
   },
   {
     "name": "Gregory of Nyssa",
-    "status": "pending",
+    "status": "texts downloaded; index built; runtime wired",
+    "acquired_date": "2026-05-03",
     "persona_mode": "Ascetic",
-    "notes": []
+    "works": [
+      "https://www.newadvent.org/fathers/2915.htm",
+      "https://www.newadvent.org/fathers/2914.htm",
+      "https://www.newadvent.org/fathers/2908.htm"
+    ],
+    "notes": [
+      "Time: c. 335-395 AD; Origin: Cappadocia",
+      "Role: Bishop, Cappadocian theologian, contemplative writer",
+      "Key Works: On the Soul and the Resurrection; On the Making of Man; The Great Catechism",
+      "Contribution: Spiritual ascent, theological anthropology, resurrection hope, contemplative theology"
+    ]
   },
   {
     "name": "Tertullian",
-    "status": "pending",
+    "status": "texts downloaded; index built; runtime wired",
+    "acquired_date": "2026-05-03",
     "persona_mode": "Authority",
-    "notes": []
+    "works": [
+      "https://www.newadvent.org/fathers/0301.htm",
+      "https://www.newadvent.org/fathers/0311.htm",
+      "https://www.newadvent.org/fathers/0317.htm"
+    ],
+    "notes": [
+      "Time: c. 155-240 AD; Origin: Carthage",
+      "Role: Apologist, polemicist, theologian",
+      "Key Works: Apology; Prescription Against Heretics; Against Praxeas",
+      "Contribution: Apologetics, doctrinal precision, moral rigor, anti-heretical argument"
+    ]
   },
   {
     "name": "Cyprian of Carthage",

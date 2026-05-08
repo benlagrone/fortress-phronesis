@@ -32,6 +32,9 @@ volumes:
   corpus_machiavelli_index:
   corpus_john_chrysostom_index:
   corpus_eusebius_pamphilus_index:
+  corpus_polycarp_of_smyrna_index:
+  corpus_gregory_of_nyssa_index:
+  corpus_tertullian_index:
   corpus_isaiah_index:
   corpus_james_index:
   corpus_jeremiah_index:
@@ -115,6 +118,9 @@ services:
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/tertullian_texts:/app/texts/tertullian_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/isaiah_texts:/app/texts/isaiah_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/james_texts:/app/texts/james_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jeremiah_texts:/app/texts/jeremiah_texts:ro
@@ -173,6 +179,9 @@ services:
       - corpus_machiavelli_index:/app/indexes/machiavelli
       - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
       - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
+      - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
+      - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
+      - corpus_tertullian_index:/app/indexes/tertullian
       - corpus_isaiah_index:/app/indexes/isaiah
       - corpus_james_index:/app/indexes/james
       - corpus_jeremiah_index:/app/indexes/jeremiah
@@ -248,6 +257,9 @@ services:
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/tertullian_texts:/app/texts/tertullian_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/epictetus_texts:/app/texts/epictetus_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/seneca_texts:/app/texts/seneca_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/musonius_rufus_texts:/app/texts/musonius_rufus_texts:ro
@@ -306,6 +318,9 @@ services:
       - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
       - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
       - corpus_machiavelli_index:/app/indexes/machiavelli
+      - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
+      - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
+      - corpus_tertullian_index:/app/indexes/tertullian
       - corpus_epictetus_index:/app/indexes/epictetus
       - corpus_seneca_index:/app/indexes/seneca
       - corpus_musonius_rufus_index:/app/indexes/musonius_rufus
