@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/deploy-pericope-api.yml"
       - "docker-compose.pericope.yml"
+      - "scripts/update-nginx-pericopeai.sh"
       - "scripts/verify-pericope-author-profiles.py"
       - "scripts/verify-pericope-deploy-lock.sh"
       - "docs/pericopeai-deployment.md"
