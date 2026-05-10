@@ -4,60 +4,14 @@
 
 set -euo pipefail
 
-resolve_pericope_vhost_paths() {
-  local enabled_candidate=""
-  local available_candidate=""
-  local resolved_target=""
-
-  for candidate in \
-    /etc/nginx/sites-enabled/pericopeai.com \
-    /etc/nginx/sites-enabled/pericopeai.conf; do
-    if sudo test -e "${candidate}"; then
-      enabled_candidate="${candidate}"
-      break
-    fi
-  done
-
-  if [ -n "${enabled_candidate}" ]; then
-    resolved_target="$(sudo readlink -f "${enabled_candidate}" 2>/dev/null || true)"
-    if [ -n "${resolved_target}" ] && sudo test -e "${resolved_target}"; then
-      printf '%s\n%s\n' "${enabled_candidate}" "${resolved_target}"
-      return 0
-    fi
-    printf '%s\n%s\n' "${enabled_candidate}" "${enabled_candidate}"
-    return 0
-  fi
-
-  for candidate in \
-    /etc/nginx/sites-available/pericopeai.com \
-    /etc/nginx/sites-available/pericopeai.conf; do
-    if sudo test -e "${candidate}"; then
-      available_candidate="${candidate}"
-      break
-    fi
-  done
-
-  if [ -z "${available_candidate}" ]; then
-    available_candidate="/etc/nginx/sites-available/pericopeai.com"
-  fi
-
-  printf '%s\n%s\n' "/etc/nginx/sites-enabled/$(basename "${available_candidate}")" "${available_candidate}"
-}
-
-mapfile -t VHOST_PATHS < <(resolve_pericope_vhost_paths)
-ACTIVE_LINK="${VHOST_PATHS[0]}"
-VHOST="${VHOST_PATHS[1]}"
 TIMESTAMP="$(date +%Y%m%d%H%M%S)"
-BACKUP="${VHOST}.bak.${TIMESTAMP}"
-ACTIVE_LINK_BACKUP="${ACTIVE_LINK}.bak.${TIMESTAMP}"
+CANONICAL_VHOST="/etc/nginx/sites-available/000-pericopeai-managed.conf"
+CANONICAL_LINK="/etc/nginx/sites-enabled/000-pericopeai-managed.conf"
+CANONICAL_BACKUP="${CANONICAL_VHOST}.bak.${TIMESTAMP}"
 
-echo "Resolved Pericope vhost:"
-echo "  active link: ${ACTIVE_LINK}"
-echo "  config file: ${VHOST}"
+sudo install -d -m 755 "$(dirname "${CANONICAL_VHOST}")" "$(dirname "${CANONICAL_LINK}")"
 
-sudo install -d -m 755 "$(dirname "${VHOST}")" "$(dirname "${ACTIVE_LINK}")"
-
-cat <<'CONF' | sudo tee "${VHOST}.new" >/dev/null
+cat <<'CONF' | sudo tee "${CANONICAL_VHOST}.new" >/dev/null
 upstream pericope_api { server 127.0.0.1:18000; }
 upstream pericope_fe  { server 127.0.0.1:13080; }
 
@@ -100,23 +54,31 @@ server {
 }
 CONF
 
-if sudo test -e "${VHOST}"; then
-  echo "Backing up ${VHOST} to ${BACKUP}"
-  sudo cp "${VHOST}" "${BACKUP}"
+if sudo test -e "${CANONICAL_VHOST}"; then
+  echo "Backing up ${CANONICAL_VHOST} to ${CANONICAL_BACKUP}"
+  sudo cp "${CANONICAL_VHOST}" "${CANONICAL_BACKUP}"
 fi
 
-echo "Replacing ${VHOST}"
-sudo mv "${VHOST}.new" "${VHOST}"
+echo "Writing canonical managed vhost ${CANONICAL_VHOST}"
+sudo mv "${CANONICAL_VHOST}.new" "${CANONICAL_VHOST}"
 
-if [ "${ACTIVE_LINK}" != "${VHOST}" ]; then
-  if sudo test -e "${ACTIVE_LINK}" && ! sudo test -L "${ACTIVE_LINK}"; then
-    echo "Backing up non-symlink active site ${ACTIVE_LINK} to ${ACTIVE_LINK_BACKUP}"
-    sudo cp "${ACTIVE_LINK}" "${ACTIVE_LINK_BACKUP}"
-    sudo rm -f "${ACTIVE_LINK}"
+shopt -s nullglob
+for legacy in /etc/nginx/sites-enabled/*pericopeai* /etc/nginx/conf.d/*pericopeai*; do
+  if [ "${legacy}" = "${CANONICAL_LINK}" ] || [ "${legacy}" = "${CANONICAL_VHOST}" ]; then
+    continue
   fi
-  echo "Linking ${ACTIVE_LINK} -> ${VHOST}"
-  sudo ln -sfn "${VHOST}" "${ACTIVE_LINK}"
-fi
+  backup="${legacy}.disabled.${TIMESTAMP}"
+  echo "Disabling legacy Pericope config ${legacy} -> ${backup}"
+  if sudo test -L "${legacy}"; then
+    sudo rm -f "${legacy}"
+  else
+    sudo mv "${legacy}" "${backup}"
+  fi
+done
+shopt -u nullglob
+
+echo "Linking ${CANONICAL_LINK} -> ${CANONICAL_VHOST}"
+sudo ln -sfn "${CANONICAL_VHOST}" "${CANONICAL_LINK}"
 
 echo "Testing nginx config"
 sudo nginx -t
@@ -126,6 +88,10 @@ sudo nginx -s reload
 
 echo "Enabled site targets:"
 sudo ls -l /etc/nginx/sites-enabled | grep 'pericopeai' || true
+
+echo "Pericope config files:"
+sudo find /etc/nginx/sites-available /etc/nginx/sites-enabled /etc/nginx/conf.d -maxdepth 1 \
+  \( -name '*pericopeai*' -o -name '000-pericopeai-managed.conf' \) -print 2>/dev/null | sort || true
 
 echo "Pericope server block excerpt:"
 sudo nginx -T 2>&1 | awk '
