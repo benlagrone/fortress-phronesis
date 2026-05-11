@@ -232,7 +232,9 @@ jobs:
 
           bash scripts/verify-pericope-deploy-lock.sh
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live \
+            >/tmp/pericope-corpus-build.log 2>&1
+          tail -n 20 /tmp/pericope-corpus-build.log
           for author in \
             polycarp_of_smyrna \
             gregory_of_nyssa \
@@ -244,14 +246,21 @@ jobs:
             hermes_trismegistus \
             athanasius_of_alexandria \
             origen_of_alexandria; do
+            log_file="/tmp/pericope-index-${author}.log"
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml --profile index run --rm \
-              pericopeai-indexer python preprocess_and_index.py --author "${author}" --index-dir "/app/indexes/${author}"
+              pericopeai-indexer python preprocess_and_index.py --author "${author}" --index-dir "/app/indexes/${author}" \
+              >"${log_file}" 2>&1
+            grep -E 'Loaded |Saving index|Index built' "${log_file}" || tail -n 20 "${log_file}"
           done
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api \
+            >/tmp/pericope-api-build.log 2>&1
+          tail -n 20 /tmp/pericope-api-build.log
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python sync_author_catalog.py --corpus-base http://augustine-corpus-live:8001 --exclude-local-only
-          docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+          docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend \
+            >/tmp/pericope-frontend-build.log 2>&1
+          tail -n 20 /tmp/pericope-frontend-build.log
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api pericopeai-frontend
 
           for url in \
@@ -286,6 +295,39 @@ jobs:
             sudo -n true >/dev/null
           fi
           bash scripts/update-nginx-pericopeai.sh
+          python3 - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+          slugs = ["polycarp_of_smyrna", "gregory_of_nyssa", "tertullian"]
+          probes = [
+              ("container-api", "http://127.0.0.1:18000/api/v1/authors"),
+              ("legacy-api", "http://127.0.0.1:8000/api/v1/authors"),
+              ("public-api", "https://pericopeai.com/api/v1/authors"),
+          ]
+
+          for label, url in probes:
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as response:
+                      payload = json.load(response)
+                  visible = {item.get("slug") for item in payload if isinstance(item, dict)}
+                  print(label, {slug: (slug in visible) for slug in slugs}, "count", len(visible))
+              except Exception as exc:
+                  print(label, "error", repr(exc))
+
+          for label, url in [
+              ("container-fe-portrait", "http://127.0.0.1:13080/media/authors/polycarp_of_smyrna.jpg"),
+              ("public-portrait", "https://pericopeai.com/media/authors/polycarp_of_smyrna.jpg"),
+          ]:
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as response:
+                      print(label, response.status, response.headers.get("content-type"), response.headers.get("last-modified"))
+              except urllib.error.HTTPError as exc:
+                  print(label, exc.code, exc.headers.get("content-type"), "HTTPError")
+              except Exception as exc:
+                  print(label, "error", repr(exc))
+          PY
           REMOTE
 
       - name: Public Smoke
