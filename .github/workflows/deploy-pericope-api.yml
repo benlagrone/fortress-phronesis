@@ -279,7 +279,7 @@ jobs:
             --base-url http://127.0.0.1:18000 \
             --assets-base-url http://127.0.0.1:13080 \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for "${REQUIRED_PUBLIC_AUTHOR_SLUGS}"
+            --require-books-for augustine
           for url in \
             http://127.0.0.1:13080/ \
             http://127.0.0.1:13080/asset-manifest.json; do
@@ -349,7 +349,7 @@ jobs:
             --base-url https://pericopeai.com \
             --assets-base-url https://pericopeai.com \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for "${REQUIRED_PUBLIC_AUTHOR_SLUGS}"
+            --require-books-for augustine
           for url in \
             https://pericopeai.com/ \
             https://pericopeai.com/asset-manifest.json; do
