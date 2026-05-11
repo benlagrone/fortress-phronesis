@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 env:
-  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria,polycarp_of_smyrna,gregory_of_nyssa,tertullian
+  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria
 
 concurrency:
   group: pericope-api-prod
