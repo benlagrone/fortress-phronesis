@@ -19,23 +19,45 @@ on:
         type: choice
         options:
           - prod
+  repository_dispatch:
+    types:
+      - deploy-solomonic-clock
 
 permissions:
   contents: read
 
 concurrency:
-  group: solomonic-clock-${{ inputs.environment }}
+  group: solomonic-clock-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
     env:
       COMPOSE_PROJECT: fortress-phronesis
-      IMAGE_REF: ghcr.io/benlagrone/solomonic-seals:sha-${{ inputs.source_sha }}
-      SOURCE_VERSION: ${{ inputs.source_version }}
+      DEPLOY_ENVIRONMENT: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+      SOURCE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || inputs.source_sha }}
+      IMAGE_REF: ghcr.io/benlagrone/solomonic-seals:sha-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || inputs.source_sha }}
+      SOURCE_VERSION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_version || inputs.source_version || '' }}
     steps:
+      - name: Resolve Trigger Inputs
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SOURCE_SHA:-}" ]; then
+            echo "source_sha is required" >&2
+            exit 1
+          fi
+
+          {
+            echo "source_sha=${SOURCE_SHA}"
+            echo "deploy_environment=${DEPLOY_ENVIRONMENT}"
+            echo "source_version=${SOURCE_VERSION:-}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
@@ -61,7 +83,7 @@ jobs:
           RELEASED_AT_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOLOMONIC_CLOCK_IMAGE='${IMAGE_REF}' SOLOMONIC_APP_VERSION='${SOURCE_VERSION}' SOLOMONIC_RELEASE='sha-${{ inputs.source_sha }}' SOLOMONIC_RELEASED_AT='${RELEASED_AT_UTC}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "SOLOMONIC_CLOCK_IMAGE='${IMAGE_REF}' SOLOMONIC_APP_VERSION='${SOURCE_VERSION}' SOLOMONIC_RELEASE='sha-${SOURCE_SHA}' SOLOMONIC_RELEASED_AT='${RELEASED_AT_UTC}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
@@ -115,10 +137,11 @@ jobs:
           {
             echo "## Solomonic Clock Deploy"
             echo ""
-            echo "- Environment: \`${{ inputs.environment }}\`"
-            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
-            echo "- Source version: \`${{ inputs.source_version || 'not provided' }}\`"
-            echo "- Release label: \`sha-${{ inputs.source_sha }}\`"
+            echo "- Environment: \`${{ steps.resolve.outputs.deploy_environment }}\`"
+            echo "- Source SHA: \`${{ steps.resolve.outputs.source_sha }}\`"
+            echo "- Source version: \`${{ steps.resolve.outputs.source_version || 'not provided' }}\`"
+            echo "- Release label: \`sha-${{ steps.resolve.outputs.source_sha }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
             echo "- Public URL: https://truevineos.cloud/"
           } >> "$GITHUB_STEP_SUMMARY"
