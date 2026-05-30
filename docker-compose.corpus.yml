@@ -35,6 +35,9 @@ volumes:
   corpus_polycarp_of_smyrna_index:
   corpus_gregory_of_nyssa_index:
   corpus_tertullian_index:
+  corpus_cyprian_of_carthage_index:
+  corpus_boethius_index:
+  corpus_anselm_of_canterbury_index:
   corpus_isaiah_index:
   corpus_james_index:
   corpus_jeremiah_index:
@@ -121,6 +124,9 @@ services:
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/tertullian_texts:/app/texts/tertullian_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/cyprian_of_carthage_texts:/app/texts/cyprian_of_carthage_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/boethius_texts:/app/texts/boethius_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/anselm_of_canterbury_texts:/app/texts/anselm_of_canterbury_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/isaiah_texts:/app/texts/isaiah_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/james_texts:/app/texts/james_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/jeremiah_texts:/app/texts/jeremiah_texts:ro
@@ -182,6 +188,9 @@ services:
       - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
       - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
       - corpus_tertullian_index:/app/indexes/tertullian
+      - corpus_cyprian_of_carthage_index:/app/indexes/cyprian_of_carthage
+      - corpus_boethius_index:/app/indexes/boethius
+      - corpus_anselm_of_canterbury_index:/app/indexes/anselm_of_canterbury
       - corpus_isaiah_index:/app/indexes/isaiah
       - corpus_james_index:/app/indexes/james
       - corpus_jeremiah_index:/app/indexes/jeremiah
@@ -260,6 +269,9 @@ services:
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/tertullian_texts:/app/texts/tertullian_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/cyprian_of_carthage_texts:/app/texts/cyprian_of_carthage_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/boethius_texts:/app/texts/boethius_texts:ro
+      - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/anselm_of_canterbury_texts:/app/texts/anselm_of_canterbury_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/epictetus_texts:/app/texts/epictetus_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/seneca_texts:/app/texts/seneca_texts:ro
       - ${WORKSPACE_ROOT}/${CORPUS_REPO}/texts/musonius_rufus_texts:/app/texts/musonius_rufus_texts:ro
@@ -321,6 +333,9 @@ services:
       - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
       - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
       - corpus_tertullian_index:/app/indexes/tertullian
+      - corpus_cyprian_of_carthage_index:/app/indexes/cyprian_of_carthage
+      - corpus_boethius_index:/app/indexes/boethius
+      - corpus_anselm_of_canterbury_index:/app/indexes/anselm_of_canterbury
       - corpus_epictetus_index:/app/indexes/epictetus
       - corpus_seneca_index:/app/indexes/seneca
       - corpus_musonius_rufus_index:/app/indexes/musonius_rufus

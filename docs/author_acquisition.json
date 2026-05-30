@@ -380,21 +380,54 @@
   },
   {
     "name": "Cyprian of Carthage",
-    "status": "pending",
+    "status": "texts downloaded; index built; runtime wired",
+    "acquired_date": "2026-05-27",
     "persona_mode": "Authority",
-    "notes": []
+    "works": [
+      "https://www.newadvent.org/fathers/0507.htm",
+      "https://www.newadvent.org/fathers/0506.htm"
+    ],
+    "notes": [
+      "Time: c. 210-258 AD; Origin: Carthage",
+      "Role: Bishop, martyr, ecclesial theologian",
+      "Key Works: Treatises; Epistles; On the Unity of the Church",
+      "Contribution: Church unity, episcopal authority, penitence, pastoral discipline, martyr witness"
+    ]
   },
   {
     "name": "Boethius",
-    "status": "pending",
+    "status": "texts downloaded; index built; runtime wired",
+    "acquired_date": "2026-05-27",
     "persona_mode": "Authority",
-    "notes": []
+    "works": [
+      "https://www.gutenberg.org/ebooks/14328",
+      "https://www.ccel.org/ccel/boethius/tracts/tracts.iv.i.html",
+      "https://www.ccel.org/ccel/boethius/tracts/tracts.iv.iv.html",
+      "https://www.ccel.org/ccel/boethius/tracts/tracts.iv.v.html"
+    ],
+    "notes": [
+      "Time: c. 480-524 AD; Origin: Rome",
+      "Role: Philosopher, statesman, Christian Platonist",
+      "Key Works: The Consolation of Philosophy; Theological Tractates; Against Eutyches and Nestorius",
+      "Contribution: Providence and freedom, highest good, metaphysical theology, transmission of classical philosophy"
+    ]
   },
   {
     "name": "Anselm of Canterbury",
-    "status": "pending",
+    "status": "texts downloaded; index built; runtime wired",
+    "acquired_date": "2026-05-27",
     "persona_mode": "Interior",
-    "notes": []
+    "works": [
+      "https://sourcebooks.web.fordham.edu/basis/anselm-proslogium.asp",
+      "https://sourcebooks.web.fordham.edu/basis/anselm-monologium.asp",
+      "https://sourcebooks.web.fordham.edu/basis/anselm-curdeus.asp"
+    ],
+    "notes": [
+      "Time: 1033-1109; Origin: Aosta, later Bec and Canterbury",
+      "Role: Archbishop, theologian, philosopher",
+      "Key Works: Proslogium; Monologium; Cur Deus Homo",
+      "Contribution: Faith seeking understanding, ontological argument, rational theology, satisfaction account of atonement"
+    ]
   },
   {
     "name": "Bernard of Clairvaux",

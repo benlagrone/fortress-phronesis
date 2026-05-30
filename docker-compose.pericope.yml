@@ -29,6 +29,9 @@ volumes:
   corpus_polycarp_of_smyrna_index:
   corpus_gregory_of_nyssa_index:
   corpus_tertullian_index:
+  corpus_cyprian_of_carthage_index:
+  corpus_boethius_index:
+  corpus_anselm_of_canterbury_index:
   corpus_musonius_rufus_index:
   corpus_seneca_index:
   corpus_epictetus_index:
@@ -137,6 +140,9 @@ services:
       - ../AugustineCorpus/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
       - ../AugustineCorpus/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
       - ../AugustineCorpus/texts/tertullian_texts:/app/texts/tertullian_texts:ro
+      - ../AugustineCorpus/texts/cyprian_of_carthage_texts:/app/texts/cyprian_of_carthage_texts:ro
+      - ../AugustineCorpus/texts/boethius_texts:/app/texts/boethius_texts:ro
+      - ../AugustineCorpus/texts/anselm_of_canterbury_texts:/app/texts/anselm_of_canterbury_texts:ro
       - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
@@ -202,6 +208,9 @@ services:
       - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
       - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
       - corpus_tertullian_index:/app/indexes/tertullian
+      - corpus_cyprian_of_carthage_index:/app/indexes/cyprian_of_carthage
+      - corpus_boethius_index:/app/indexes/boethius
+      - corpus_anselm_of_canterbury_index:/app/indexes/anselm_of_canterbury
       - corpus_musonius_rufus_index:/app/indexes/musonius_rufus
       - corpus_seneca_index:/app/indexes/seneca
       - corpus_epictetus_index:/app/indexes/epictetus
@@ -287,6 +296,9 @@ services:
       - ../AugustineCorpus/texts/polycarp_of_smyrna_texts:/app/texts/polycarp_of_smyrna_texts:ro
       - ../AugustineCorpus/texts/gregory_of_nyssa_texts:/app/texts/gregory_of_nyssa_texts:ro
       - ../AugustineCorpus/texts/tertullian_texts:/app/texts/tertullian_texts:ro
+      - ../AugustineCorpus/texts/cyprian_of_carthage_texts:/app/texts/cyprian_of_carthage_texts:ro
+      - ../AugustineCorpus/texts/boethius_texts:/app/texts/boethius_texts:ro
+      - ../AugustineCorpus/texts/anselm_of_canterbury_texts:/app/texts/anselm_of_canterbury_texts:ro
       - ../AugustineCorpus/texts/eusebius_pamphilus_texts:/app/texts/eusebius_pamphilus_texts:ro
       - ../AugustineCorpus/texts/john_chrysostom_texts:/app/texts/john_chrysostom_texts:ro
       - ../AugustineCorpus/texts/machiavelli_texts:/app/texts/machiavelli_texts:ro
@@ -352,6 +364,9 @@ services:
       - corpus_polycarp_of_smyrna_index:/app/indexes/polycarp_of_smyrna
       - corpus_gregory_of_nyssa_index:/app/indexes/gregory_of_nyssa
       - corpus_tertullian_index:/app/indexes/tertullian
+      - corpus_cyprian_of_carthage_index:/app/indexes/cyprian_of_carthage
+      - corpus_boethius_index:/app/indexes/boethius
+      - corpus_anselm_of_canterbury_index:/app/indexes/anselm_of_canterbury
       - corpus_eusebius_pamphilus_index:/app/indexes/eusebius_pamphilus
       - corpus_john_chrysostom_index:/app/indexes/john_chrysostom
       - corpus_machiavelli_index:/app/indexes/machiavelli

@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 env:
-  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria
+  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria,cyprian_of_carthage,boethius,anselm_of_canterbury
 
 concurrency:
   group: pericope-api-prod
@@ -239,6 +239,9 @@ jobs:
             polycarp_of_smyrna \
             gregory_of_nyssa \
             tertullian \
+            cyprian_of_carthage \
+            boethius \
+            anselm_of_canterbury \
             epictetus \
             seneca \
             musonius_rufus \
@@ -279,7 +282,7 @@ jobs:
             --base-url http://127.0.0.1:18000 \
             --assets-base-url http://127.0.0.1:13080 \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for augustine
+            --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury
           for url in \
             http://127.0.0.1:13080/ \
             http://127.0.0.1:13080/asset-manifest.json; do
@@ -300,7 +303,7 @@ jobs:
           import urllib.error
           import urllib.request
 
-          slugs = ["polycarp_of_smyrna", "gregory_of_nyssa", "tertullian"]
+          slugs = ["polycarp_of_smyrna", "gregory_of_nyssa", "tertullian", "cyprian_of_carthage", "boethius", "anselm_of_canterbury"]
           probes = [
               ("container-api", "http://127.0.0.1:18000/api/v1/authors"),
               ("legacy-api", "http://127.0.0.1:8000/api/v1/authors"),
@@ -350,7 +353,7 @@ jobs:
               --base-url https://pericopeai.com \
               --assets-base-url https://pericopeai.com \
               --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-              --require-books-for augustine >/dev/null 2>&1 && \
+              --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury >/dev/null 2>&1 && \
               curl -fsSI https://pericopeai.com/ >/dev/null 2>&1 && \
               curl -fsSI https://pericopeai.com/asset-manifest.json >/dev/null 2>&1; then
               break
@@ -361,7 +364,7 @@ jobs:
             --base-url https://pericopeai.com \
             --assets-base-url https://pericopeai.com \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for augustine
+            --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury
           for url in \
             https://pericopeai.com/ \
             https://pericopeai.com/asset-manifest.json; do
@@ -385,5 +388,8 @@ jobs:
             echo "- Public API: https://pericopeai.com/api/v1/services/augustine.en/version"
             echo "- Public History: https://pericopeai.com/api/v1/services/augustine.en/versions"
             echo "- Public Augustine profile: https://pericopeai.com/api/v1/authors/augustine/profile"
+            echo "- Public Cyprian profile: https://pericopeai.com/api/v1/authors/cyprian_of_carthage/profile"
+            echo "- Public Boethius profile: https://pericopeai.com/api/v1/authors/boethius/profile"
+            echo "- Public Anselm profile: https://pericopeai.com/api/v1/authors/anselm_of_canterbury/profile"
             echo "- Public Machiavelli profile: https://pericopeai.com/api/v1/authors/machiavelli/profile"
           } >> "$GITHUB_STEP_SUMMARY"
