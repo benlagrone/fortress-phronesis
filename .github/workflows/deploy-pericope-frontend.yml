@@ -134,9 +134,16 @@ jobs:
           cd "${FORTRESS_ROOT}"
           bash scripts/verify-pericope-deploy-lock.sh
 
+          set +e
           docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend \
             >/tmp/pericope-frontend-build.log 2>&1
-          tail -n 20 /tmp/pericope-frontend-build.log
+          build_rc=$?
+          set -e
+          tail -n 200 /tmp/pericope-frontend-build.log
+          if [ "${build_rc}" -ne 0 ]; then
+            echo "::error::Pericope frontend build failed."
+            exit "${build_rc}"
+          fi
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-frontend
 
           for url in \
