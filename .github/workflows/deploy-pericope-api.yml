@@ -66,8 +66,15 @@ jobs:
 
           SERVICE_REF="${INPUT_SERVICE_REF:-master}"
           SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
+          SSH_OPTS=(
+            -i ~/.ssh/id_ed25519
+            -o BatchMode=yes
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
+            -o TCPKeepAlive=yes
+          )
 
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
           set -euo pipefail
 
