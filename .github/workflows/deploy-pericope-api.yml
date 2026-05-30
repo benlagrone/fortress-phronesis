@@ -10,7 +10,6 @@ on:
       - "scripts/update-nginx-pericopeai.sh"
       - "scripts/verify-pericope-author-profiles.py"
       - "scripts/verify-pericope-deploy-lock.sh"
-      - "docs/pericopeai-deployment.md"
   workflow_dispatch:
     inputs:
       service_ref:
