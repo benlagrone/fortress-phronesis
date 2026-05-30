@@ -1,31 +1,38 @@
 name: Deploy Pericope Frontend
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-pericope-frontend.yml"
+      - "docs/pericopeai-deployment.md"
   workflow_dispatch:
     inputs:
-      source_sha:
-        description: Commit SHA built by AugustineFE CI
+      fe_ref:
+        description: AugustineFE branch to deploy
         required: true
+        default: master
         type: string
-      environment:
-        description: Target environment
-        required: true
-        default: prod
-        type: choice
-        options:
-          - prod
+      fe_sha:
+        description: Optional AugustineFE commit SHA to deploy
+        required: false
+        type: string
 
 permissions:
   contents: read
 
+env:
+  REQUIRED_MEDIA_PATHS: /media/authors/augustine.jpg,/media/authors/cyprian_of_carthage.jpg,/media/authors/boethius.jpg,/media/authors/anselm_of_canterbury.jpg
+
 concurrency:
-  group: pericope-prod
+  group: pericope-frontend-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: prod
     env:
       COMPOSE_PROJECT: fortress-phronesis
     steps:
@@ -48,118 +55,150 @@ jobs:
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          INPUT_FE_REF: ${{ github.event.inputs.fe_ref }}
+          INPUT_FE_SHA: ${{ github.event.inputs.fe_sha }}
         run: |
           set -euo pipefail
 
-          ssh-keygen -lf ~/.ssh/id_ed25519 >/dev/null 2>&1 || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_SSH_KEY is missing or invalid."
-            exit 1
-          }
-          [ -n "${DEPLOY_HOST:-}" ] || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_HOST is missing."
-            exit 1
-          }
-          [ -n "${DEPLOY_USER:-}" ] || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_USER is missing."
-            exit 1
-          }
-          [ -n "${DEPLOY_ROOT:-}" ] || {
-            echo "::error::SOLOMONIC_CLOCK_DEPLOY_ROOT is missing."
-            exit 1
-          }
+          FE_REF="${INPUT_FE_REF:-master}"
+          FE_SHA="${INPUT_FE_SHA:-}"
+          SSH_OPTS=(
+            -i ~/.ssh/id_ed25519
+            -o BatchMode=yes
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
+            -o TCPKeepAlive=yes
+          )
 
-          set +e
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOURCE_SHA='${{ inputs.source_sha }}' DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" \
-            2>deploy-ssh.stderr <<'REMOTE'
+          ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' FE_REF='${FE_REF}' FE_SHA='${FE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_MEDIA_PATHS='${REQUIRED_MEDIA_PATHS}' bash -s" <<'REMOTE'
           set -euo pipefail
+
+          FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
+          FE_REPO_URL="git@github.com:benlagrone/AugustineFE.git"
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          FE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-fe.env.restore"
           timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
-          if [ -d "${DEPLOY_ROOT}" ] && [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            mv "${DEPLOY_ROOT}" "${DEPLOY_ROOT}.pre-git-${timestamp}"
-          fi
+          install -d "${WORKSPACE_ROOT}"
 
-          if [ ! -d "${DEPLOY_ROOT}/.git" ]; then
-            install -d "$(dirname "${DEPLOY_ROOT}")"
-            git clone https://github.com/benlagrone/fortress-phronesis.git "${DEPLOY_ROOT}"
+          if [ -d "${FORTRESS_ROOT}" ] && [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            mv "${FORTRESS_ROOT}" "${FORTRESS_ROOT}.pre-git-${timestamp}"
+          fi
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            install -d "$(dirname "${FORTRESS_ROOT}")"
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+          git -C "${FORTRESS_ROOT}" remote set-url origin "${FORTRESS_REPO_URL}"
+
+          if [ -f "${FE_ROOT}/.env" ]; then
+            cp "${FE_ROOT}/.env" "${FE_ENV_BACKUP}"
+          else
+            backup_root="$(ls -1dt "${FE_ROOT}".pre-git-* 2>/dev/null | head -n 1 || true)"
+            if [ -n "${backup_root:-}" ] && [ -f "${backup_root}/.env" ]; then
+              cp "${backup_root}/.env" "${FE_ENV_BACKUP}"
+            fi
           fi
 
           if [ -d "${FE_ROOT}" ] && [ ! -d "${FE_ROOT}/.git" ]; then
             mv "${FE_ROOT}" "${FE_ROOT}.pre-git-${timestamp}"
           fi
-
           if [ ! -d "${FE_ROOT}/.git" ]; then
-            git clone https://github.com/benlagrone/AugustineFE.git "${FE_ROOT}"
+            git clone "${FE_REPO_URL}" "${FE_ROOT}"
+          fi
+          git -C "${FE_ROOT}" remote set-url origin "${FE_REPO_URL}"
+
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+
+          git -C "${FE_ROOT}" fetch origin "${FE_REF}"
+          git -C "${FE_ROOT}" checkout "${FE_REF}"
+          git -C "${FE_ROOT}" pull --ff-only origin "${FE_REF}"
+          if [ -n "${FE_SHA:-}" ]; then
+            git -C "${FE_ROOT}" fetch origin "${FE_SHA}"
+            git -C "${FE_ROOT}" checkout "${FE_SHA}"
           fi
 
-          git -C "${DEPLOY_ROOT}" fetch origin main
-          git -C "${DEPLOY_ROOT}" checkout main
-          git -C "${DEPLOY_ROOT}" merge --ff-only FETCH_HEAD
-
-          if ! git -C "${FE_ROOT}" diff --quiet || ! git -C "${FE_ROOT}" diff --cached --quiet; then
-            stash_label="pericope-frontend-predeploy-${SOURCE_SHA}-$(date -u +%Y%m%dT%H%M%SZ)"
-            git -C "${FE_ROOT}" stash push --message "${stash_label}" >/dev/null
-            echo "Stashed tracked AugustineFE changes as ${stash_label}."
+          if [ -f "${FE_ENV_BACKUP}" ]; then
+            cp "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
           fi
 
-          git -C "${FE_ROOT}" fetch origin master
-          git -C "${FE_ROOT}" checkout master
-          git -C "${FE_ROOT}" merge --ff-only FETCH_HEAD
-          resolved_source_sha="$(git -C "${FE_ROOT}" rev-parse --verify "${SOURCE_SHA}^{commit}")"
-          actual_sha="$(git -C "${FE_ROOT}" rev-parse HEAD)"
-          if [ "${actual_sha}" != "${resolved_source_sha}" ]; then
-            echo "::error::AugustineFE HEAD ${actual_sha} does not match requested source SHA ${resolved_source_sha}."
+          [ -f "${FE_ROOT}/.env" ] || {
+            echo "::error::AugustineFE/.env is missing on the server."
             exit 1
-          fi
+          }
 
-          install -d "${WORKSPACE_ROOT}/AugustineCorpus"
-          if [ ! -f "${WORKSPACE_ROOT}/AugustineCorpus/.env" ]; then
-            : > "${WORKSPACE_ROOT}/AugustineCorpus/.env"
-          fi
-
-          install -d "${WORKSPACE_ROOT}/AugustineService"
-          if [ ! -f "${WORKSPACE_ROOT}/AugustineService/.env" ]; then
-            service_backup_root="$(ls -1dt "${WORKSPACE_ROOT}"/AugustineService.pre-deploy-* "${WORKSPACE_ROOT}"/AugustineService.pre-git-* "${WORKSPACE_ROOT}"/AugustineService.pre-codex-* 2>/dev/null | head -n 1 || true)"
-            if [ -n "${service_backup_root:-}" ] && [ -f "${service_backup_root}/.env" ]; then
-              cp "${service_backup_root}/.env" "${WORKSPACE_ROOT}/AugustineService/.env"
-            else
-              : > "${WORKSPACE_ROOT}/AugustineService/.env"
-            fi
-          fi
-
-          cd "${DEPLOY_ROOT}"
-
+          cd "${FORTRESS_ROOT}"
           bash scripts/verify-pericope-deploy-lock.sh
 
-          docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+          docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend \
+            >/tmp/pericope-frontend-build.log 2>&1
+          tail -n 20 /tmp/pericope-frontend-build.log
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps pericopeai-frontend
 
-          for url in http://127.0.0.1:13080/; do
-            for attempt in $(seq 1 20); do
-              if curl -fsSI "$url" >/dev/null 2>&1; then
+          for url in \
+            http://127.0.0.1:13080/ \
+            http://127.0.0.1:13080/asset-manifest.json; do
+            for _ in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
                 break
               fi
               sleep 2
             done
-            curl -fsSI "$url" >/dev/null
+            curl -fsS "$url" >/dev/null
           done
-          REMOTE
-          status=$?
-          set -e
 
-          if [ "$status" -ne 0 ]; then
-            detail="$(tail -n 20 deploy-ssh.stderr | tr '\n' ' ' | sed 's/  */ /g')"
-            echo "::error::Pericope frontend deploy failed with exit ${status}. ${detail}"
-            exit "$status"
-          fi
+          python3 - <<'PY'
+          import os
+          import sys
+          import urllib.request
+
+          required = [item.strip() for item in os.environ.get("REQUIRED_MEDIA_PATHS", "").split(",") if item.strip()]
+          missing = []
+          for path in required:
+              url = f"http://127.0.0.1:13080{path}"
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as response:
+                      content_type = response.headers.get("Content-Type", "")
+                  if not content_type.startswith("image/"):
+                      missing.append(f"{path} -> {content_type or 'missing content-type'}")
+              except Exception as exc:
+                  missing.append(f"{path} -> {exc}")
+          if missing:
+              for item in missing:
+                  print(item, file=sys.stderr)
+              raise SystemExit(1)
+          PY
+          REMOTE
 
       - name: Public Smoke
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSI https://pericopeai.com/ >/dev/null
+          python3 - <<'PY'
+          import os
+          import sys
+          import urllib.request
+
+          required = [item.strip() for item in os.environ.get("REQUIRED_MEDIA_PATHS", "").split(",") if item.strip()]
+          missing = []
+          for path in required:
+              url = f"https://pericopeai.com{path}"
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as response:
+                      content_type = response.headers.get("Content-Type", "")
+                  if not content_type.startswith("image/"):
+                      missing.append(f"{path} -> {content_type or 'missing content-type'}")
+              except Exception as exc:
+                  missing.append(f"{path} -> {exc}")
+          if missing:
+              for item in missing:
+                  print(item, file=sys.stderr)
+              raise SystemExit(1)
+          PY
 
       - name: Deployment Summary
         shell: bash
@@ -167,8 +206,12 @@ jobs:
           {
             echo "## Pericope Frontend Deploy"
             echo ""
-            echo "- Environment: \`${{ inputs.environment }}\`"
-            echo "- Source SHA: \`${{ inputs.source_sha }}\`"
-            echo "- Deploy mode: \`source build on server\`"
-            echo "- Public URL: https://pericopeai.com/"
+            echo "- FE ref: \`${{ github.event.inputs.fe_ref || 'master' }}\`"
+            echo "- FE sha: \`${{ github.event.inputs.fe_sha || 'origin ref head' }}\`"
+            echo "- Public root: https://pericopeai.com/"
+            echo "- Verified assets:"
+            IFS=',' read -r -a paths <<< "${REQUIRED_MEDIA_PATHS}"
+            for path in "${paths[@]}"; do
+              echo "  - https://pericopeai.com${path}"
+            done
           } >> "$GITHUB_STEP_SUMMARY"

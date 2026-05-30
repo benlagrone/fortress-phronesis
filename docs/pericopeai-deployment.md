@@ -49,6 +49,10 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
      up -d --build pericopeai-frontend
    ```
 
+3) Frontend-only GitHub Actions redeploy:
+   - Workflow: `.github/workflows/deploy-pericope-frontend.yml`
+   - Use this when frontend/public media files need to be republished without waiting for a full corpus/API rollout.
+
 ## API & Frontend specifics
 - Build contexts (hard-coded in compose):
   - API: `/root/workspace/AugustineService` (uses `/root/workspace/AugustineService/.env`)
