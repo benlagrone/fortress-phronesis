@@ -43,22 +43,6 @@ jobs:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
-      - name: Checkout AugustineService Source
-        uses: actions/checkout@v4
-        with:
-          repository: benlagrone/AugustineService
-          ref: ${{ github.event.inputs.service_ref }}
-          fetch-depth: 0
-          path: AugustineService-source
-          token: ${{ secrets.JESTER_REPO_TOKEN }}
-
-      - name: Pin AugustineService Source SHA
-        if: ${{ github.event.inputs.source_sha != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git -C AugustineService-source checkout "${{ github.event.inputs.source_sha }}"
-
       - name: Prepare SSH
         shell: bash
         run: |
@@ -68,16 +52,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-
-      - name: Upload AugustineService Source Bundle
-        shell: bash
-        env:
-          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
-        run: |
-          set -euo pipefail
-          tar -C AugustineService-source --exclude=.git -czf /tmp/augustine-service-source.tgz .
-          scp -i ~/.ssh/id_ed25519 /tmp/augustine-service-source.tgz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/augustine-service-source.tgz"
 
       - name: Deploy On Server
         shell: bash
@@ -99,6 +73,7 @@ jobs:
 
           FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
           CORPUS_REPO_URL="git@github.com:benlagrone/AugustineCorpus.git"
+          SERVICE_REPO_URL="git@github.com:benlagrone/AugustineService.git"
           FE_REPO_URL="git@github.com:benlagrone/AugustineFE.git"
           FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
@@ -106,17 +81,11 @@ jobs:
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
           CORPUS_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-corpus.env.restore"
-          SERVICE_BUNDLE="/tmp/augustine-service-source.tgz"
           SERVICE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-service.env.restore"
           FE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-fe.env.restore"
           timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
           install -d "${WORKSPACE_ROOT}"
-
-          [ -f "${SERVICE_BUNDLE}" ] || {
-            echo "::error::AugustineService source bundle is missing on the server."
-            exit 1
-          }
 
           if [ -d "${FORTRESS_ROOT}" ] && [ ! -d "${FORTRESS_ROOT}/.git" ]; then
             mv "${FORTRESS_ROOT}" "${FORTRESS_ROOT}.pre-git-${timestamp}"
@@ -140,6 +109,10 @@ jobs:
           if [ -d "${SERVICE_ROOT}" ]; then
             mv "${SERVICE_ROOT}" "${SERVICE_ROOT}.pre-deploy-${timestamp}"
           fi
+          if [ ! -d "${SERVICE_ROOT}/.git" ]; then
+            git clone "${SERVICE_REPO_URL}" "${SERVICE_ROOT}"
+          fi
+          git -C "${SERVICE_ROOT}" remote set-url origin "${SERVICE_REPO_URL}"
 
           if [ -f "${CORPUS_ROOT}/.env" ]; then
             cp "${CORPUS_ROOT}/.env" "${CORPUS_ENV_BACKUP}"
@@ -198,6 +171,14 @@ jobs:
           git -C "${CORPUS_ROOT}" checkout master
           git -C "${CORPUS_ROOT}" pull --ff-only origin master
 
+          git -C "${SERVICE_ROOT}" fetch origin "${SERVICE_REF}"
+          git -C "${SERVICE_ROOT}" checkout "${SERVICE_REF}"
+          git -C "${SERVICE_ROOT}" pull --ff-only origin "${SERVICE_REF}"
+          if [ -n "${SOURCE_SHA:-}" ]; then
+            git -C "${SERVICE_ROOT}" fetch origin "${SOURCE_SHA}"
+            git -C "${SERVICE_ROOT}" checkout "${SOURCE_SHA}"
+          fi
+
           git -C "${FE_ROOT}" fetch origin master
           git -C "${FE_ROOT}" checkout master
           git -C "${FE_ROOT}" pull --ff-only origin master
@@ -208,9 +189,6 @@ jobs:
           if [ -f "${FE_ENV_BACKUP}" ]; then
             cp "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
           fi
-
-          install -d "${SERVICE_ROOT}"
-          tar -xzf "${SERVICE_BUNDLE}" -C "${SERVICE_ROOT}"
           if [ -f "${SERVICE_ENV_BACKUP}" ]; then
             mv "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
           fi
