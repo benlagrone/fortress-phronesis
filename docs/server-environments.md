@@ -29,6 +29,42 @@ Prod (vmi2669159)
 - Clock repo: `/root/workspace/Solomonic_Seals`
 - FE repo: `/root/workspace/AugustineFE`
 
+### Prod SSH From Local Codex
+
+Use the Contabo password in local `fortress-phronesis/.env` (`SSH_PWD`, same
+value as `pwd`) with OpenSSH `SSH_ASKPASS`. In the Codex shell, `sshpass` and
+interactive `ssh -tt` can fail even when the password is correct; the askpass
+path has been verified against `root@89.117.151.145`.
+
+Read-only smoke command:
+
+```bash
+cd /Users/benjaminlagrone/Documents/projects/pericopeai.com
+tmp="$(mktemp /private/tmp/pericope-askpass.XXXXXX)"
+chmod 700 "$tmp"
+pass="$(awk -F= '$1=="SSH_PWD" {sub(/^[^=]*=/,""); print; exit}' fortress-phronesis/.env)"
+printf '#!/bin/sh\nprintf %%s "$PERICOPE_SSH_PASSWORD"\n' > "$tmp"
+DISPLAY=:0 \
+SSH_ASKPASS_REQUIRE=force \
+SSH_ASKPASS="$tmp" \
+PERICOPE_SSH_PASSWORD="$pass" \
+ssh -o PubkeyAuthentication=no \
+  -o PreferredAuthentications=password \
+  -o NumberOfPasswordPrompts=1 \
+  -o StrictHostKeyChecking=accept-new \
+  -o ConnectTimeout=8 \
+  root@89.117.151.145 'hostname && whoami && pwd'
+rm -f "$tmp"
+```
+
+Expected output:
+
+```text
+vmi2669159
+root
+/root
+```
+
 Dev (fortress-phronesis / 192.168.86.23)
 - Workspace root: `/home/master-benjamin/Projects/pericopeai.com`
 - Stack root: `/home/master-benjamin/Projects/pericopeai.com/fortress-phronesis`
