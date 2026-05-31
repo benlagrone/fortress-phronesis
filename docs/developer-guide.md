@@ -58,6 +58,7 @@ Do not run deploy commands until path guard confirms expected root.
 2. Data Release:
    - author/corpus/index updates.
    - default is author-scoped indexing and service restart.
+   - author acquisition is not complete until prod corpus publication and public verification are recorded per `docs/author-acquisition-process.md`.
 3. Full Reindex Release:
    - exceptional operation only.
    - must be explicit and documented.
@@ -72,6 +73,7 @@ Do not run deploy commands until path guard confirms expected root.
    - `docker compose --env-file /root/workspace/AugustineFE/.env -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-frontend`
 4. Use author-scoped indexing for regular author additions.
 5. Do not run implicit full index as a routine update path.
+6. For content-heavy author releases, publish corpus texts to prod through the corpus sync/upload path before marking an author complete.
 
 ## 8) Required Release Gates
 

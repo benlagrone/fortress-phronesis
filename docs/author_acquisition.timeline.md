@@ -24,4 +24,4 @@ Source snapshots:
 - Next two queued acquisition targets were set in `docs/author_acquisition.json`:
   - `Solomon` (`next-up queued (1 of 2)`)
   - `Aristotle` (`next-up queued (2 of 2)`)
-- Both remain pending text acquisition, indexing, and runtime wiring.
+- Both remain pending text acquisition, production corpus publication, indexing, runtime wiring, and public verification under `docs/author-acquisition-process.md`.

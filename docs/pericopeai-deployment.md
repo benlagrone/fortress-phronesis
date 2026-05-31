@@ -133,6 +133,7 @@ This addendum captures updated deployment strategy rules in detail while keeping
 2. Data Release
    - Author/corpus/index updates.
    - Default path: author-scoped indexing only.
+   - Author acquisition is not complete until prod corpus publication and public verification are recorded per `docs/author-acquisition-process.md`.
 3. Full Reindex
    - Exceptional only.
    - Must be explicitly invoked and documented.

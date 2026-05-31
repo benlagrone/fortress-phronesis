@@ -5,6 +5,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 ## Canonical Program Docs
 
 - [Developer Guide](developer-guide.md)
+- [Author Acquisition Process](author-acquisition-process.md)
 - [PericopeAI Deployment Guide](pericopeai-deployment.md)
 - [GitHub Image Control Plane Design](github-image-control-plane-design.md)
 - [Deployment Prep Checklist](deployment-prep-checklist.md)

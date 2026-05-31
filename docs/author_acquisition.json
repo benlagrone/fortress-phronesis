@@ -380,7 +380,7 @@
   },
   {
     "name": "Cyprian of Carthage",
-    "status": "texts downloaded; index built; runtime wired",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
     "acquired_date": "2026-05-27",
     "persona_mode": "Authority",
     "works": [
@@ -391,12 +391,13 @@
       "Time: c. 210-258 AD; Origin: Carthage",
       "Role: Bishop, martyr, ecclesial theologian",
       "Key Works: Treatises; Epistles; On the Unity of the Church",
-      "Contribution: Church unity, episcopal authority, penitence, pastoral discipline, martyr witness"
+      "Contribution: Church unity, episcopal authority, penitence, pastoral discipline, martyr witness",
+      "Prod publish note (2026-05-30): prod corpus synced; public API/profile/media verification passed."
     ]
   },
   {
     "name": "Boethius",
-    "status": "texts downloaded; index built; runtime wired",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
     "acquired_date": "2026-05-27",
     "persona_mode": "Authority",
     "works": [
@@ -409,12 +410,13 @@
       "Time: c. 480-524 AD; Origin: Rome",
       "Role: Philosopher, statesman, Christian Platonist",
       "Key Works: The Consolation of Philosophy; Theological Tractates; Against Eutyches and Nestorius",
-      "Contribution: Providence and freedom, highest good, metaphysical theology, transmission of classical philosophy"
+      "Contribution: Providence and freedom, highest good, metaphysical theology, transmission of classical philosophy",
+      "Prod publish note (2026-05-30): prod corpus synced; public API/profile/media verification passed."
     ]
   },
   {
     "name": "Anselm of Canterbury",
-    "status": "texts downloaded; index built; runtime wired",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
     "acquired_date": "2026-05-27",
     "persona_mode": "Interior",
     "works": [
@@ -426,7 +428,8 @@
       "Time: 1033-1109; Origin: Aosta, later Bec and Canterbury",
       "Role: Archbishop, theologian, philosopher",
       "Key Works: Proslogium; Monologium; Cur Deus Homo",
-      "Contribution: Faith seeking understanding, ontological argument, rational theology, satisfaction account of atonement"
+      "Contribution: Faith seeking understanding, ontological argument, rational theology, satisfaction account of atonement",
+      "Prod publish note (2026-05-30): prod corpus synced; public API/profile/media verification passed."
     ]
   },
   {
