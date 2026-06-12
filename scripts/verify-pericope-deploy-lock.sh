@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.pericope.yml"
+CORPUS_ENV_FILE="$ROOT_DIR/../AugustineCorpus/.env"
 SERVICE_ENV_FILE="$ROOT_DIR/../AugustineService/.env"
 FE_ENV_FILE="$ROOT_DIR/../AugustineFE/.env"
 
@@ -63,6 +64,41 @@ forbid_pattern "\\$\\{API_HOST_PORT" "API port override is disabled"
 forbid_pattern "\\$\\{FE_HOST_PORT" "Frontend port override is disabled"
 forbid_pattern "\\$\\{SOLOMONIC_HOST_PORT" "Solomonic Clock port override is disabled"
 forbid_pattern "host\\.docker\\.internal:8086" "Frontend no longer defaults to host clock port"
+
+env_value() {
+  local key="$1"
+  local file="$2"
+  if [[ -f "$file" ]]; then
+    awk -F= -v key="$key" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$file"
+  fi
+}
+
+if [[ -f "$CORPUS_ENV_FILE" ]]; then
+  corpus_provider="$(env_value MODEL_PROVIDER "$CORPUS_ENV_FILE")"
+  if [[ -z "$corpus_provider" ]]; then
+    corpus_provider="$(env_value LLM_PROVIDER "$CORPUS_ENV_FILE")"
+  fi
+  corpus_provider="$(printf '%s' "$corpus_provider" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$corpus_provider" == "ollama" ]]; then
+    ollama_url="$(env_value OLLAMA_BASE_URL "$CORPUS_ENV_FILE")"
+    if [[ -z "$ollama_url" ]]; then
+      ollama_url="$(env_value OLLAMA_URL "$CORPUS_ENV_FILE")"
+    fi
+    allow_private_ollama="$(env_value ALLOW_PRIVATE_OLLAMA_URL "$CORPUS_ENV_FILE")"
+    allow_private_ollama="$(printf '%s' "$allow_private_ollama" | tr '[:upper:]' '[:lower:]')"
+
+    if [[ -z "$ollama_url" ]]; then
+      fail "Corpus MODEL_PROVIDER=ollama requires OLLAMA_BASE_URL or OLLAMA_URL in AugustineCorpus/.env"
+    elif [[ "$ollama_url" =~ ^https?://192\.168\.0\.126:11434/?$ ]]; then
+      pass "Corpus Ollama URL uses the documented Fortress IPsec endpoint"
+    elif [[ "$allow_private_ollama" != "true" ]] && [[ "$ollama_url" =~ ^https?://(localhost|127\.|0\.0\.0\.0|host\.docker\.internal) ]]; then
+      fail "Corpus Ollama URL must not point at local-only container/host addresses ($ollama_url); use the documented Fortress IPsec endpoint or set ALLOW_PRIVATE_OLLAMA_URL=true only for intentional non-prod use"
+    else
+      pass "Corpus Ollama provider has an explicit non-local URL or private-url override"
+    fi
+  fi
+fi
 
 # In production, frontend API key must be present in FE env because it is a build-time arg.
 if [[ -f "$SERVICE_ENV_FILE" && -f "$FE_ENV_FILE" ]]; then
