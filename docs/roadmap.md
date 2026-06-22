@@ -7,6 +7,61 @@
 
 ---
 
+## Current Roadmap Control State (2026-06-22)
+
+**Status:** cleanup gate in progress from a clean Fortress worktree.
+**Audit:** [Unpublished Work Audit — 2026-06-22](unpublished-work-audit-2026-06-22.md)
+
+This roadmap is the planning source of truth, but remaining workspace state
+must be cleaned before starting net-new implementation. Treat the items below
+as the active carryover gate.
+
+### Published / Operationally Closed
+
+- Production Ollama route recovery is operationally closed:
+  - Fortress LAN Ollama is the intended production inference provider.
+  - Production corpus uses the Fortress UniFi/IPsec private route,
+    `MODEL_PROVIDER=ollama`, and `OLLAMA_BASE_URL=http://192.168.0.126:11434`.
+  - The production corpus `.env` is the durable runtime source of truth.
+  - Fortress deploy preflight accepts the documented Fortress IPsec endpoint
+    and rejects local-only Ollama endpoints.
+  - Published control-plane commit: `97ff1b3 Guard Pericope Ollama endpoint config`.
+- The Ask Proverbs first-pass Pericope implementation has been published:
+  - `AugustineCorpus`: `934c05a Route corpus generation through Ollama`
+  - `AugustineService`: `e359072 Add Ask Proverbs API contract`
+  - `AugustineFE`: `6bae97c Add Ask Proverbs frontend`
+- Mobile voice planning has been published in `AugustineFE`:
+  - `a818a0b Document mobile voice roadmap scope`
+
+### Unfinished Publication / Merge Gate
+
+Do not treat the roadmap as cleanly unblocked until these are resolved:
+
+- `fortress-phronesis` local `main` is divergent from `origin/main` and dirty.
+  Reconcile it from a clean worktree or intentionally retire the local divergent
+  history; do not merge it blindly.
+- `Solomonic_Seals` has one unpublished local commit:
+  `f7e6828 Expose clock guided prompts API`, plus uncommitted clock/router/UI
+  work.
+- `Model_Discernment_Engine` has substantial uncommitted detector/report work.
+- `pericopeai-mobile-app` has no upstream configured and has uncommitted app,
+  service, UI, and package changes.
+
+### Immediate Cleanup Order
+
+1. Publish this roadmap and audit rectification as a small docs-only commit from
+   a clean Fortress worktree.
+2. Reconcile or intentionally quarantine the divergent dirty
+   `fortress-phronesis` local checkout.
+3. Push or intentionally supersede the remaining unpublished Solomonic commit
+   and classify its dirty clock/router/deploy/UI work.
+4. Classify uncommitted MDE and mobile work as publish, keep-local, split, or
+   discard by explicit request.
+5. After the tree is clean enough to reason about, proceed with `v1.4.0`
+   pricing/subscriptions and `v1.4.0-ops` reliability work.
+
+---
+
 ## Semantic Versioning Philosophy
 
 - **MAJOR** — Changes system guarantees, governance, or meaning
@@ -14,6 +69,65 @@
 - **PATCH** — Fixes, performance, or UX refinements only
 
 PericopeAI is treated as a **platform and framework**, not just a website.
+
+---
+
+## Front-of-Queue: Pricing, Subscriptions, and Invite-Only Access
+
+**Status:** next feature priority after the cleanup gate.
+**Reason:** PericopeAI needs a public commercial surface and subscription wiring
+before broader feature expansion creates more unmonetized access complexity.
+
+### v1.4.0 — Pricing Page and Stripe Subscription Foundation
+**Goal:** Ship a clear PericopeAI pricing page and a Stripe-backed subscription
+path while keeping Sacred and Restricted access invite-only.
+
+**Scope**
+
+- Add `/pricing` to `AugustineFE` with Free, Reader, Scholar, Family / Group,
+  and Institution tiers.
+- Use Stripe Billing with Checkout Sessions for paid public tiers.
+- Add backend billing routes for checkout, customer portal, and webhooks.
+- Persist subscription state and sync paid roles into the configured
+  authorization store.
+- Keep Sacred and Restricted access as manually granted entitlements, never
+  public self-serve purchases.
+- Add regression tests proving a normal paid subscriber cannot access Sacred or
+  Restricted content without the matching entitlement.
+
+**Definition of Done**
+
+- Public pricing page exists and explains paid tiers plus invite-only access.
+- Stripe test-mode checkout and webhooks work for Reader, Scholar, and
+  Family / Group.
+- Paid subscriptions assign expected runtime roles.
+- Customer Portal sessions can be created for subscribed users.
+- Sacred and Restricted access remain invite-only and independent of public
+  subscription tier.
+
+### v1.4.0-ops — GitHub-Native Reliability Path
+**Goal:** Use GitHub-native tooling to turn Fortress-collected production
+failures into actionable bugs while catching code and dependency problems before
+deploy.
+
+**Scope**
+
+- Fortress remains the private raw event store.
+- GitHub Issues are the sanitized Codex-readable handoff surface.
+- Add grouping/fingerprinting for `pericope_error_events`.
+- Create or update one GitHub Issue per active failure fingerprint when
+  escalation is explicitly enabled.
+- Verify Dependabot and CodeQL coverage in the owning application repos.
+- Keep raw prompts, request bodies, cookies, auth headers, tokens, and private
+  logs out of GitHub issues.
+
+**Definition of Done**
+
+- Fortress can dry-run issue grouping without contacting GitHub.
+- With escalation enabled, repeated synthetic failures update one GitHub Issue
+  instead of creating duplicates.
+- Codex can read the issue and identify the owning repo/service to inspect.
+- No secrets or raw user prompts appear in issue bodies.
 
 ---
 

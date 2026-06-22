@@ -20,6 +20,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 - [Server Environments](server-environments.md)
 - [Container Runbook (Dev Server)](dev-server-container-runbook.md)
 - [Roadmap](roadmap.md)
+- [Unpublished Work Audit 2026-06-22](unpublished-work-audit-2026-06-22.md)
 - [Author Taxonomy + Browse Contract](author-taxonomy-browse-contract.md)
 - [Testing Guide](testing.md)
 - [Epic: Identity, Authentication, and Customization](epic-identity-auth-customization.md)
