@@ -36,6 +36,7 @@ as the active carryover gate.
   - `f7e6828 Expose clock guided prompts API`
   - `7773cfa Add clock mobile readiness and launch contracts`
   - `4a5515d Load clock dataset from API with fallback`
+  - `fc7dad8 Guard API-first clock dataset loading`
 - MDE cleanup has been published:
   - `38c4903 Add candidate grounding promotion workflow`
   - `1957bca Publish refreshed detector reports`
