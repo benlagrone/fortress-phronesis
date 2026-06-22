@@ -34,7 +34,7 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 | DOC-001 | Keep legacy docs; additive updates only; no silent replacement | Continuous | Active | [developer-guide.md](developer-guide.md#11-documentation-rules) |
 | REL-001 | Cross-project release commitment contract for Pericope, Solomonic, MDE, and Latin RAG | v1.1.3 | Active | [release-commitment-v1.1.3-all-tracks.md](release-commitment-v1.1.3-all-tracks.md) |
 | OPS-OLLAMA-001 | Production Ollama route must use the Fortress UniFi/IPsec endpoint and reject local-only container/host endpoints in deploy preflight | v1.4.0-ops carryover | Published 2026-06-12; keep monitored | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
-| OPS-STATE-001 | Reconcile divergent/dirty `fortress-phronesis` local checkout against published `origin/main` before relying on local branch state | Roadmap control gate | Open | [roadmap.md](roadmap.md#unfinished-publication--merge-gate) |
+| OPS-STATE-001 | Reconcile divergent/dirty `fortress-phronesis` local checkout against published `origin/main` before relying on local branch state | Roadmap control gate | Completed 2026-06-22; old state quarantined | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
 | OPS-STATE-002 | Publish or supersede unpublished local work in `Solomonic_Seals` | Roadmap control gate | Completed 2026-06-22 | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
 | OPS-STATE-003 | Classify uncommitted MDE and Solomonic changes as publish, keep-local, split, or discard by explicit request | Roadmap control gate | Completed 2026-06-22 | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
 | OPS-STATE-004 | Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push local mobile commit `b357260` | Roadmap control gate | Blocked: no remote repository exists | [roadmap.md](roadmap.md#unfinished-publication--merge-gate) |
@@ -57,7 +57,7 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 12. [Completed 2026-06-22] Publish roadmap rectification and audit from a clean Fortress worktree.
 13. [Completed 2026-06-22] Push Solomonic guided prompt, mobile readiness, launch contract, and deployment promotion work.
 14. [Completed 2026-06-22] Split and push MDE candidate workflow source changes and refreshed generated report artifacts.
-15. [Current 2026-06-22] Reconcile divergent/dirty `fortress-phronesis` local `main` against `origin/main`.
+15. [Completed 2026-06-22] Reconcile divergent/dirty `fortress-phronesis` local `main` against `origin/main` by preserving old local branch/stash and restoring clean tracking `main`.
 16. [Blocked 2026-06-22] Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push `b357260`.
 
 ## Update Rule

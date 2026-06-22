@@ -7,7 +7,7 @@ the Ask Proverbs, Solomonic, MDE, and mobile cleanup pass.
 
 | Repo | Branch state | Dirty state | Classification |
 | --- | --- | --- | --- |
-| `fortress-phronesis` | Local checkout: divergent from `origin/main` | Dirty, many tracked and untracked files | Divergent and unsafe to merge blindly |
+| `fortress-phronesis` | `main...origin/main` | Clean | Divergent local state quarantined |
 | `AugustineCorpus` | `master...origin/master` | Clean | Published |
 | `AugustineService` | `master...origin/master` | Clean | Published |
 | `AugustineFE` | `master...origin/master` | Clean | Published |
@@ -54,15 +54,20 @@ Validation:
 
 ## Fortress Phronesis Local Checkout
 
-The active local checkout remains divergent and dirty:
+The active local checkout has been reconciled to the published branch:
 
-- `main...origin/main [ahead 19, behind 151]`
-- tracked and untracked docs, workflow, deploy, and script changes are mixed
+- active branch: `main`
+- upstream: `origin/main`
+- status: clean
 
-Do not push, pull, merge, or rebase that checkout directly. Continue using clean
-worktrees from `origin/main` for intentional publishable slices until the local
-divergent history is either reconciled, archived, or retired by explicit
-operator decision.
+The prior divergent state was preserved, not discarded:
+
+- branch: `quarantine/fortress-local-main-20260622`
+- backup branch: `quarantine/fortress-main-20260622`
+- stash: `stash@{0}: On main: quarantine fortress dirty worktree 2026-06-22`
+
+Use those only for intentional recovery/cherry-pick work. Do not merge the
+quarantine branch blindly back into `main`.
 
 ## Solomonic Seals Closeout
 
@@ -96,9 +101,7 @@ remote exists for the repository. A probe for
 
 ## Required Closeout
 
-1. Reconcile or intentionally quarantine the divergent dirty
-   `fortress-phronesis` local checkout.
-2. Configure a remote/upstream for `pericopeai-mobile-app` or explicitly keep it
+1. Configure a remote/upstream for `pericopeai-mobile-app` or explicitly keep it
    local-only.
-3. Only after the gate is clear, start `v1.4.0` pricing/subscriptions and
+2. Start `v1.4.0` pricing/subscriptions and
    `v1.4.0-ops` reliability work.

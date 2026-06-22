@@ -9,7 +9,7 @@
 
 ## Current Roadmap Control State (2026-06-22)
 
-**Status:** cleanup gate partially complete from clean worktrees.
+**Status:** cleanup gate complete except mobile remote publication.
 **Audit:** [Unpublished Work Audit — 2026-06-22](unpublished-work-audit-2026-06-22.md)
 
 This roadmap is the planning source of truth, but remaining workspace state
@@ -40,24 +40,23 @@ as the active carryover gate.
   - `1957bca Publish refreshed detector reports`
 - `pericopeai-mobile-app` is clean and locally committed:
   - `b357260 Add mobile auth voice layout skeleton`
+- The divergent Fortress local checkout has been quarantined:
+  - old branch preserved as `quarantine/fortress-local-main-20260622`
+  - dirty/untracked files preserved as stash `quarantine fortress dirty worktree 2026-06-22`
+  - local `main` now tracks clean `origin/main`
 
 ### Unfinished Publication / Merge Gate
 
-Do not treat the roadmap as cleanly unblocked until these are resolved:
+Do not treat the roadmap as fully published until this is resolved:
 
-- `fortress-phronesis` local `main` is divergent from `origin/main` and dirty.
-  Reconcile it from a clean worktree or intentionally retire the local divergent
-  history; do not merge it blindly.
 - `pericopeai-mobile-app` has no upstream configured, so `b357260` is committed
   locally but not published to a remote.
 
 ### Immediate Cleanup Order
 
-1. Reconcile or intentionally quarantine the divergent dirty
-   `fortress-phronesis` local checkout.
-2. Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push
+1. Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push
    `b357260`.
-3. After the tree is clean enough to reason about, proceed with `v1.4.0`
+2. Proceed with `v1.4.0`
    pricing/subscriptions and `v1.4.0-ops` reliability work.
 
 ---
