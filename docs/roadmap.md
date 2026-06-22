@@ -9,7 +9,7 @@
 
 ## Current Roadmap Control State (2026-06-22)
 
-**Status:** cleanup gate in progress from a clean Fortress worktree.
+**Status:** cleanup gate partially complete from clean worktrees.
 **Audit:** [Unpublished Work Audit — 2026-06-22](unpublished-work-audit-2026-06-22.md)
 
 This roadmap is the planning source of truth, but remaining workspace state
@@ -32,6 +32,14 @@ as the active carryover gate.
   - `AugustineFE`: `6bae97c Add Ask Proverbs frontend`
 - Mobile voice planning has been published in `AugustineFE`:
   - `a818a0b Document mobile voice roadmap scope`
+- Solomonic Clock cleanup has been published:
+  - `f7e6828 Expose clock guided prompts API`
+  - `7773cfa Add clock mobile readiness and launch contracts`
+- MDE cleanup has been published:
+  - `38c4903 Add candidate grounding promotion workflow`
+  - `1957bca Publish refreshed detector reports`
+- `pericopeai-mobile-app` is clean and locally committed:
+  - `b357260 Add mobile auth voice layout skeleton`
 
 ### Unfinished Publication / Merge Gate
 
@@ -40,24 +48,16 @@ Do not treat the roadmap as cleanly unblocked until these are resolved:
 - `fortress-phronesis` local `main` is divergent from `origin/main` and dirty.
   Reconcile it from a clean worktree or intentionally retire the local divergent
   history; do not merge it blindly.
-- `Solomonic_Seals` has one unpublished local commit:
-  `f7e6828 Expose clock guided prompts API`, plus uncommitted clock/router/UI
-  work.
-- `Model_Discernment_Engine` has substantial uncommitted detector/report work.
-- `pericopeai-mobile-app` has no upstream configured and has uncommitted app,
-  service, UI, and package changes.
+- `pericopeai-mobile-app` has no upstream configured, so `b357260` is committed
+  locally but not published to a remote.
 
 ### Immediate Cleanup Order
 
-1. Publish this roadmap and audit rectification as a small docs-only commit from
-   a clean Fortress worktree.
-2. Reconcile or intentionally quarantine the divergent dirty
+1. Reconcile or intentionally quarantine the divergent dirty
    `fortress-phronesis` local checkout.
-3. Push or intentionally supersede the remaining unpublished Solomonic commit
-   and classify its dirty clock/router/deploy/UI work.
-4. Classify uncommitted MDE and mobile work as publish, keep-local, split, or
-   discard by explicit request.
-5. After the tree is clean enough to reason about, proceed with `v1.4.0`
+2. Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push
+   `b357260`.
+3. After the tree is clean enough to reason about, proceed with `v1.4.0`
    pricing/subscriptions and `v1.4.0-ops` reliability work.
 
 ---

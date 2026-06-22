@@ -1,19 +1,19 @@
 # Unpublished Work Audit — 2026-06-22
 
 Purpose: inventory unfinished, uncommitted, unmerged, and unpublished work after
-the Ask Proverbs Pericope commits and mobile voice planning docs were pushed.
+the Ask Proverbs, Solomonic, MDE, and mobile cleanup pass.
 
 ## Summary
 
 | Repo | Branch state | Dirty state | Classification |
 | --- | --- | --- | --- |
-| `fortress-phronesis` | Local checkout: `main...origin/main [ahead 19, behind 151]` | Dirty, many tracked and untracked files | Divergent and unsafe to merge blindly |
+| `fortress-phronesis` | Local checkout: divergent from `origin/main` | Dirty, many tracked and untracked files | Divergent and unsafe to merge blindly |
 | `AugustineCorpus` | `master...origin/master` | Clean | Published |
 | `AugustineService` | `master...origin/master` | Clean | Published |
 | `AugustineFE` | `master...origin/master` | Clean | Published |
-| `Solomonic_Seals` | `main...origin/main [ahead 1]` | Dirty code/docs/tests plus untracked files | Unpublished local commit plus uncommitted clock/router work |
-| `Model_Discernment_Engine` | `main...origin/main` | Dirty code/config/docs/generated reports | Uncommitted MDE detector/report work |
-| `pericopeai-mobile-app` | `main`, no upstream configured | Dirty app/packages/services/UI | Unpublished repo state; no remote tracking branch |
+| `Solomonic_Seals` | `main...origin/main` | Clean | Published |
+| `Model_Discernment_Engine` | `main...origin/main` | Clean | Published |
+| `pericopeai-mobile-app` | `main`, no upstream configured | Clean | Local commit exists; no remote tracking branch |
 | `AugustineCorpusGateway` | `main...origin/main` | Clean | No unpublished work detected |
 | `pericopeai-assets` | `main...origin/main` | Clean | No unpublished work detected |
 | `latin-rag-translator` | `main...origin/main` | Clean | No unpublished work detected |
@@ -26,18 +26,31 @@ the Ask Proverbs Pericope commits and mobile voice planning docs were pushed.
 | `AugustineService` | `e359072` | Add Ask Proverbs API contract |
 | `AugustineFE` | `6bae97c` | Add Ask Proverbs frontend |
 | `AugustineFE` | `a818a0b` | Document mobile voice roadmap scope |
+| `Solomonic_Seals` | `f7e6828` | Expose clock guided prompts API |
+| `Solomonic_Seals` | `7773cfa` | Add clock mobile readiness and launch contracts |
+| `Model_Discernment_Engine` | `38c4903` | Add candidate grounding promotion workflow |
+| `Model_Discernment_Engine` | `1957bca` | Publish refreshed detector reports |
 
 Validation before push:
 
 - `AugustineCorpus`: `python3 -m pytest` -> 34 passed
 - `AugustineService`: `python3 -m pytest` -> 72 passed, 19 skipped
 - `AugustineFE`: `npm test -- --watchAll=false` -> 35 passed
+- `Solomonic_Seals`: all `tests/*.mjs` via Node -> passed
+- `Solomonic_Seals`: `python3 -m pytest` -> 22 passed
+- `Solomonic_Seals`: `python3 src/validate_json.py data/solomonic_clock_full.json` -> passed
+- `Model_Discernment_Engine`: `python3 -m pytest` -> 15 passed
 
-## Remaining Unpublished Commit
+## Local-Only Commit
 
-| Repo | Commit | Subject |
-| --- | --- | --- |
-| `Solomonic_Seals` | `f7e6828` | Expose clock guided prompts API |
+| Repo | Commit | Subject | Blocker |
+| --- | --- | --- | --- |
+| `pericopeai-mobile-app` | `b357260` | Add mobile auth voice layout skeleton | No remote repository exists and no upstream is configured |
+
+Validation:
+
+- `pericopeai-mobile-app`: `npm run typecheck` -> passed
+- `pericopeai-mobile-app`: `npm run check:layout` -> passed
 
 ## Fortress Phronesis Local Checkout
 
@@ -51,76 +64,41 @@ worktrees from `origin/main` for intentional publishable slices until the local
 divergent history is either reconciled, archived, or retired by explicit
 operator decision.
 
-## Solomonic Seals Dirty Worktree
+## Solomonic Seals Closeout
 
-Tracked modified areas include:
+The Solomonic work was split into tested publishable state and pushed to
+`origin/main`.
 
-- clock/pericope contract docs
-- mobile app roadmap docs
-- clock frontend JavaScript/CSS
-- clock drawer and VibeVoice frontend contract tests
-- generated clock data
+- `f7e6828` publishes the clock guided prompts API.
+- `7773cfa` publishes mobile readiness, drawer UX, Pericope launch contracts,
+  local-router/deployment-promotion docs, and contract tests.
+- Runtime scratch logs under `.playwright-cli/` are ignored and were not
+  committed.
 
-Untracked areas include:
+## Model Discernment Engine Closeout
 
-- local router/deploy files
-- deployment promotion runbook and smoke script
-- Pericope launch contract test and frontend helper
-- drawer UX mockup
-- Playwright console log
+The MDE work was split into source and generated-output commits and pushed to
+`origin/main`.
 
-Classification: clock/pericope bridge, local-router/deployment-promotion,
-drawer UX, generated clock data, and launch-contract work are mixed. Split into
-intentional publishable commits before pushing.
+- `38c4903` publishes candidate queue grounding/promotion source, docs, config,
+  and tests.
+- `1957bca` publishes refreshed public report artifacts and run outputs.
 
-## Model Discernment Engine Dirty Worktree
-
-Tracked modified areas include:
-
-- detector/config work
-- report rendering and scripture-only logic
-- docs/marketing copy
-- generated public reports
-
-Untracked areas include:
-
-- candidate queue source and tests
-- candidate grounding/promotion scripts
-- pending candidate runs and generated live report output
-
-Classification: candidate-detector queue/promotion work plus generated report
-outputs. Source changes and generated artifacts must be separated before
-publication.
-
-## Pericope Mobile App Dirty Worktree
+## Pericope Mobile App Local Commit
 
 Branch: `main`; no upstream tracking branch configured.
 
-Tracked modified files include:
-
-- `App.tsx`
-- `README.md`
-- `app.json`
-- `package-lock.json`
-- `package.json`
-- `src/api/client.ts`
-- `src/api/types.ts`
-
-Untracked directories include:
-
-- `scripts/`
-- `src/services/`
-- `src/ui/`
-
-Classification: mobile app implementation work with no configured publication
-target. Choose a remote/upstream before calling this work merged or published.
+The mobile app work is committed locally as `b357260 Add mobile auth voice
+layout skeleton` and the worktree is clean. It is not published because no
+remote exists for the repository. A probe for
+`https://github.com/benlagrone/pericopeai-mobile-app.git` returned
+`Repository not found`, and the GitHub CLI is not installed in this environment.
 
 ## Required Closeout
 
-1. Publish this audit and roadmap rectification from the clean Fortress worktree.
-2. Split and publish or intentionally supersede `Solomonic_Seals` work.
-3. Split MDE source changes from generated reports before any MDE publication.
-4. Configure a remote/upstream for `pericopeai-mobile-app` or explicitly keep it
+1. Reconcile or intentionally quarantine the divergent dirty
+   `fortress-phronesis` local checkout.
+2. Configure a remote/upstream for `pericopeai-mobile-app` or explicitly keep it
    local-only.
-5. Only after the gate is clear, start `v1.4.0` pricing/subscriptions and
+3. Only after the gate is clear, start `v1.4.0` pricing/subscriptions and
    `v1.4.0-ops` reliability work.

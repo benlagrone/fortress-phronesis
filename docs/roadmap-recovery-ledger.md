@@ -35,10 +35,11 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 | REL-001 | Cross-project release commitment contract for Pericope, Solomonic, MDE, and Latin RAG | v1.1.3 | Active | [release-commitment-v1.1.3-all-tracks.md](release-commitment-v1.1.3-all-tracks.md) |
 | OPS-OLLAMA-001 | Production Ollama route must use the Fortress UniFi/IPsec endpoint and reject local-only container/host endpoints in deploy preflight | v1.4.0-ops carryover | Published 2026-06-12; keep monitored | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
 | OPS-STATE-001 | Reconcile divergent/dirty `fortress-phronesis` local checkout against published `origin/main` before relying on local branch state | Roadmap control gate | Open | [roadmap.md](roadmap.md#unfinished-publication--merge-gate) |
-| OPS-STATE-002 | Publish or supersede unpublished local work in `Solomonic_Seals` | Roadmap control gate | Open | [roadmap.md](roadmap.md#unfinished-publication--merge-gate) |
-| OPS-STATE-003 | Classify uncommitted mobile, MDE, Solomonic, and Fortress docs/deploy changes as publish, keep-local, split, or discard by explicit request | Roadmap control gate | Open | [roadmap.md](roadmap.md#unfinished-publication--merge-gate) |
-| ASK-PROV-001 | First-pass Ask Proverbs runtime belongs to Pericope API/frontend and must stay out of the Solomonic Clock guided-prompts path | v1.3.x / v1.4 carryover | Published in Pericope repos; Solomonic bridge still pending classification | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
-| MOBILE-VOICE-001 | Mobile v1 scope includes auth, single-author chat, user voice-to-text, author text-to-voice, conversational mode, foldable layout, and Android TV layout | v1.4.1 / v1.5.0 planning | Planning docs published in `AugustineFE`; mobile app implementation still unclassified | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
+| OPS-STATE-002 | Publish or supersede unpublished local work in `Solomonic_Seals` | Roadmap control gate | Completed 2026-06-22 | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
+| OPS-STATE-003 | Classify uncommitted MDE and Solomonic changes as publish, keep-local, split, or discard by explicit request | Roadmap control gate | Completed 2026-06-22 | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
+| OPS-STATE-004 | Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push local mobile commit `b357260` | Roadmap control gate | Blocked: no remote repository exists | [roadmap.md](roadmap.md#unfinished-publication--merge-gate) |
+| ASK-PROV-001 | First-pass Ask Proverbs runtime belongs to Pericope API/frontend and must stay out of the Solomonic Clock guided-prompts path | v1.3.x / v1.4 carryover | Published in Pericope and Solomonic repos | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
+| MOBILE-VOICE-001 | Mobile v1 scope includes auth, single-author chat, user voice-to-text, author text-to-voice, conversational mode, foldable layout, and Android TV layout | v1.4.1 / v1.5.0 planning | Planning docs published; mobile implementation committed locally, remote pending | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-06-22) |
 
 ## Immediate Execution Order
 
@@ -53,10 +54,11 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 9. [Completed 2026-04-06] Close `v1.3.4` Stage 1/Stage 2/Stage 3 text-first graph pipeline (normalized passages + explicit reference extraction + semantic neighbors).
 10. [Completed 2026-04-11] Close `v1.1.6` saved author preferences (authenticated favorites + default author persistence with signed-in launch/new-chat preselection and degraded-default handling).
 11. [Blocked 2026-06-22] Pause new `v1.3.7` / `v1.4.0` implementation until the publication/merge gate below is cleared.
-12. [Current 2026-06-22] Publish roadmap rectification and audit from a clean Fortress worktree.
-13. [Current 2026-06-22] Reconcile divergent/dirty `fortress-phronesis` local `main` against `origin/main`.
-14. [Current 2026-06-22] Push or intentionally supersede the unpublished local commit and dirty work in `Solomonic_Seals`.
-15. [Current 2026-06-22] Classify uncommitted mobile and MDE changes before starting new `v1.4.0` implementation.
+12. [Completed 2026-06-22] Publish roadmap rectification and audit from a clean Fortress worktree.
+13. [Completed 2026-06-22] Push Solomonic guided prompt, mobile readiness, launch contract, and deployment promotion work.
+14. [Completed 2026-06-22] Split and push MDE candidate workflow source changes and refreshed generated report artifacts.
+15. [Current 2026-06-22] Reconcile divergent/dirty `fortress-phronesis` local `main` against `origin/main`.
+16. [Blocked 2026-06-22] Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push `b357260`.
 
 ## Update Rule
 
