@@ -28,6 +28,7 @@ the Ask Proverbs, Solomonic, MDE, and mobile cleanup pass.
 | `AugustineFE` | `a818a0b` | Document mobile voice roadmap scope |
 | `Solomonic_Seals` | `f7e6828` | Expose clock guided prompts API |
 | `Solomonic_Seals` | `7773cfa` | Add clock mobile readiness and launch contracts |
+| `Solomonic_Seals` | `4a5515d` | Load clock dataset from API with fallback |
 | `Model_Discernment_Engine` | `38c4903` | Add candidate grounding promotion workflow |
 | `Model_Discernment_Engine` | `1957bca` | Publish refreshed detector reports |
 
@@ -77,6 +78,7 @@ The Solomonic work was split into tested publishable state and pushed to
 - `f7e6828` publishes the clock guided prompts API.
 - `7773cfa` publishes mobile readiness, drawer UX, Pericope launch contracts,
   local-router/deployment-promotion docs, and contract tests.
+- `4a5515d` publishes `/api/clock` dataset loading with bundled JSON fallback.
 - Runtime scratch logs under `.playwright-cli/` are ignored and were not
   committed.
 
