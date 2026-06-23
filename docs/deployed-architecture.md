@@ -58,6 +58,9 @@ Production corpus generation uses Fortress LAN Ollama unless explicitly changed:
 - `OLLAMA_MODEL=mistral`
 - `OLLAMA_TIMEOUT_SECONDS=120`
 - `OLLAMA_CONNECT_TIMEOUT_SECONDS=5`
+- Fortress compose explicitly sets `OLLAMA_MODEL=${OLLAMA_MODEL:-mistral}` so
+  rebuilds preserve the current live model even if a service env file contains
+  an older model value.
 
 Corpus retrieval keeps author indexes in an in-process LRU cache:
 
