@@ -7,6 +7,11 @@ Deployment execution remains governed by `docs/pericopeai-deployment.md` and
 ## Runtime Topology
 
 - Public domain: `https://pericopeai.com`
+- Local app root: `http://pericopeai.local/` when a local hostname router is
+  enabled; otherwise `http://localhost:13080/`
+- Local performance dashboard: reserve `http://pericopeai.local/performance`
+  for local testing. `http://perf.pericopeai.local/` may be added later as an
+  alias, but it must point at the dashboard and not replace the app root.
 - Host nginx routes:
   - `/api` -> `pericopeai-api` on host port `18000`
   - `/` -> `pericopeai-frontend` on host port `13080`

@@ -42,6 +42,14 @@ Expected local ports
 - Frontend: `13080`
 - Local standalone MySQL: `3308`
 
+Local hostname contract
+- `http://pericopeai.local/` is reserved for the actual local PericopeAI app.
+- The performance testing dashboard should live at
+  `http://pericopeai.local/performance` first, so local testing stays under the
+  app root.
+- `http://perf.pericopeai.local/` is an acceptable later alias if a local router
+  is added, but it must not replace `pericopeai.local` as the app root.
+
 Local service wiring
 - Corpus service name on `pericope_net`: `corpus`
 - API alias on `pericope_net`: `pericopeai-api`
