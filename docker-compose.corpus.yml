@@ -84,7 +84,8 @@ services:
       - RUN_INDEXING_ON_START=${RUN_INDEXING_ON_START:-0}
       - USE_MOCK_LLM=${USE_MOCK_LLM:-false}
       - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-}
-      - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-3}
+      - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-16}
+      - PREWARM_AUTHOR_INDEXES=${PREWARM_AUTHOR_INDEXES:-augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus}
       - TEXTS_ROOT=/app/texts
     expose:
       - "8001"  # internal only

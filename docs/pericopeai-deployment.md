@@ -61,6 +61,13 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
 - Key API envs:
   - `CORPUS_API_URL=http://augustine-corpus-live:8001`
   - DB defaults (if not overridden): `MYSQL_HOST=mysql`, `MYSQL_DB=augustine_chat`, `MYSQL_USER=augustine`, `MYSQL_PASS=password`, `MYSQL_ROOT_PASSWORD=rootpass`
+- Key corpus performance envs:
+  - `MODEL_PROVIDER=ollama`
+  - `OLLAMA_BASE_URL=http://192.168.0.126:11434` in production.
+  - `OLLAMA_MODEL=mistral`
+  - `OLLAMA_TIMEOUT_SECONDS=120`
+  - `INDEX_CACHE_SIZE=16` by default in the Fortress compose file.
+  - `PREWARM_AUTHOR_INDEXES=augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus` by default in the Fortress compose file.
 - Key FE build args (to avoid mixed-content/CORS):
   - `REACT_APP_ROOT_URL=https://pericopeai.com` (API base through nginx `/api`)
   - `REACT_APP_ENVIRONMENT=prd`
@@ -178,7 +185,7 @@ Required env checks:
 
 ```bash
 grep -E '^(ENV|ENVIRONMENT|HIDE_LOCAL_ONLY)=' /root/workspace/AugustineService/.env
-grep -E '^(ENV|ENVIRONMENT)=' /root/workspace/AugustineCorpus/.env
+grep -E '^(ENV|ENVIRONMENT|MODEL_PROVIDER|OLLAMA_BASE_URL|OLLAMA_MODEL|OLLAMA_TIMEOUT_SECONDS|INDEX_CACHE_SIZE|PREWARM_AUTHOR_INDEXES)=' /root/workspace/AugustineCorpus/.env
 grep -E '^(SOLOMONIC_GUIDED_PROMPTS_API_KEY|SOLOMONIC_PSALM_SOURCE_MODE|SOLOMONIC_PERICOPE_API_BASE)=' /root/workspace/Solomonic_Seals/.env
 grep -E '^(REACT_APP_ENVIRONMENT|REACT_APP_AUGUSTINE_API_KEY|REACT_APP_KEYCLOAK_URL)=' /root/workspace/AugustineFE/.env
 ```
@@ -239,6 +246,18 @@ curl -sS -m 180 \
   -d '{"question":"health probe","mode":"conversation","persona":"augustine"}' \
   https://pericopeai.com/api/v2/chat >/dev/null
 ```
+
+Gate 4: model latency check when changing Ollama routing/model settings
+
+```bash
+python3 scripts/benchmark-ollama-models.py \
+  --base-url http://192.168.0.126:11434 \
+  --models mistral:latest \
+  --prompt "What is consciousness?"
+```
+
+Record the result in the release notes or test artifact before changing
+`OLLAMA_MODEL`, `OLLAMA_BASE_URL`, or generation token limits.
 
 ### F) Nginx `/api` Requirements
 
