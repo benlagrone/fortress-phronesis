@@ -28,10 +28,14 @@ permissions:
 
 env:
   REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria,cyprian_of_carthage,boethius,anselm_of_canterbury
+  AUTHOR_PROFILE_VERIFY_TIMEOUT: "8"
+  RUN_CORPUS_REFRESH: "false"
+  RUN_AUTHOR_INDEXING: "false"
+  RUN_FRONTEND_REFRESH: "false"
 
 concurrency:
   group: pericope-api-prod
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -75,7 +79,7 @@ jobs:
           )
 
           ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' AUTHOR_PROFILE_VERIFY_TIMEOUT='${AUTHOR_PROFILE_VERIFY_TIMEOUT}' RUN_CORPUS_REFRESH='${RUN_CORPUS_REFRESH}' RUN_AUTHOR_INDEXING='${RUN_AUTHOR_INDEXING}' RUN_FRONTEND_REFRESH='${RUN_FRONTEND_REFRESH}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
@@ -241,36 +245,37 @@ jobs:
 
           bash scripts/verify-pericope-deploy-lock.sh
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live \
-            >/tmp/pericope-corpus-build.log 2>&1
-          tail -n 20 /tmp/pericope-corpus-build.log
-          for author in \
-            polycarp_of_smyrna \
-            gregory_of_nyssa \
-            tertullian \
-            cyprian_of_carthage \
-            boethius \
-            anselm_of_canterbury \
-            epictetus \
-            seneca \
-            musonius_rufus \
-            machiavelli \
-            hermes_trismegistus \
-            athanasius_of_alexandria \
-            origen_of_alexandria; do
-            log_file="/tmp/pericope-index-${author}.log"
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml --profile index run --rm \
-              pericopeai-indexer python preprocess_and_index.py --author "${author}" --index-dir "/app/indexes/${author}" \
-              >"${log_file}" 2>&1
-            grep -E 'Loaded |Saving index|Index built' "${log_file}" || tail -n 20 "${log_file}"
-          done
+          if [ "${RUN_CORPUS_REFRESH}" = "true" ]; then
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build augustine-corpus-live
+            if [ "${RUN_AUTHOR_INDEXING}" = "true" ]; then
+              for author in \
+                polycarp_of_smyrna \
+                gregory_of_nyssa \
+                tertullian \
+                cyprian_of_carthage \
+                boethius \
+                anselm_of_canterbury \
+                epictetus \
+                seneca \
+                musonius_rufus \
+                machiavelli \
+                hermes_trismegistus \
+                athanasius_of_alexandria \
+                origen_of_alexandria; do
+                docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml --profile index run --rm \
+                  pericopeai-indexer python preprocess_and_index.py --author "${author}" --index-dir "/app/indexes/${author}"
+              done
+            fi
+          else
+            echo "Skipping corpus refresh for API-only deploy."
+          fi
 
-          SKIP_GIT_SYNC=true SKIP_PUBLIC_SMOKE=true bash scripts/deploy-pericopeai-prod.sh \
-            >/tmp/pericope-api-deploy.log 2>&1
-          tail -n 80 /tmp/pericope-api-deploy.log
-          docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend \
-            >/tmp/pericope-frontend-build.log 2>&1
-          tail -n 20 /tmp/pericope-frontend-build.log
+          SKIP_GIT_SYNC=true SKIP_PUBLIC_SMOKE=true bash scripts/deploy-pericopeai-prod.sh
+          if [ "${RUN_FRONTEND_REFRESH}" = "true" ]; then
+            docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend
+          else
+            echo "Skipping frontend refresh for API-only deploy."
+          fi
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api pericopeai-frontend
 
           for url in \
@@ -289,7 +294,9 @@ jobs:
             --base-url http://127.0.0.1:18000 \
             --assets-base-url http://127.0.0.1:13080 \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury
+            --only-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
+            --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury \
+            --timeout "${AUTHOR_PROFILE_VERIFY_TIMEOUT}"
           for url in \
             http://127.0.0.1:13080/ \
             http://127.0.0.1:13080/asset-manifest.json; do
@@ -360,7 +367,9 @@ jobs:
               --base-url https://pericopeai.com \
               --assets-base-url https://pericopeai.com \
               --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-              --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury >/dev/null 2>&1 && \
+              --only-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
+              --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury \
+              --timeout "${AUTHOR_PROFILE_VERIFY_TIMEOUT}" >/dev/null 2>&1 && \
               curl -fsSI https://pericopeai.com/ >/dev/null 2>&1 && \
               curl -fsSI https://pericopeai.com/asset-manifest.json >/dev/null 2>&1; then
               break
@@ -371,7 +380,9 @@ jobs:
             --base-url https://pericopeai.com \
             --assets-base-url https://pericopeai.com \
             --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
-            --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury
+            --only-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
+            --require-books-for augustine,cyprian_of_carthage,boethius,anselm_of_canterbury \
+            --timeout "${AUTHOR_PROFILE_VERIFY_TIMEOUT}"
           for url in \
             https://pericopeai.com/ \
             https://pericopeai.com/asset-manifest.json; do

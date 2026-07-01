@@ -74,6 +74,12 @@ passwordless-sudo fallback because production env files may be owned by a
 different server user. If a protected target `.env` already exists and is
 non-empty, the workflow preserves it instead of failing the deploy.
 
+The API workflow is API-scoped by default: `RUN_CORPUS_REFRESH=false`,
+`RUN_AUTHOR_INDEXING=false`, and `RUN_FRONTEND_REFRESH=false`. Set those env
+flags to `true` only when the release actually needs corpus or frontend refresh.
+The author-profile verifier checks only the required public slugs by default so
+API deploys do not block on every visible author asset.
+
 ## Gateway (CorpusGateway)
 - Repo path: `CorpusGateway/` (sibling to AugustineService).
 - Build artifact: `Dockerfile` in `CorpusGateway/`; image typically tagged `corpus-gateway`.

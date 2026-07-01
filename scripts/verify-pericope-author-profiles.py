@@ -70,6 +70,7 @@ def main() -> int:
     parser.add_argument("--assets-base-url", default="", help="Optional base URL for portrait asset checks")
     parser.add_argument("--required-slugs", default="", help="Comma-separated slugs that must be visible")
     parser.add_argument("--require-books-for", default="", help="Comma-separated slugs that must have at least one book")
+    parser.add_argument("--only-slugs", default="", help="Optional comma-separated visible slugs to check in detail")
     parser.add_argument("--timeout", type=int, default=30)
     args = parser.parse_args()
 
@@ -77,6 +78,7 @@ def main() -> int:
     assets_base = (args.assets_base_url or base_url).rstrip("/")
     required_slugs = _csv_set(args.required_slugs)
     require_books_for = _csv_set(args.require_books_for)
+    only_slugs = _csv_set(args.only_slugs)
 
     status, authors_payload, error = _request_json(f"{base_url}/api/v1/authors", timeout=args.timeout)
     if status != 200 or error or not isinstance(authors_payload, list):
@@ -94,7 +96,9 @@ def main() -> int:
 
     failures: list[str] = []
 
-    for slug in sorted(visible_slugs):
+    slugs_to_check = visible_slugs & only_slugs if only_slugs else visible_slugs
+
+    for slug in sorted(slugs_to_check):
         status, profile_payload, error = _request_json(
             f"{base_url}/api/v1/authors/{slug}/profile",
             timeout=args.timeout,
