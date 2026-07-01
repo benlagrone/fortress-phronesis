@@ -97,6 +97,23 @@ jobs:
           FE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-fe.env.restore"
           timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
+          restore_env_file() {
+            local backup_path="$1"
+            local target_path="$2"
+            if [ ! -f "${backup_path}" ]; then
+              return 0
+            fi
+            if cp "${backup_path}" "${target_path}" 2>/dev/null; then
+              return 0
+            fi
+            if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+              sudo cp "${backup_path}" "${target_path}"
+              return 0
+            fi
+            echo "::error::Unable to restore ${target_path}; file is not writable and passwordless sudo is unavailable."
+            exit 1
+          }
+
           install -d "${WORKSPACE_ROOT}"
 
           if [ -d "${FORTRESS_ROOT}" ] && [ ! -d "${FORTRESS_ROOT}/.git" ]; then
@@ -198,15 +215,9 @@ jobs:
           git -C "${FE_ROOT}" checkout master
           git -C "${FE_ROOT}" pull --ff-only origin master
 
-          if [ -f "${CORPUS_ENV_BACKUP}" ]; then
-            cp "${CORPUS_ENV_BACKUP}" "${CORPUS_ROOT}/.env"
-          fi
-          if [ -f "${FE_ENV_BACKUP}" ]; then
-            cp "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
-          fi
-          if [ -f "${SERVICE_ENV_BACKUP}" ]; then
-            mv "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
-          fi
+          restore_env_file "${CORPUS_ENV_BACKUP}" "${CORPUS_ROOT}/.env"
+          restore_env_file "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
+          restore_env_file "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
 
           [ -f "${CORPUS_ROOT}/Dockerfile" ] || {
             echo "::error::AugustineCorpus/Dockerfile is missing on the server."

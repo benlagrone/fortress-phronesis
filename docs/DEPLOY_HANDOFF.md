@@ -69,7 +69,9 @@ Required fields:
 compose project. If `/root/workspace/fortress-phronesis` is dirty on the server,
 the workflow preserves it and uses `/root/workspace/fortress-phronesis-deploy`
 as a clean deploy checkout so local server edits do not block production API
-deployment.
+deployment. The workflow also restores preserved service `.env` files with a
+passwordless-sudo fallback because production env files may be owned by a
+different server user.
 
 ## Gateway (CorpusGateway)
 - Repo path: `CorpusGateway/` (sibling to AugustineService).
