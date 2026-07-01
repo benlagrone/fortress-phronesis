@@ -9,6 +9,7 @@ volumes:
   corpus_2_esdras_index:
   corpus_2_maccabees_index:
   corpus_alpha_index:
+  corpus_adam_smith_index:
   corpus_amos_index:
   corpus_augustine_index:
   corpus_baruch_index:
@@ -49,6 +50,7 @@ volumes:
   corpus_judith_index:
   corpus_letter_of_jeremiah_index:
   corpus_luke_index:
+  corpus_ludwig_von_mises_index:
   corpus_malachi_index:
   corpus_marcus_aurelius_index:
   corpus_mark_index:
@@ -122,6 +124,7 @@ services:
       - ../AugustineCorpus/texts/2_esdras_texts:/app/texts/2_esdras_texts:ro
       - ../AugustineCorpus/texts/2_maccabees_texts:/app/texts/2_maccabees_texts:ro
       - ../AugustineCorpus/texts/alpha_texts:/app/texts/alpha_texts:ro
+      - ../AugustineCorpus/texts/adam_smith_texts:/app/texts/adam_smith_texts:ro
       - ../AugustineCorpus/texts/amos_texts:/app/texts/amos_texts:ro
       - ../AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - ../AugustineCorpus/texts/baruch_texts:/app/texts/baruch_texts:ro
@@ -162,6 +165,7 @@ services:
       - ../AugustineCorpus/texts/judith_texts:/app/texts/judith_texts:ro
       - ../AugustineCorpus/texts/letter_of_jeremiah_texts:/app/texts/letter_of_jeremiah_texts:ro
       - ../AugustineCorpus/texts/luke_texts:/app/texts/luke_texts:ro
+      - ../AugustineCorpus/texts/ludwig_von_mises_texts:/app/texts/ludwig_von_mises_texts:ro
       - ../AugustineCorpus/texts/malachi_texts:/app/texts/malachi_texts:ro
       - ../AugustineCorpus/texts/marcus_aurelius_texts:/app/texts/marcus_aurelius_texts:ro
       - ../AugustineCorpus/texts/mark_texts:/app/texts/mark_texts:ro
@@ -190,6 +194,7 @@ services:
       - corpus_2_esdras_index:/app/indexes/2_esdras
       - corpus_2_maccabees_index:/app/indexes/2_maccabees
       - corpus_alpha_index:/app/indexes/alpha
+      - corpus_adam_smith_index:/app/indexes/adam_smith
       - corpus_amos_index:/app/indexes/amos
       - corpus_augustine_index:/app/indexes/augustine
       - corpus_baruch_index:/app/indexes/baruch
@@ -230,6 +235,7 @@ services:
       - corpus_judith_index:/app/indexes/judith
       - corpus_letter_of_jeremiah_index:/app/indexes/letter_of_jeremiah
       - corpus_luke_index:/app/indexes/luke
+      - corpus_ludwig_von_mises_index:/app/indexes/ludwig_von_mises
       - corpus_malachi_index:/app/indexes/malachi
       - corpus_marcus_aurelius_index:/app/indexes/marcus_aurelius
       - corpus_mark_index:/app/indexes/mark
@@ -278,6 +284,7 @@ services:
       - ../AugustineCorpus/texts/2_esdras_texts:/app/texts/2_esdras_texts:ro
       - ../AugustineCorpus/texts/2_maccabees_texts:/app/texts/2_maccabees_texts:ro
       - ../AugustineCorpus/texts/alpha_texts:/app/texts/alpha_texts:ro
+      - ../AugustineCorpus/texts/adam_smith_texts:/app/texts/adam_smith_texts:ro
       - ../AugustineCorpus/texts/amos_texts:/app/texts/amos_texts:ro
       - ../AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - ../AugustineCorpus/texts/baruch_texts:/app/texts/baruch_texts:ro
@@ -318,6 +325,7 @@ services:
       - ../AugustineCorpus/texts/judith_texts:/app/texts/judith_texts:ro
       - ../AugustineCorpus/texts/letter_of_jeremiah_texts:/app/texts/letter_of_jeremiah_texts:ro
       - ../AugustineCorpus/texts/luke_texts:/app/texts/luke_texts:ro
+      - ../AugustineCorpus/texts/ludwig_von_mises_texts:/app/texts/ludwig_von_mises_texts:ro
       - ../AugustineCorpus/texts/malachi_texts:/app/texts/malachi_texts:ro
       - ../AugustineCorpus/texts/marcus_aurelius_texts:/app/texts/marcus_aurelius_texts:ro
       - ../AugustineCorpus/texts/mark_texts:/app/texts/mark_texts:ro
@@ -346,6 +354,7 @@ services:
       - corpus_2_esdras_index:/app/indexes/2_esdras
       - corpus_2_maccabees_index:/app/indexes/2_maccabees
       - corpus_alpha_index:/app/indexes/alpha
+      - corpus_adam_smith_index:/app/indexes/adam_smith
       - corpus_amos_index:/app/indexes/amos
       - corpus_augustine_index:/app/indexes/augustine
       - corpus_baruch_index:/app/indexes/baruch
@@ -386,6 +395,7 @@ services:
       - corpus_judith_index:/app/indexes/judith
       - corpus_letter_of_jeremiah_index:/app/indexes/letter_of_jeremiah
       - corpus_luke_index:/app/indexes/luke
+      - corpus_ludwig_von_mises_index:/app/indexes/ludwig_von_mises
       - corpus_malachi_index:/app/indexes/malachi
       - corpus_marcus_aurelius_index:/app/indexes/marcus_aurelius
       - corpus_mark_index:/app/indexes/mark

@@ -163,29 +163,168 @@
     ]
   },
   {
+    "name": "Adam Smith",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
+    "queue_date": "2026-06-29",
+    "acquired_date": "2026-06-30",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1723-1790; Origin: Scotland",
+      "Role: Moral philosopher, economist",
+      "Key Works: The Wealth of Nations; The Theory of Moral Sentiments",
+      "Contribution target: Sympathy, moral judgment, commercial society, division of labor, and classical political economy foundations",
+      "Queue note (2026-06-29): prioritized to the top of the economic theorists acquisition block.",
+      "Priority note (2026-06-29): user highlighted special interest in The Theory of Moral Sentiments.",
+      "Acquisition note (2026-06-30): texts downloaded, portrait resolved, local index built, and runtime mounts wired.",
+      "Prod publish note (2026-06-30): prod corpus synced; public authors/profile/media/runtime verification passed."
+    ]
+  },
+  {
+    "name": "Ludwig von Mises",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
+    "queue_date": "2026-06-29",
+    "acquired_date": "2026-06-30",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1881-1973; Origin: Austria, later United States",
+      "Role: Economist, social theorist, Austrian school theorist",
+      "Key Works: Human Action; Socialism; The Theory of Money and Credit",
+      "Contribution target: Praxeology, economic calculation, money and credit, entrepreneurship, and liberal social order",
+      "Queue note (2026-06-29): elevated alongside Adam Smith in response to user priority.",
+      "Acquisition note (2026-06-30): texts downloaded, portrait resolved, local index built, and runtime mounts wired.",
+      "Prod publish note (2026-06-30): prod corpus synced; public authors/profile/media/runtime verification passed."
+    ]
+  },
+  {
+    "name": "William Petty",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1623-1687; Origin: England",
+      "Role: Economist, statistician, physician",
+      "Key Works: Treatise of Taxes and Contributions; Political Arithmetick; Verbum Sapienti",
+      "Contribution target: Early political arithmetic, value, rent, taxation, and proto-national income analysis"
+    ]
+  },
+  {
+    "name": "Richard Cantillon",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 1680-1734; Origin: Ireland, later France",
+      "Role: Economist, banker, merchant theorist",
+      "Key Works: Essai sur la Nature du Commerce en Général",
+      "Contribution target: Entrepreneurship, price formation, money, and spatial market analysis"
+    ]
+  },
+  {
+    "name": "François Quesnay",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1694-1774; Origin: France",
+      "Role: Economist, physician, physiocrat",
+      "Key Works: Tableau Économique; General Maxims of the Economic Government of an Agricultural Kingdom",
+      "Contribution target: Physiocracy, productive surplus, circular flow, and natural order"
+    ]
+  },
+  {
+    "name": "Anne-Robert-Jacques Turgot",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1727-1781; Origin: France",
+      "Role: Statesman, economist, reformer",
+      "Key Works: Reflections on the Formation and Distribution of Wealth; Letters on Freedom of the Grain Trade",
+      "Contribution target: Capital, interest, progress, and market liberalization"
+    ]
+  },
+  {
+    "name": "Thomas Robert Malthus",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1766-1834; Origin: England",
+      "Role: Cleric, political economist, demographer",
+      "Key Works: An Essay on the Principle of Population; Principles of Political Economy",
+      "Contribution target: Population dynamics, scarcity, rent, and demand debates"
+    ]
+  },
+  {
+    "name": "David Ricardo",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1772-1823; Origin: England",
+      "Role: Political economist, financier",
+      "Key Works: Principles of Political Economy and Taxation; Essay on the Influence of a Low Price of Corn on the Profits of Stock",
+      "Contribution target: Comparative advantage, rent theory, distribution, and labor value debates"
+    ]
+  },
+  {
+    "name": "Jean-Baptiste Say",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1767-1832; Origin: France",
+      "Role: Economist, businessman, public intellectual",
+      "Key Works: Treatise on Political Economy; Catechism of Political Economy",
+      "Contribution target: Entrepreneurship, production, markets, and Say's Law"
+    ]
+  },
+  {
+    "name": "John Stuart Mill",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1806-1873; Origin: England",
+      "Role: Philosopher, economist, political theorist",
+      "Key Works: Principles of Political Economy; Essays on Some Unsettled Questions of Political Economy",
+      "Contribution target: Classical economics synthesis, liberty, distribution, and political economy reform"
+    ]
+  },
+  {
+    "name": "Frédéric Bastiat",
+    "status": "pending",
+    "queue_date": "2026-06-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1801-1850; Origin: France",
+      "Role: Economist, polemicist, legislator",
+      "Key Works: Economic Sophisms; What Is Seen and What Is Not Seen; The Law",
+      "Contribution target: Opportunity cost, anti-protectionism, legal order, and popular economic argument"
+    ]
+  },
+  {
     "name": "Solomon",
-    "status": "next-up queued (1 of 2); pending text acquisition/index/runtime wiring",
-    "queue_date": "2026-02-28",
+    "status": "pending",
     "persona_mode": "Aphoristic",
     "notes": [
       "Time: c. 10th century BC (traditional); Origin: United Kingdom of Israel",
       "Role: King, wisdom figure",
       "Key Texts: Proverbs; Ecclesiastes; Song of Songs",
       "Contribution: Biblical wisdom tradition, order, discernment",
-      "Queue note (2026-02-28): selected as one of the next two acquisition targets for the v1.1.3 release train."
+      "Priority note (2026-06-29): previously queued for the v1.1.3 release train, but superseded by the economic theorists priority shift."
     ]
   },
   {
     "name": "Aristotle",
-    "status": "next-up queued (2 of 2); pending text acquisition/index/runtime wiring",
-    "queue_date": "2026-02-28",
+    "status": "pending",
     "persona_mode": "Authority",
     "notes": [
       "Time: 384–322 BC; Origin: Stagira",
       "Role: Philosopher, systematizer",
       "Key Works: Ethics; Metaphysics; Politics",
       "Contribution: Logic, causality, practical ethics",
-      "Queue note (2026-02-28): selected as one of the next two acquisition targets for the v1.1.3 release train."
+      "Priority note (2026-06-29): previously queued for the v1.1.3 release train, but superseded by the economic theorists priority shift."
     ]
   },
   {
@@ -863,5 +1002,77 @@
     "status": "pending",
     "persona_mode": "Authority",
     "notes": []
+  },
+  {
+    "name": "Hesiod",
+    "status": "pending",
+    "queue_date": "2026-04-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 8th-7th century BC; Origin: Boeotia",
+      "Role: Greek didactic poet",
+      "Key Works: Works and Days; Theogony",
+      "Contribution target: Archaic Greek moral order, labor, justice, mythic genealogy"
+    ]
+  },
+  {
+    "name": "Carl Jung",
+    "status": "pending",
+    "queue_date": "2026-04-29",
+    "persona_mode": "Interior",
+    "notes": [
+      "Time: 1875-1961; Origin: Switzerland",
+      "Role: Psychiatrist and analytical psychologist",
+      "Key Works: Psychological Types; Symbols of Transformation; Aion",
+      "Contribution target: Archetypes, individuation, symbolic interpretation, depth psychology"
+    ]
+  },
+  {
+    "name": "Julius Evola",
+    "status": "pending",
+    "queue_date": "2026-04-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1898-1974; Origin: Italy",
+      "Role: Philosopher, esoteric writer, cultural critic",
+      "Key Works: Revolt Against the Modern World; The Doctrine of Awakening; The Hermetic Tradition",
+      "Contribution target: Traditionalist critique, esoteric metaphysics, spiritual hierarchy, modernity analysis"
+    ]
+  },
+  {
+    "name": "Pindar",
+    "status": "pending",
+    "queue_date": "2026-04-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: c. 518-438 BC; Origin: Boeotia",
+      "Role: Greek lyric poet",
+      "Key Works: Olympian Odes; Pythian Odes; Nemean Odes; Isthmian Odes",
+      "Contribution target: Victory, honor, memory, sacred order, aristocratic virtue in archaic Greece"
+    ]
+  },
+  {
+    "name": "Ren\u00e9 Gu\u00e9non",
+    "status": "pending",
+    "queue_date": "2026-04-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1886-1951; Origin: France",
+      "Role: Metaphysician and traditionalist writer",
+      "Key Works: The Crisis of the Modern World; The Reign of Quantity and the Signs of the Times; Introduction to the Study of the Hindu Doctrines",
+      "Contribution target: Traditionalist metaphysics, critique of modernity, symbolism, initiatic thought"
+    ]
+  },
+  {
+    "name": "Robert Graves",
+    "status": "pending",
+    "queue_date": "2026-04-29",
+    "persona_mode": "Authority",
+    "notes": [
+      "Time: 1895-1985; Origin: England",
+      "Role: Poet, novelist, classicist, mythographer",
+      "Key Works: The White Goddess; The Greek Myths; I, Claudius",
+      "Contribution target: Mythic imagination, poetic symbolism, classical reinterpretation"
+    ]
   }
 ]
