@@ -109,7 +109,7 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-mistral}
       - AUTHOR_INDEX_MAP=${AUTHOR_INDEX_MAP:-}
       - INDEX_CACHE_SIZE=${INDEX_CACHE_SIZE:-16}
-      - PREWARM_AUTHOR_INDEXES=${PREWARM_AUTHOR_INDEXES:-augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus}
+      - PREWARM_AUTHOR_INDEXES=${PREWARM_AUTHOR_INDEXES:-augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus,adam_smith,ludwig_von_mises}
       - TEXTS_ROOT=/app/texts
     expose:
       - "8001"                         # internal only; no host mapping
