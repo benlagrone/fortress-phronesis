@@ -107,7 +107,12 @@ jobs:
               return 0
             fi
             if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-              sudo cp "${backup_path}" "${target_path}"
+              if sudo cp "${backup_path}" "${target_path}" 2>/dev/null; then
+                return 0
+              fi
+            fi
+            if [ -s "${target_path}" ]; then
+              echo "Preserving existing ${target_path}; backup restore was not permitted."
               return 0
             fi
             echo "::error::Unable to restore ${target_path}; file is not writable and passwordless sudo is unavailable."
