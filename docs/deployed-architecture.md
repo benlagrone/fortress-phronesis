@@ -39,6 +39,17 @@ Deployment execution remains governed by `docs/pericopeai-deployment.md` and
 - `pericopeai-frontend`
   - Container port `80`; host port `13080`
 
+## Browser Auth Bootstrap
+
+The public frontend renders immediately as an anonymous guest experience. It
+then starts Keycloak silent SSO in the background against
+`https://auth.pericopeai.com` using the `pericope` realm and `pericope-web`
+client. If the silent SSO iframe or third-party-cookie probe times out, the
+browser remains in guest mode and the first render must stay usable. Explicit
+Sign In still redirects to Keycloak using Authorization Code + PKCE, and
+authenticated API calls attach `Authorization: Bearer ...` after token
+exchange/refresh.
+
 ## Chat Request Path
 
 The main browser chat path is:
@@ -48,11 +59,32 @@ The main browser chat path is:
 3. API calls corpus `POST /v1/context`.
 4. Corpus loads or reuses the selected author vector index and returns retrieved
    context plus metadata.
-5. API calls corpus `POST /v1/generate` for the answer.
-6. API calls corpus `POST /v1/generate` again for the response summary.
-7. API persists chat/session/reference state and returns segmented response data.
+5. API calls corpus `POST /v1/generate` for the answer using the normal
+   `CORPUS_GENERATE_MAX_TOKENS` answer budget.
+6. API compacts the response summary locally for session state and response
+   metadata; summary generation must not issue a second corpus/LLM call.
+7. API derives an optional same-author `follow_up_question` segment from the
+   answer, explicit session state, and optional compact clock advisory context.
+   `clock_followup_weight` may bias the follow-up question angle only; it must
+   not change answer grounding or expose raw clock internals.
+8. API persists chat/session/reference state and returns segmented response data.
 
 VibeVoice/TTS endpoints are separate from this normal chat response path.
+
+## Persistence And Memory
+
+MySQL is the current deployed source of truth for PericopeAI application
+persistence, including sessions, messages, citations, explicit session state,
+relationship memory, response traces, normalized passages, explicit passage
+references, and semantic passage-neighbor rows.
+
+No graph database is currently deployed in the Fortress-managed PericopeAI stack.
+The planned graph conversation memory migration is documented in
+`docs/graph-conversation-memory-migration.md`. Until that roadmap item is
+implemented and promoted, graph memory is not a runtime dependency and prompt
+assembly must continue to work from MySQL-backed session state, recent messages,
+relationship memory, corpus retrieval, explicit references, and semantic
+neighbors.
 
 ## Inference And Retrieval
 
@@ -79,7 +111,7 @@ The API logs sanitized phase timings for:
 
 - `api_corpus_context_complete`
 - `api_corpus_generate_complete`
-- `api_summary_generate_complete`
+- `api_summary_generate_complete` with `source=local`
 - `api_chat_v2_complete`
 
 The corpus logs sanitized phase timings for:
