@@ -10,6 +10,7 @@ on:
       - "scripts/update-nginx-pericopeai.sh"
       - "scripts/verify-pericope-author-profiles.py"
       - "scripts/verify-pericope-deploy-lock.sh"
+      - "scripts/deploy-pericopeai-prod.sh"
   workflow_dispatch:
     inputs:
       service_ref:
@@ -74,15 +75,20 @@ jobs:
           )
 
           ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
           CORPUS_REPO_URL="git@github.com:benlagrone/AugustineCorpus.git"
           SERVICE_REPO_URL="git@github.com:benlagrone/AugustineService.git"
           FE_REPO_URL="git@github.com:benlagrone/AugustineFE.git"
-          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          PRIMARY_FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          FORTRESS_ROOT="${PRIMARY_FORTRESS_ROOT}"
+          if [ -d "${PRIMARY_FORTRESS_ROOT}/.git" ] && [ -n "$(git -C "${PRIMARY_FORTRESS_ROOT}" status --porcelain --untracked-files=all)" ]; then
+            FORTRESS_ROOT="${WORKSPACE_ROOT}/fortress-phronesis-deploy"
+            echo "Primary Fortress checkout is dirty; using clean deploy checkout ${FORTRESS_ROOT}"
+          fi
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
           SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
@@ -95,6 +101,9 @@ jobs:
 
           if [ -d "${FORTRESS_ROOT}" ] && [ ! -d "${FORTRESS_ROOT}/.git" ]; then
             mv "${FORTRESS_ROOT}" "${FORTRESS_ROOT}.pre-git-${timestamp}"
+          fi
+          if [ -d "${FORTRESS_ROOT}/.git" ] && [ -n "$(git -C "${FORTRESS_ROOT}" status --porcelain --untracked-files=all)" ]; then
+            mv "${FORTRESS_ROOT}" "${FORTRESS_ROOT}.dirty-${timestamp}"
           fi
 
           if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
@@ -240,11 +249,9 @@ jobs:
             grep -E 'Loaded |Saving index|Index built' "${log_file}" || tail -n 20 "${log_file}"
           done
 
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-api \
-            >/tmp/pericope-api-build.log 2>&1
-          tail -n 20 /tmp/pericope-api-build.log
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python create_tables.py
-          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python sync_author_catalog.py --corpus-base http://augustine-corpus-live:8001 --exclude-local-only
+          SKIP_GIT_SYNC=true SKIP_PUBLIC_SMOKE=true bash scripts/deploy-pericopeai-prod.sh \
+            >/tmp/pericope-api-deploy.log 2>&1
+          tail -n 80 /tmp/pericope-api-deploy.log
           docker compose --env-file "${FE_ROOT}/.env" -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build pericopeai-frontend \
             >/tmp/pericope-frontend-build.log 2>&1
           tail -n 20 /tmp/pericope-frontend-build.log

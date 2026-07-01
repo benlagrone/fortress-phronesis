@@ -64,7 +64,8 @@ Corpus-only:
   - `docker compose -f docker-compose.corpus.yml --profile index run --rm pericopeai-indexer`
 
 PericopeAI updates:
-- `docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend augustine-corpus-live`
+- API: `bash scripts/deploy-pericopeai-prod.sh`
+- Full stack/manual: `docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-api pericopeai-frontend augustine-corpus-live`
 
 Calculators deploy:
 - `bash scripts/deploy-calculators.sh`
@@ -82,7 +83,7 @@ AMA chat and WordPress routing should avoid conflicting vhosts
 and duplicate `server_name` blocks. See `docs/system-handbook.md`.
 
 ## Scripts overview
-- `scripts/deploy-pericopeai-prod.sh`: deploy a standalone AugustineService stack (legacy path).
+- `scripts/deploy-pericopeai-prod.sh`: deploy the PericopeAI API through the locked Fortress Phronesis compose stack.
 - `scripts/deploy-calculators.sh`: build/run calculators container or use its compose.
 - `scripts/pull-wp-config.sh` and `scripts/pull-wp-content.sh`: sync WordPress files from remote host.
 - `scripts/update-nginx-*.sh`: helper templates for Nginx updates (review before use).

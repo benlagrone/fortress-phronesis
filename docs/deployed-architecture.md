@@ -19,6 +19,16 @@ Deployment execution remains governed by `docs/pericopeai-deployment.md` and
 - Docker compose project: `fortress-phronesis`
 - Docker network: `fortress-phronesis-net`
 
+## Deployment Capability
+
+Production API deploys are owned by Fortress Phronesis. The control-plane helper
+is `scripts/deploy-pericopeai-prod.sh`; it verifies the deployment lock, syncs or
+validates the sibling `AugustineService` checkout, rebuilds `pericopeai-api`
+through `docker compose -p fortress-phronesis -f docker-compose.pericope.yml`,
+runs migrations/catalog sync, and smokes the local API plus host TLS vhost.
+
+Do not use `AugustineService/docker-compose.yml` for production API deploys.
+
 ## Services
 
 - `mysql`

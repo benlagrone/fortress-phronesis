@@ -31,7 +31,12 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
    bash scripts/verify-pericope-deploy-lock.sh
    ```
 
-1) Core services (from control plane repo):
+1) API-only deploy (preferred for AugustineService changes):
+   ```
+   bash scripts/deploy-pericopeai-prod.sh
+   ```
+
+2) Core services (from control plane repo):
    ```
    docker compose -p fortress-phronesis -f docker-compose.pericope.yml \
      up -d --build mysql augustine-corpus-live pericopeai-api solomonic-clock
@@ -42,14 +47,14 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
      --profile index run --rm pericopeai-indexer
    ```
 
-2) Frontend (from control plane repo `/root/workspace/fortress-phronesis`):
+3) Frontend (from control plane repo `/root/workspace/fortress-phronesis`):
    ```
    docker compose --env-file /root/workspace/AugustineFE/.env \
      -p fortress-phronesis -f docker-compose.pericope.yml \
      up -d --build pericopeai-frontend
    ```
 
-3) Frontend-only GitHub Actions redeploy:
+4) Frontend-only GitHub Actions redeploy:
    - Workflow: `.github/workflows/deploy-pericope-frontend.yml`
    - Use this when frontend/public media files need to be republished without waiting for a full corpus/API rollout.
 

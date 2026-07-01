@@ -8,39 +8,48 @@ This handoff is for Codex agents working in application developer mode so they r
 what the script does and how to report deployment results back into this repo.
 
 ## What `scripts/deploy-pericopeai-prod.sh` does
-Target: the PericopeAI backend repo (default `/root/workspace/AugustineService` or a
-macOS fallback).
+Target: the PericopeAI backend repo (default sibling `AugustineService`) deployed
+through the locked `fortress-phronesis` compose stack.
 
 Steps (in order):
 1) Validate required commands (`git`, `docker`, `curl`).
-2) `git pull --ff-only` in the backend repo.
-3) `docker compose down` for the stack in that repo.
-4) `docker compose up -d` for the DB service.
-5) `docker compose up -d --build` for the API service.
-6) Run DB migrations in the API container (`python create_tables.py` by default).
-7) Hit a health endpoint (default `http://localhost:8080/api/healthz`).
+2) Run `scripts/verify-pericope-deploy-lock.sh`.
+3) Fetch and fast-forward/validate the backend repo branch, unless explicitly skipped.
+4) Rebuild and start `pericopeai-api` with:
+   `docker compose -p fortress-phronesis -f docker-compose.pericope.yml up -d --build pericopeai-api`
+5) Run DB migrations in the API container (`python create_tables.py` by default).
+6) Sync the author catalog against `augustine-corpus-live`.
+7) Smoke local API health/authors and the host TLS vhost via `--resolve`.
 
-It uses the backend repo’s `.env` and expects the repo’s own `docker-compose.yml`
-unless `COMPOSE_FILE` is overridden.
+It uses the backend repo’s `.env` through `docker-compose.pericope.yml`. It must not
+deploy the old standalone `AugustineService/docker-compose.yml` stack.
 
 ## Environment overrides
 All can be set when invoking the script:
 - `APP_PATH` (backend repo path)
-- `COMPOSE_FILE` (compose filename)
-- `API_SERVICE` (default `api`)
-- `DB_SERVICE` (default `mysql`)
-- `HEALTH_URL` (default `http://localhost:8080/api/healthz`)
+- `APP_REPO_URL` (backend repo remote)
+- `APP_REF` (default `master`)
+- `SOURCE_SHA` (optional exact commit)
+- `COMPOSE_PROJECT` (default `fortress-phronesis`)
+- `COMPOSE_FILE` (default `docker-compose.pericope.yml`)
+- `API_SERVICE` (default `pericopeai-api`)
+- `HEALTH_URL` (default `http://127.0.0.1:18000/api/healthz`)
+- `AUTHORS_URL` (default `http://127.0.0.1:18000/api/v1/authors`)
+- `PUBLIC_HOST` (default `pericopeai.com`)
+- `PUBLIC_RESOLVE_IP` (default `127.0.0.1`)
 - `CREATE_TABLES_CMD` (default `python create_tables.py`)
+- `SYNC_AUTHOR_CATALOG_CMD`
+- `SKIP_GIT_SYNC=true`
+- `SKIP_MIGRATIONS=true`
+- `SKIP_AUTHOR_SYNC=true`
+- `SKIP_PUBLIC_SMOKE=true`
 
 ## Usage examples
 ```bash
 bash scripts/deploy-pericopeai-prod.sh
 
 APP_PATH=/root/workspace/AugustineService \
-COMPOSE_FILE=docker-compose.yml \
-API_SERVICE=api \
-DB_SERVICE=mysql \
-HEALTH_URL=http://localhost:8080/api/healthz \
+APP_REF=master \
 bash scripts/deploy-pericopeai-prod.sh
 ```
 
@@ -53,6 +62,14 @@ Required fields:
 - What changed (script changes or deploy actions)
 - Outcome (success/fail, health check status)
 - Follow-ups (if any)
+
+## GitHub Workflow Guardrails
+
+`.github/workflows/deploy-pericope-api.yml` deploys through the same locked
+compose project. If `/root/workspace/fortress-phronesis` is dirty on the server,
+the workflow preserves it and uses `/root/workspace/fortress-phronesis-deploy`
+as a clean deploy checkout so local server edits do not block production API
+deployment.
 
 ## Gateway (CorpusGateway)
 - Repo path: `CorpusGateway/` (sibling to AugustineService).
@@ -82,4 +99,8 @@ Follow-ups: Run scripts/deploy-pericopeai-prod.sh pointing API at the gateway/co
 Change: Documented CorpusGateway deployment context (path, ports, health, config) and API book/book_partial proxying. No control-plane deploy run here.
 Outcome: Gateway/API rebuilt manually; `/healthz` returns personas. Control-plane deploy script unchanged.
 Follow-ups: When deploying via control plane, ensure `CORPUS_BASE_URL` is set for gateway and API `CORPUS_API_URL` points at the gateway; verify gateway `/healthz` and API `/api/healthz`.
+2026-07-01T00:00Z
+Change: Repointed `scripts/deploy-pericopeai-prod.sh` from the legacy standalone AugustineService compose stack to the locked `fortress-phronesis` compose path for `pericopeai-api`.
+Outcome: Script now verifies the deployment lock, validates/syncs the backend checkout, rebuilds `pericopeai-api`, runs migrations/catalog sync, and smokes container plus host-vhost health.
+Follow-ups: Keep API fixes deployable through Fortress Phronesis; do not use the legacy standalone compose path for production API deploys.
 ```
