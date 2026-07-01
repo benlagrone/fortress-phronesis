@@ -105,6 +105,11 @@ jobs:
           if [ -d "${FE_ROOT}" ] && [ ! -d "${FE_ROOT}/.git" ]; then
             mv "${FE_ROOT}" "${FE_ROOT}.pre-git-${timestamp}"
           fi
+          if [ -d "${FE_ROOT}/.git" ] && [ -n "$(git -C "${FE_ROOT}" status --porcelain)" ]; then
+            echo "Existing AugustineFE checkout is dirty; preserving it before clean deploy sync."
+            git -C "${FE_ROOT}" status --short
+            mv "${FE_ROOT}" "${FE_ROOT}.pre-deploy-dirty-${timestamp}"
+          fi
           if [ ! -d "${FE_ROOT}/.git" ]; then
             git clone "${FE_REPO_URL}" "${FE_ROOT}"
           fi

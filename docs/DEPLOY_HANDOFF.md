@@ -106,4 +106,8 @@ Follow-ups: When deploying via control plane, ensure `CORPUS_BASE_URL` is set fo
 Change: Repointed `scripts/deploy-pericopeai-prod.sh` from the legacy standalone AugustineService compose stack to the locked `fortress-phronesis` compose path for `pericopeai-api`.
 Outcome: Script now verifies the deployment lock, validates/syncs the backend checkout, rebuilds `pericopeai-api`, runs migrations/catalog sync, and smokes container plus host-vhost health.
 Follow-ups: Keep API fixes deployable through Fortress Phronesis; do not use the legacy standalone compose path for production API deploys.
+2026-07-01T19:20Z
+Change: Hardened the frontend deploy workflow so a dirty server `AugustineFE` checkout is preserved as `AugustineFE.pre-deploy-dirty-<timestamp>` before cloning a clean checkout and rebuilding `pericopeai-frontend`.
+Outcome: Prepared after workflow dispatch failed on local portrait files in the server checkout. Redeploy must be rerun through the updated workflow.
+Follow-ups: Confirm the rerun deploys `AugustineFE` `master` at the intended auth-bootstrap commit and passes public smoke.
 ```
