@@ -112,7 +112,7 @@ jobs:
           set -euo pipefail
           scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
 
-      - name: Upload GridScope Env
+      - name: Upload Runtime Env
         shell: bash
         env:
           GRIDSCOPE_EXTERNAL_API_URL: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_URL }}
@@ -121,6 +121,14 @@ jobs:
           GRIDSCOPE_EXTERNAL_API_HEADER_NAME: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_HEADER_NAME }}
           GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS }}
           GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS: ${{ secrets.LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS }}
+          KEYCLOAK_BASE_URL: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_BASE_URL }}
+          KEYCLOAK_REALM: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_REALM }}
+          KEYCLOAK_CLIENT_ID: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_CLIENT_ID }}
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_CLIENT_SECRET }}
+          KEYCLOAK_REDIRECT_URI: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_REDIRECT_URI }}
+          KEYCLOAK_PUBLIC_ORIGIN: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_PUBLIC_ORIGIN }}
+          KEYCLOAK_ALLOWED_ROLES: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_ALLOWED_ROLES }}
+          KEYCLOAK_AUTH_SCOPE: ${{ secrets.LECROWNPROPERTIES_KEYCLOAK_AUTH_SCOPE }}
         run: |
           set -euo pipefail
           if [ -n "${GRIDSCOPE_EXTERNAL_API_URL:-}" ] && [ -n "${GRIDSCOPE_EXTERNAL_API_KEY:-}" ]; then
@@ -139,6 +147,30 @@ jobs:
               fi
               if [ -n "${GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS:-}" ]; then
                 printf 'GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS=%s\n' "${GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS}"
+              fi
+              if [ -n "${KEYCLOAK_BASE_URL:-}" ]; then
+                printf 'KEYCLOAK_BASE_URL=%s\n' "${KEYCLOAK_BASE_URL}"
+              fi
+              if [ -n "${KEYCLOAK_REALM:-}" ]; then
+                printf 'KEYCLOAK_REALM=%s\n' "${KEYCLOAK_REALM}"
+              fi
+              if [ -n "${KEYCLOAK_CLIENT_ID:-}" ]; then
+                printf 'KEYCLOAK_CLIENT_ID=%s\n' "${KEYCLOAK_CLIENT_ID}"
+              fi
+              if [ -n "${KEYCLOAK_CLIENT_SECRET:-}" ]; then
+                printf 'KEYCLOAK_CLIENT_SECRET=%s\n' "${KEYCLOAK_CLIENT_SECRET}"
+              fi
+              if [ -n "${KEYCLOAK_REDIRECT_URI:-}" ]; then
+                printf 'KEYCLOAK_REDIRECT_URI=%s\n' "${KEYCLOAK_REDIRECT_URI}"
+              fi
+              if [ -n "${KEYCLOAK_PUBLIC_ORIGIN:-}" ]; then
+                printf 'KEYCLOAK_PUBLIC_ORIGIN=%s\n' "${KEYCLOAK_PUBLIC_ORIGIN}"
+              fi
+              if [ -n "${KEYCLOAK_ALLOWED_ROLES:-}" ]; then
+                printf 'KEYCLOAK_ALLOWED_ROLES=%s\n' "${KEYCLOAK_ALLOWED_ROLES}"
+              fi
+              if [ -n "${KEYCLOAK_AUTH_SCOPE:-}" ]; then
+                printf 'KEYCLOAK_AUTH_SCOPE=%s\n' "${KEYCLOAK_AUTH_SCOPE}"
               fi
             } > "${LOCAL_ENV_FILE}"
             chmod 600 "${LOCAL_ENV_FILE}"

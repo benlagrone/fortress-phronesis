@@ -99,6 +99,14 @@ Expected production secrets:
 - `LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_HEADER_NAME`
 - `LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_TIMEOUT_MS`
 - `LECROWNPROPERTIES_GRIDSCOPE_EXTERNAL_API_CACHE_TTL_SECONDS`
+- `LECROWNPROPERTIES_KEYCLOAK_BASE_URL` (optional, default `https://auth.pericopeai.com`)
+- `LECROWNPROPERTIES_KEYCLOAK_REALM` (optional, default `lecrown-portal`)
+- `LECROWNPROPERTIES_KEYCLOAK_CLIENT_ID` (optional, default `lecrown-portal-web`)
+- `LECROWNPROPERTIES_KEYCLOAK_CLIENT_SECRET` (optional)
+- `LECROWNPROPERTIES_KEYCLOAK_REDIRECT_URI` (optional, default inferred as `https://lecrownproperties.com/auth/callback`)
+- `LECROWNPROPERTIES_KEYCLOAK_PUBLIC_ORIGIN` (optional, default `https://lecrownproperties.com`)
+- `LECROWNPROPERTIES_KEYCLOAK_ALLOWED_ROLES` (optional comma-separated role allowlist)
+- `LECROWNPROPERTIES_KEYCLOAK_AUTH_SCOPE` (optional, default `openid profile email`)
 
 The source repo dispatches this workflow after publishing
 `ghcr.io/benlagrone/lecrownproperties-site:sha-<commit>`.
