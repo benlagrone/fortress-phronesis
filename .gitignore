@@ -6,6 +6,7 @@ scripts/*
 !scripts/deploy-fortress-personal-remote.sh
 !scripts/update-nginx-pericopeai-assets.sh
 !scripts/verify-pericope-author-profiles.py
+!scripts/verify-pericope-prod-smoke.py
 .env
 .env*.local
 scripts/.env

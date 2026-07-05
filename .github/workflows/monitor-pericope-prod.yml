@@ -1,0 +1,161 @@
+name: Monitor Pericope Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/monitor-pericope-prod.yml"
+      - "scripts/verify-pericope-prod-smoke.py"
+      - "docs/deployed-architecture.md"
+      - "docs/pericopeai-deployment.md"
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: read
+
+env:
+  REQUIRED_PUBLIC_AUTHOR_SLUGS: augustine,eusebius_pamphilus,john_chrysostom,machiavelli,epictetus,seneca,musonius_rufus,hermes_trismegistus,athanasius_of_alexandria,origen_of_alexandria,cyprian_of_carthage,boethius,anselm_of_canterbury
+  MIN_VISIBLE_AUTHORS: "70"
+
+concurrency:
+  group: pericope-prod-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT: fortress-phronesis
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run Production Smoke And Log Check
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(
+            -i ~/.ssh/id_ed25519
+            -o BatchMode=yes
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
+            -o TCPKeepAlive=yes
+          )
+
+          ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' MIN_VISIBLE_AUTHORS='${MIN_VISIBLE_AUTHORS}' GITHUB_RUN_ID_VALUE='${GITHUB_RUN_ID_VALUE}' GITHUB_RUN_ATTEMPT_VALUE='${GITHUB_RUN_ATTEMPT_VALUE}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
+          PRIMARY_FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          FORTRESS_ROOT="${PRIMARY_FORTRESS_ROOT}"
+          if [ -d "${PRIMARY_FORTRESS_ROOT}/.git" ] && [ -n "$(git -C "${PRIMARY_FORTRESS_ROOT}" status --porcelain --untracked-files=all)" ]; then
+            FORTRESS_ROOT="${WORKSPACE_ROOT}/fortress-phronesis-deploy"
+            echo "Primary Fortress checkout is dirty; using clean monitor checkout ${FORTRESS_ROOT}"
+          fi
+
+          SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
+
+          install -d "${WORKSPACE_ROOT}"
+          if [ -e "${FORTRESS_ROOT}" ] && [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            echo "::error::${FORTRESS_ROOT} exists but is not a git checkout."
+            exit 1
+          fi
+          if [ ! -d "${FORTRESS_ROOT}/.git" ]; then
+            git clone "${FORTRESS_REPO_URL}" "${FORTRESS_ROOT}"
+          fi
+          if [ -n "$(git -C "${FORTRESS_ROOT}" status --porcelain --untracked-files=all)" ]; then
+            echo "::error::Monitor checkout ${FORTRESS_ROOT} is dirty; refusing to mutate it."
+            git -C "${FORTRESS_ROOT}" status --short
+            exit 1
+          fi
+          git -C "${FORTRESS_ROOT}" remote set-url origin "${FORTRESS_REPO_URL}"
+          git -C "${FORTRESS_ROOT}" fetch origin main
+          git -C "${FORTRESS_ROOT}" checkout main
+          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+
+          [ -f "${SERVICE_ROOT}/.env" ] || {
+            echo "::error::Missing service env file: ${SERVICE_ROOT}/.env"
+            exit 1
+          }
+
+          cd "${FORTRESS_ROOT}"
+          bash scripts/verify-pericope-deploy-lock.sh
+
+          run_started="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          session_id="prod-monitor-${GITHUB_RUN_ID_VALUE:-manual}-${GITHUB_RUN_ATTEMPT_VALUE:-1}-$(date -u +"%Y%m%dT%H%M%SZ")"
+
+          python3 scripts/verify-pericope-prod-smoke.py \
+            --api-base-url https://pericopeai.com/api \
+            --env-file "${SERVICE_ROOT}/.env" \
+            --session-id "${session_id}" \
+            --required-slugs "${REQUIRED_PUBLIC_AUTHOR_SLUGS}" \
+            --min-visible-authors "${MIN_VISIBLE_AUTHORS}" \
+            --timeout 180
+
+          sleep 2
+          logs_file="$(mktemp)"
+          if ! docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml logs \
+            --no-color --since "${run_started}" pericopeai-api >"${logs_file}" 2>&1; then
+            cat "${logs_file}"
+            echo "::error::Unable to read pericopeai-api logs."
+            exit 1
+          fi
+
+          if ! grep -F "api_summary_generate_complete" "${logs_file}" | grep -F "source=local" >/dev/null; then
+            echo "::error::Missing local summary-generation log marker after smoke request."
+            tail -n 120 "${logs_file}"
+            exit 1
+          fi
+
+          if ! grep -F "api_chat_v2_complete session_id=${session_id}" "${logs_file}" >/dev/null; then
+            echo "::error::Missing chat completion log marker for ${session_id}."
+            tail -n 120 "${logs_file}"
+            exit 1
+          fi
+
+          if grep -E "api_chat_v2_failed|api_corpus_generate_failed|api_summary_generate_failed" "${logs_file}" >/dev/null; then
+            echo "::error::Failure marker found in pericopeai-api logs during smoke window."
+            grep -E "api_chat_v2_failed|api_corpus_generate_failed|api_summary_generate_failed" "${logs_file}" || true
+            exit 1
+          fi
+
+          echo "pericope-prod-monitor-ok session_id=${session_id} log_since=${run_started}"
+          REMOTE
+
+      - name: Monitor Summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Pericope Production Monitor"
+            echo ""
+            echo "- Public API: https://pericopeai.com/api"
+            echo "- Health: /api/healthz"
+            echo "- Authors: /api/v1/authors"
+            echo "- Chat: /api/v2/chat"
+            echo "- Log marker: \`api_summary_generate_complete ... source=local\`"
+          } >> "$GITHUB_STEP_SUMMARY"
