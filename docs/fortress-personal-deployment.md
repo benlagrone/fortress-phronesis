@@ -28,6 +28,7 @@ The workspace deployment policy/lock remains owned by the first-level
 - API: `127.0.0.1:18080`
 - Public host: `https://fortress.benjaminlagrone.com/`
 - Host Basic Auth file: `/etc/nginx/fortress-phronesis.htpasswd`
+- Host Basic Auth user: `benjaminlagrone@gmail.com`
 
 This deployment intentionally does not change the locked PericopeAI compose
 project, compose file, network, ports, or environment wiring.
@@ -67,7 +68,6 @@ Preferred dedicated deploy secrets:
 - `FORTRESS_PERSONAL_DEPLOY_SSH_KEY`
 - `FORTRESS_PERSONAL_DEPLOY_KNOWN_HOSTS`
 - `FORTRESS_PERSONAL_SOURCE_READ_TOKEN`
-- `FORTRESS_PERSONAL_BASIC_AUTH_USER`
 - `FORTRESS_PERSONAL_BASIC_AUTH_PASSWORD`
 
 Credential fallback:
@@ -77,9 +77,10 @@ Credential fallback:
 - source token falls back to `SOLOMONIC_CLOCK_GHCR_READ_TOKEN`
 
 If the Fortress source repo is private, at least one source token must be able
-to read `benlagrone/Fortress`. If no Basic Auth password secret is configured,
-the remote script preserves the existing host htpasswd file and fails only when
-no htpasswd file exists.
+to read `benlagrone/Fortress`. The Basic Auth user intentionally matches the
+default Keycloak user, `benjaminlagrone@gmail.com`. If no Basic Auth password
+secret is configured, the remote script preserves the existing host htpasswd
+file and fails only when no htpasswd file exists.
 
 ## Nginx And TLS
 
