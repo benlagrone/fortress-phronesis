@@ -3,6 +3,7 @@ venv/
 scripts/*
 !scripts/smoke-crossrefs.py
 !scripts/create-pericopeai-assets-remote.sh
+!scripts/deploy-fortress-personal-remote.sh
 !scripts/update-nginx-pericopeai-assets.sh
 !scripts/verify-pericope-author-profiles.py
 .env

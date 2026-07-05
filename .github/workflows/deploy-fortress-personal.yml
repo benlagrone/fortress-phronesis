@@ -1,0 +1,323 @@
+name: Deploy Fortress Personal
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Fortress source ref to deploy
+        required: true
+        default: main
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+      run_public_smoke:
+        description: Run public HTTPS smoke checks after deployment
+        required: true
+        default: true
+        type: boolean
+  repository_dispatch:
+    types:
+      - deploy-fortress-personal
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fortress-personal-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+    env:
+      FORTRESS_SOURCE_REPO: benlagrone/Fortress
+      FORTRESS_DEPLOY_ROOT: /root/workspace/Fortress
+      FORTRESS_REMOTE_HOSTNAME: fortress.benjaminlagrone.com
+      FORTRESS_TEMP_HOSTNAME: fortress.89-117-151-145.sslip.io
+      FORTRESS_COMPOSE_PROJECT: fortress-personal
+      FORTRESS_WATCH_PORT: "15173"
+      FORTRESS_API_PORT: "18080"
+    steps:
+      - name: Resolve Trigger Inputs
+        id: resolve
+        shell: bash
+        env:
+          RAW_SOURCE_REF: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_ref || inputs.source_ref || 'main' }}
+          RAW_ENVIRONMENT: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.environment || inputs.environment || 'prod' }}
+          RAW_RUN_PUBLIC_SMOKE: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.run_public_smoke || inputs.run_public_smoke || true }}
+        run: |
+          set -euo pipefail
+
+          normalize_bool() {
+            local value
+            value="$(printf '%s' "${1:-false}" | tr '[:upper:]' '[:lower:]')"
+            case "${value}" in
+              true|false)
+                printf '%s\n' "${value}"
+                ;;
+              *)
+                echo "invalid boolean: ${1}" >&2
+                return 1
+                ;;
+            esac
+          }
+
+          SOURCE_REF="${RAW_SOURCE_REF:-main}"
+          DEPLOY_ENVIRONMENT="${RAW_ENVIRONMENT:-prod}"
+          RUN_PUBLIC_SMOKE="$(normalize_bool "${RAW_RUN_PUBLIC_SMOKE:-true}")"
+
+          {
+            echo "source_ref=${SOURCE_REF}"
+            echo "deploy_environment=${DEPLOY_ENVIRONMENT}"
+            echo "run_public_smoke=${RUN_PUBLIC_SMOKE}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Fortress Phronesis
+        uses: actions/checkout@v4
+
+      - name: Resolve Deploy Credentials
+        id: resolve_deploy
+        shell: bash
+        env:
+          PRIMARY_DEPLOY_HOST: ${{ secrets.FORTRESS_PERSONAL_DEPLOY_HOST }}
+          PRIMARY_DEPLOY_USER: ${{ secrets.FORTRESS_PERSONAL_DEPLOY_USER }}
+          PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.FORTRESS_PERSONAL_DEPLOY_SSH_KEY }}
+          PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.FORTRESS_PERSONAL_DEPLOY_KNOWN_HOSTS }}
+          PRIMARY_SOURCE_READ_TOKEN: ${{ secrets.FORTRESS_PERSONAL_SOURCE_READ_TOKEN }}
+          FALLBACK_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          FALLBACK_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          FALLBACK_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          FALLBACK_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+          FALLBACK_SOURCE_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          pick() {
+            if [ -n "${1:-}" ]; then
+              printf '%s' "${1}"
+            else
+              printf '%s' "${2:-}"
+            fi
+          }
+
+          DEPLOY_HOST="$(pick "${PRIMARY_DEPLOY_HOST:-}" "${FALLBACK_DEPLOY_HOST:-}")"
+          DEPLOY_USER="$(pick "${PRIMARY_DEPLOY_USER:-}" "${FALLBACK_DEPLOY_USER:-}")"
+          DEPLOY_SSH_KEY="$(pick "${PRIMARY_DEPLOY_SSH_KEY:-}" "${FALLBACK_DEPLOY_SSH_KEY:-}")"
+          DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${FALLBACK_DEPLOY_KNOWN_HOSTS:-}")"
+          SOURCE_READ_TOKEN="$(pick "${PRIMARY_SOURCE_READ_TOKEN:-}" "${FALLBACK_SOURCE_READ_TOKEN:-}")"
+          DEPLOY_PUBLIC_IP="$(getent ahostsv4 "${DEPLOY_HOST}" | awk '{print $1; exit}' || true)"
+          if [ -z "${DEPLOY_PUBLIC_IP:-}" ]; then
+            DEPLOY_PUBLIC_IP="${DEPLOY_HOST}"
+          fi
+
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Fortress Personal deploy configuration after fallback: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          primary_all_set=true
+          for name in \
+            PRIMARY_DEPLOY_HOST \
+            PRIMARY_DEPLOY_USER \
+            PRIMARY_DEPLOY_SSH_KEY \
+            PRIMARY_DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name:-}" ]; then
+              primary_all_set=false
+              break
+            fi
+          done
+
+          primary_any_set=false
+          for name in \
+            PRIMARY_DEPLOY_HOST \
+            PRIMARY_DEPLOY_USER \
+            PRIMARY_DEPLOY_SSH_KEY \
+            PRIMARY_DEPLOY_KNOWN_HOSTS; do
+            if [ -n "${!name:-}" ]; then
+              primary_any_set=true
+              break
+            fi
+          done
+
+          if [ "${primary_all_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="fortress-personal-dedicated"
+          elif [ "${primary_any_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="mixed-dedicated-and-shared"
+          else
+            CREDENTIAL_SOURCE="solomonic-clock-shared"
+          fi
+
+          {
+            echo "DEPLOY_HOST<<EOF"
+            echo "${DEPLOY_HOST}"
+            echo "EOF"
+            echo "DEPLOY_PUBLIC_IP<<EOF"
+            echo "${DEPLOY_PUBLIC_IP}"
+            echo "EOF"
+            echo "DEPLOY_USER<<EOF"
+            echo "${DEPLOY_USER}"
+            echo "EOF"
+            echo "DEPLOY_SSH_KEY<<EOF"
+            echo "${DEPLOY_SSH_KEY}"
+            echo "EOF"
+            echo "DEPLOY_KNOWN_HOSTS<<EOF"
+            echo "${DEPLOY_KNOWN_HOSTS}"
+            echo "EOF"
+            echo "SOURCE_READ_TOKEN<<EOF"
+            echo "${SOURCE_READ_TOKEN}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+          echo "credential_source=${CREDENTIAL_SOURCE}" >> "$GITHUB_OUTPUT"
+          if [ -n "${SOURCE_READ_TOKEN:-}" ]; then
+            echo "source_token_configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_token_configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          SOURCE_REF: ${{ steps.resolve.outputs.source_ref }}
+          FORTRESS_BASIC_AUTH_USER: ${{ secrets.FORTRESS_PERSONAL_BASIC_AUTH_USER }}
+          FORTRESS_BASIC_AUTH_PASSWORD: ${{ secrets.FORTRESS_PERSONAL_BASIC_AUTH_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          scp -i ~/.ssh/id_ed25519 \
+            scripts/deploy-fortress-personal-remote.sh \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/deploy-fortress-personal-remote.sh"
+
+          SOURCE_READ_TOKEN_B64=""
+          if [ -n "${SOURCE_READ_TOKEN:-}" ]; then
+            SOURCE_READ_TOKEN_B64="$(printf '%s' "${SOURCE_READ_TOKEN}" | base64 -w0)"
+          fi
+
+          BASIC_AUTH_PASSWORD_B64=""
+          if [ -n "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
+            BASIC_AUTH_PASSWORD_B64="$(printf '%s' "${FORTRESS_BASIC_AUTH_PASSWORD}" | base64 -w0)"
+          fi
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "FORTRESS_SOURCE_REPO='${FORTRESS_SOURCE_REPO}' SOURCE_REF='${SOURCE_REF}' FORTRESS_DEPLOY_ROOT='${FORTRESS_DEPLOY_ROOT}' FORTRESS_REMOTE_HOSTNAME='${FORTRESS_REMOTE_HOSTNAME}' FORTRESS_TEMP_HOSTNAME='${FORTRESS_TEMP_HOSTNAME}' FORTRESS_COMPOSE_PROJECT='${FORTRESS_COMPOSE_PROJECT}' FORTRESS_WATCH_PORT='${FORTRESS_WATCH_PORT}' FORTRESS_API_PORT='${FORTRESS_API_PORT}' FORTRESS_PUBLIC_IP='${DEPLOY_PUBLIC_IP}' FORTRESS_BASIC_AUTH_USER='${FORTRESS_BASIC_AUTH_USER:-fortress}' SOURCE_READ_TOKEN_B64='${SOURCE_READ_TOKEN_B64}' BASIC_AUTH_PASSWORD_B64='${BASIC_AUTH_PASSWORD_B64}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          SOURCE_READ_TOKEN=""
+          if [ -n "${SOURCE_READ_TOKEN_B64:-}" ]; then
+            SOURCE_READ_TOKEN="$(printf '%s' "${SOURCE_READ_TOKEN_B64}" | base64 -d)"
+          fi
+
+          if [ -n "${BASIC_AUTH_PASSWORD_B64:-}" ]; then
+            export FORTRESS_BASIC_AUTH_PASSWORD
+            FORTRESS_BASIC_AUTH_PASSWORD="$(printf '%s' "${BASIC_AUTH_PASSWORD_B64}" | base64 -d)"
+          fi
+
+          DEPLOY_PARENT="$(dirname "${FORTRESS_DEPLOY_ROOT}")"
+          install -d "${DEPLOY_PARENT}"
+          incoming="$(mktemp -d "${DEPLOY_PARENT}/Fortress.incoming.XXXXXX")"
+          archive="$(mktemp /tmp/fortress-source.XXXXXX.tar.gz)"
+          cleanup() {
+            rm -f "${archive}"
+            if [ -d "${incoming}" ]; then
+              rm -rf "${incoming}"
+            fi
+          }
+          trap cleanup EXIT
+
+          headers=()
+          if [ -n "${SOURCE_READ_TOKEN:-}" ]; then
+            headers=(-H "Authorization: Bearer ${SOURCE_READ_TOKEN}")
+          fi
+
+          curl -fsSL "${headers[@]}" \
+            "https://api.github.com/repos/${FORTRESS_SOURCE_REPO}/tarball/${SOURCE_REF}" \
+            -o "${archive}"
+          tar -xzf "${archive}" --strip-components=1 -C "${incoming}"
+
+          if [ -f "${FORTRESS_DEPLOY_ROOT}/.env.contabo" ]; then
+            cp "${FORTRESS_DEPLOY_ROOT}/.env.contabo" "${incoming}/.env.contabo"
+          elif [ -f "${incoming}/.env.contabo.example" ]; then
+            cp "${incoming}/.env.contabo.example" "${incoming}/.env.contabo"
+          fi
+
+          touch "${incoming}/.fortress-personal-deploy-root"
+
+          if [ -d "${FORTRESS_DEPLOY_ROOT}" ]; then
+            backup="${FORTRESS_DEPLOY_ROOT}.pre-deploy-$(date +%Y%m%d%H%M%S)"
+            mv "${FORTRESS_DEPLOY_ROOT}" "${backup}"
+          fi
+          mv "${incoming}" "${FORTRESS_DEPLOY_ROOT}"
+          trap - EXIT
+          rm -f "${archive}"
+
+          chmod +x /tmp/deploy-fortress-personal-remote.sh
+          /tmp/deploy-fortress-personal-remote.sh
+          REMOTE
+
+      - name: Public Smoke
+        if: ${{ steps.resolve.outputs.run_public_smoke == 'true' }}
+        shell: bash
+        env:
+          FORTRESS_BASIC_AUTH_USER: ${{ secrets.FORTRESS_PERSONAL_BASIC_AUTH_USER }}
+          FORTRESS_BASIC_AUTH_PASSWORD: ${{ secrets.FORTRESS_PERSONAL_BASIC_AUTH_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
+            echo "Skipping authenticated public smoke because FORTRESS_PERSONAL_BASIC_AUTH_PASSWORD is not configured."
+            exit 0
+          fi
+
+          auth_user="${FORTRESS_BASIC_AUTH_USER:-fortress}"
+          curl -fsS -u "${auth_user}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
+            "https://${FORTRESS_TEMP_HOSTNAME}/api/healthz" >/dev/null
+
+          dns_ip="$(getent ahostsv4 "${FORTRESS_REMOTE_HOSTNAME}" | awk '{print $1; exit}' || true)"
+          if [ -n "${dns_ip:-}" ] && [ "${dns_ip}" = "${DEPLOY_PUBLIC_IP}" ]; then
+            curl -fsS -u "${auth_user}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
+              "https://${FORTRESS_REMOTE_HOSTNAME}/api/healthz" >/dev/null
+          else
+            echo "Skipping permanent hostname public smoke; DNS does not point at ${DEPLOY_PUBLIC_IP}."
+          fi
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          {
+            echo "## Fortress Personal Deploy"
+            echo ""
+            echo "- Environment: \`${{ steps.resolve.outputs.deploy_environment }}\`"
+            echo "- Source repo: \`${FORTRESS_SOURCE_REPO}\`"
+            echo "- Source ref: \`${{ steps.resolve.outputs.source_ref }}\`"
+            echo "- Compose project: \`${FORTRESS_COMPOSE_PROJECT}\`"
+            echo "- Deploy root: \`${FORTRESS_DEPLOY_ROOT}\`"
+            echo "- Public smoke: \`${{ steps.resolve.outputs.run_public_smoke }}\`"
+            echo "- Deploy credential source: \`${{ steps.resolve_deploy.outputs.credential_source }}\`"
+            echo "- Source token configured: \`${{ steps.resolve_deploy.outputs.source_token_configured }}\`"
+            echo "- Temporary URL: https://${FORTRESS_TEMP_HOSTNAME}/"
+            echo "- Permanent URL: https://${FORTRESS_REMOTE_HOSTNAME}/"
+          } >> "$GITHUB_STEP_SUMMARY"

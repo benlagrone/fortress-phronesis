@@ -7,6 +7,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 - [Developer Guide](developer-guide.md)
 - [Author Acquisition Process](author-acquisition-process.md)
 - [PericopeAI Deployment Guide](pericopeai-deployment.md)
+- [Fortress Personal Deployment](fortress-personal-deployment.md)
 - [GitHub Image Control Plane Design](github-image-control-plane-design.md)
 - [Deployment Prep Checklist](deployment-prep-checklist.md)
 - [Prod Release Runbook v1.1.2](release-runbook-prod-v1.1.2.md)
