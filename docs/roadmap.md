@@ -408,9 +408,85 @@ deploy.
 **Constraint**
 - No silent or implicit long-term memory
 
+### v1.2.3 — Graph Conversation Memory Migration
+**Goal:** Move conversation continuity toward a graph-shaped memory layer while keeping prompt context selective, auditable, and reversible.
+
+**Design authority:** [Graph Conversation Memory Migration](graph-conversation-memory-migration.md)
+
+- Treat MySQL as the canonical write store until a later explicit promotion decision.
+- Model PericopeAI's core product objects as graph nodes:
+  - user
+  - session
+  - matter
+  - message
+  - author
+  - counsel
+  - citation
+  - passage
+  - topic
+  - follow-up question
+  - decision
+  - synthesis
+- Model explicit relationships as graph edges:
+  - `OWNS`
+  - `HAS_MATTER`
+  - `ASKED_AS`
+  - `ANSWERED_BY`
+  - `USES_LENS`
+  - `CITES`
+  - `POINTS_TO`
+  - `ABOUT`
+  - `RAISES`
+  - `RESOLVES`
+  - `HAS_DECISION`
+  - `HAS_SYNTHESIS`
+  - `SYNTHESIZES`
+  - `AGREES_WITH`
+  - `IN_TENSION_WITH`
+- Add a relational graph-shaped phase before introducing a new graph DB service:
+  - stable IDs for matters, counsel, follow-up questions, decisions, and synthesis
+  - edge-like relational tables where needed
+  - deterministic bounded context selector
+  - reset/inspection controls
+- Add a graph DB proof phase:
+  - local-only compose profile
+  - idempotent backfill from MySQL
+  - graph query fixtures for same-matter continuity, same-author follow-up, counsel stacking, synthesis, and relationship memory
+  - parity checks against the relational selector
+- Add dual-write and read-shadowing only after the proof phase:
+  - MySQL-backed graph event/outbox
+  - asynchronous graph event replay
+  - graph/MySQL divergence metrics
+  - graph outage fallback
+- Add bounded graph-selected prompt context behind a feature flag:
+  - no full transcript dump into prompts
+  - deterministic memory ranking
+  - explicit selected/excluded memory reasons
+  - trace fields for selected graph nodes and edges
+- Preserve memory boundaries:
+  - no silent promotion of inferred personal facts
+  - raw graph topology remains private
+  - normal users get memory inspection/reset, not graph internals
+  - public endpoints enforce ownership, redaction, and scope limits
+
+**Definition of Done**
+- The graph-shaped memory model is documented and mapped to current MySQL state.
+- A graph backfill can rebuild the derived graph from canonical MySQL data.
+- Chat works with graph memory enabled, disabled, and unavailable.
+- Prompt assembly receives a bounded, explainable context bundle rather than full history.
+- Same-author follow-up and resumed matters improve without leaking unrelated conversation context.
+- Users can inspect and clear durable memory.
+- No public endpoint exposes raw graph topology by default.
+- Deployment docs and locks are updated if a graph DB service, volume, env var, or port is promoted.
+
+**Constraint**
+- The graph DB starts as a derived read model; making it canonical requires an explicit approval, backup/restore proof, deletion proof, rollback proof, and architecture update.
+
 ---
 
 ## v1.3.x — Cross-Reference Intelligence (Backward Compatible)
+
+**Design authority:** [Citation, Cross-Reference, and Author Discovery Agent Plan](citation-cross-reference-author-discovery-plan.md)
 
 ### v1.3.0
 **Goal:** Cross-reference scripture, Church Fathers, and works as first-class data.

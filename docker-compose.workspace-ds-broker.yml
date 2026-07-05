@@ -1,0 +1,21 @@
+name: workspace-ds-broker
+
+services:
+  workspace-ds-broker:
+    build:
+      context: ${WORKSPACE_META_CONTEXT:-../../.workspace}
+      dockerfile: ds_broker/Dockerfile
+    image: ${WORKSPACE_DS_BROKER_IMAGE:-workspace-ds-broker:local}
+    container_name: workspace-ds-broker
+    restart: unless-stopped
+    environment:
+      WORKSPACE_ROOT: /workspace
+      DS_BROKER_HOST: 0.0.0.0
+      DS_BROKER_PORT: 18100
+    ports:
+      - "127.0.0.1:${WORKSPACE_DS_BROKER_HOST_PORT:-18100}:18100"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:18100/healthz', timeout=5).read()\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5

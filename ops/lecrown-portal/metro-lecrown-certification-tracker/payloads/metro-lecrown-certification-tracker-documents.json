@@ -1,0 +1,147 @@
+[
+  {
+    "id": "metro-certification-tracker-readme",
+    "name": "Government certification portfolio README",
+    "fileName": "README.md",
+    "category": "Site Structure / Outline",
+    "description": "Start-here overview for the Metro LeCrown certification tracker.",
+    "localPath": "README.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-certification-operating-tracker",
+    "name": "Government certification operating tracker",
+    "fileName": "certification-tracker.md",
+    "category": "Deliverables",
+    "description": "Main operating tracker with certification workflow, buyer requirements, portal rules, and capability statement workflow.",
+    "localPath": "docs/certification-tracker.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-company-certifications",
+    "name": "Company certification portfolio CSV",
+    "fileName": "company-certifications.csv",
+    "category": "Deliverables",
+    "description": "One row per company per certification lane.",
+    "localPath": "data/company-certifications.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-certification-steps",
+    "name": "Certification steps CSV",
+    "fileName": "certification-steps.csv",
+    "category": "Deliverables",
+    "description": "Reusable step list for federal, SBA, state, local, and buyer readiness work.",
+    "localPath": "data/certification-steps.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-buyer-requirements",
+    "name": "Buyer certification requirements CSV",
+    "fileName": "buyer-certification-requirements.csv",
+    "category": "Deliverables",
+    "description": "Buyer-specific registration, certification, portal, and compliance gates.",
+    "localPath": "data/buyer-certification-requirements.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-reusable-documents",
+    "name": "Reusable document inventory CSV",
+    "fileName": "reusable-documents.csv",
+    "category": "Assets",
+    "description": "Common documents reusable across certifications, vendor portals, and bids.",
+    "localPath": "data/reusable-documents.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-document-requirement-map",
+    "name": "Document requirement map CSV",
+    "fileName": "document-requirement-map.csv",
+    "category": "Assets",
+    "description": "Maps reusable documents to certification and buyer requirements.",
+    "localPath": "data/document-requirement-map.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-document-portal-map",
+    "name": "Document portal map CSV",
+    "fileName": "document-portal-map.csv",
+    "category": "Assets",
+    "description": "Maps local files and missing documents to LeCrown portal project/document IDs.",
+    "localPath": "data/document-portal-map.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-document-storage-locations",
+    "name": "Document storage locations CSV",
+    "fileName": "document-storage-locations.csv",
+    "category": "Assets",
+    "description": "Approved storage locations and access models for tracker documents.",
+    "localPath": "data/document-storage-locations.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-capability-statements-tracker",
+    "name": "Capability statements tracker CSV",
+    "fileName": "capability-statements.csv",
+    "category": "Deliverables",
+    "description": "Tracks master and buyer-specific capability statement drafts.",
+    "localPath": "data/capability-statements.csv",
+    "contentType": "text/csv; charset=utf-8"
+  },
+  {
+    "id": "metro-capability-master",
+    "name": "Metro LeCrown master capability statement draft",
+    "fileName": "metro-lecrown-master.md",
+    "category": "Deliverables",
+    "description": "Master capability statement source draft.",
+    "localPath": "docs/capability-statements/metro-lecrown-master.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-capability-city-houston",
+    "name": "Metro LeCrown City of Houston capability statement draft",
+    "fileName": "metro-lecrown-city-houston-draft.md",
+    "category": "Deliverables",
+    "description": "City of Houston and OBO-focused capability statement source draft.",
+    "localPath": "docs/capability-statements/metro-lecrown-city-houston-draft.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-capability-metro",
+    "name": "Metro LeCrown Houston METRO capability statement draft",
+    "fileName": "metro-lecrown-metro-draft.md",
+    "category": "Deliverables",
+    "description": "Houston METRO vendor and SBDBE/SBE-focused capability statement source draft.",
+    "localPath": "docs/capability-statements/metro-lecrown-metro-draft.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-capability-universities",
+    "name": "Metro LeCrown universities capability statement draft",
+    "fileName": "metro-lecrown-universities-draft.md",
+    "category": "Deliverables",
+    "description": "UH and UT-focused capability statement source draft.",
+    "localPath": "docs/capability-statements/metro-lecrown-universities-draft.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-capability-tdcj",
+    "name": "Metro LeCrown TDCJ capability statement draft",
+    "fileName": "metro-lecrown-tdcj-draft.md",
+    "category": "Deliverables",
+    "description": "TDCJ and Texas state buyer-focused capability statement source draft.",
+    "localPath": "docs/capability-statements/metro-lecrown-tdcj-draft.md",
+    "contentType": "text/markdown; charset=utf-8"
+  },
+  {
+    "id": "metro-affidavit-jie",
+    "name": "Jie Huang affidavit of certification",
+    "fileName": "Affidavit_of_Certification_Jie_Huang_President.pdf",
+    "category": "Assets",
+    "description": "Existing certification support PDF for City of Houston OBO packet.",
+    "localPath": "output/pdf/Affidavit_of_Certification_Jie_Huang_President.pdf",
+    "contentType": "application/pdf",
+    "sensitive": true
+  }
+]
