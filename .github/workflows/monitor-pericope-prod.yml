@@ -106,7 +106,7 @@ jobs:
           bash scripts/verify-pericope-deploy-lock.sh
 
           run_started="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          session_id="prod-monitor-${GITHUB_RUN_ID_VALUE:-manual}-${GITHUB_RUN_ATTEMPT_VALUE:-1}-$(date -u +"%Y%m%dT%H%M%SZ")"
+          session_id="pm-${GITHUB_RUN_ID_VALUE:-manual}-${GITHUB_RUN_ATTEMPT_VALUE:-1}"
 
           python3 scripts/verify-pericope-prod-smoke.py \
             --api-base-url https://pericopeai.com/api \
