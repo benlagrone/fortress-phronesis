@@ -56,6 +56,32 @@ bash scripts/verify-pericope-deploy-lock.sh
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs -f pericopeai-frontend
   ```
 
+## Workspace DS Broker
+
+This workspace-level metadata broker is managed by its own compose file so it
+does not change the locked PericopeAI stack ports or service topology.
+
+- Compose file: `docker-compose.workspace-ds-broker.yml`
+- Compose project: `workspace-ds-broker`
+- Service: `workspace-ds-broker`
+- Host bind: `127.0.0.1:18100`
+- Health: `http://127.0.0.1:18100/healthz`
+- Private routes: `fortress.local/ds-broker/` and `fortress.lan/ds-broker/`
+
+Start/update:
+
+```bash
+docker compose -p workspace-ds-broker -f docker-compose.workspace-ds-broker.yml up -d --build
+```
+
+Fortress LAN targeted deploy:
+
+```bash
+bash scripts/deploy-fortress-lan.sh --service workspace-ds-broker
+```
+
+See [Workspace DS Broker Deployment Contract](workspace-ds-broker-deployment.md).
+
 ## Local note
 
 If you are on macOS and want the normal local dev stack, do not follow this file.

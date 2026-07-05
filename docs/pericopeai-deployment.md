@@ -76,7 +76,7 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
   - `OLLAMA_MODEL=mistral`
   - `OLLAMA_TIMEOUT_SECONDS=120`
   - `INDEX_CACHE_SIZE=16` by default in the Fortress compose file.
-  - `PREWARM_AUTHOR_INDEXES=augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus` by default in the Fortress compose file.
+  - `PREWARM_AUTHOR_INDEXES=augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus,adam_smith,ludwig_von_mises` by default in the Fortress compose file.
 - Key FE build args (to avoid mixed-content/CORS):
   - `REACT_APP_ROOT_URL=https://pericopeai.com` (API base through nginx `/api`)
   - `REACT_APP_ENVIRONMENT=prd`

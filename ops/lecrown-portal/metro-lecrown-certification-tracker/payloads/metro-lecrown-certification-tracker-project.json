@@ -1,0 +1,57 @@
+{
+  "id": "metro-lecrown-certification-tracker",
+  "name": "Metro LeCrown Government Certification Tracker",
+  "status": "In Progress",
+  "phase": "Certification portfolio buildout",
+  "summary": "Central workspace for Metro LeCrown government certification readiness, buyer portal requirements, reusable document tracking, and capability statement drafts.",
+  "highlights": [
+    "Certification tracker now covers federal, state, local, university, transit, school district, and TDCJ buyer gates.",
+    "Reusable document requirements are mapped across certifications and target buyers.",
+    "Capability statement drafts exist for the master profile, City of Houston, Houston METRO, UH/UT, and TDCJ.",
+    "Sensitive documents are tracked by storage location and owner instead of exposing private contents or public URLs."
+  ],
+  "timeline": [
+    {
+      "id": "metro-certification-tracker-created",
+      "date": "2026-06-28",
+      "title": "Certification tracker created",
+      "description": "Local tracker, certification steps, buyer requirements, reusable documents, and evidence register were created in metroLecrown.",
+      "badge": "Completed",
+      "tone": "completed"
+    },
+    {
+      "id": "metro-document-portal-layer-added",
+      "date": "2026-06-30",
+      "title": "Document portal layer added",
+      "description": "Tracker was extended with portal storage locations, document-to-portal mapping, and capability statement tracking.",
+      "badge": "Completed",
+      "tone": "completed"
+    },
+    {
+      "id": "metro-portal-workspace-ready",
+      "date": "2026-06-30",
+      "title": "Portal workspace payload prepared",
+      "description": "Project payload and upload manifest were prepared for the LeCrown client portal.",
+      "badge": "Ready",
+      "tone": "review"
+    }
+  ],
+  "preview": {
+    "url": "/portal/metro-lecrown-certification-tracker",
+    "notes": "Use this workspace as the operating dashboard for certification progress, document gaps, and capability statement drafts.",
+    "reviewChecklist": [
+      "Confirm Metro LeCrown legal/entity facts and primary contact information.",
+      "Confirm primary NAICS and NIGP commodity codes.",
+      "Confirm Metro LeCrown portal project members and admin access.",
+      "Upload the tracker files listed in the Fortress Phronesis portal package manifest.",
+      "Replace TBD values in capability statements before sending externally."
+    ]
+  },
+  "members": [
+    {
+      "email": "admin@lecrowndevelopment.com",
+      "name": "LeCrown Delivery",
+      "role": "admin"
+    }
+  ]
+}

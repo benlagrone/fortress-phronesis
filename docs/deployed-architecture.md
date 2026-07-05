@@ -96,6 +96,34 @@ assembly must continue to work from MySQL-backed session state, recent messages,
 relationship memory, corpus retrieval, explicit references, and semantic
 neighbors.
 
+## Planned Citation And Reference Agent Layer
+
+The planned citation, cross-reference, and author discovery workflow is
+documented in `docs/citation-cross-reference-author-discovery-plan.md`. It is a
+background enrichment and operator-review layer, not a deployed runtime service
+today.
+
+The planned split is:
+
+- `fortress.lan` runs bounded citation extraction, cross-reference building, and
+  author-discovery jobs.
+- `fortress.local` presents operator review queues for references,
+  cross-reference edges, and non-acquired author leads.
+- `pericopeai.local` and the public PericopeAI app consume only reviewed or
+  confidence-gated citation/reference outputs.
+
+The citations agent is the evidence layer for the workflow. Cross-reference
+edges and author-discovery leads must point back to resolved references with
+source evidence, provenance, confidence, and review status. The author discovery
+agent may create acquisition leads for non-acquired authors, but it must not
+modify acquisition ledgers or ingest third-party text without explicit review
+and the author-acquisition gates in `docs/author-acquisition-process.md`.
+
+No public route, host port, graph database, new deployed service, or environment
+variable is introduced by this plan. If any of those are promoted later, update
+the workspace deployment lock, this architecture document, and the relevant
+smoke checks in the same change.
+
 ## Inference And Retrieval
 
 Production corpus generation uses Fortress LAN Ollama unless explicitly changed:
@@ -113,7 +141,7 @@ Corpus retrieval keeps author indexes in an in-process LRU cache:
 
 - `INDEX_CACHE_SIZE=16` by default in the Fortress compose file.
 - `PREWARM_AUTHOR_INDEXES` defaults to:
-  `augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus`
+  `augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus,adam_smith,ludwig_von_mises`
 
 ## Latency Observability
 
