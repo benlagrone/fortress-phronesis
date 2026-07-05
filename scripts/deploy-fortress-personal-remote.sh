@@ -5,7 +5,7 @@ FORTRESS_DEPLOY_ROOT="${FORTRESS_DEPLOY_ROOT:-/root/workspace/Fortress}"
 FORTRESS_COMPOSE_PROJECT="${FORTRESS_COMPOSE_PROJECT:-fortress-personal}"
 FORTRESS_ENV_FILE="${FORTRESS_ENV_FILE:-${FORTRESS_DEPLOY_ROOT}/.env.contabo}"
 FORTRESS_REMOTE_HOSTNAME="${FORTRESS_REMOTE_HOSTNAME:-fortress.benjaminlagrone.com}"
-FORTRESS_TEMP_HOSTNAME="${FORTRESS_TEMP_HOSTNAME:-fortress.89-117-151-145.sslip.io}"
+FORTRESS_LEGACY_TEMP_HOSTNAME="${FORTRESS_LEGACY_TEMP_HOSTNAME:-fortress.89-117-151-145.sslip.io}"
 FORTRESS_PUBLIC_IP="${FORTRESS_PUBLIC_IP:-89.117.151.145}"
 FORTRESS_BIND="${FORTRESS_BIND:-127.0.0.1}"
 FORTRESS_WATCH_PORT="${FORTRESS_WATCH_PORT:-15173}"
@@ -147,6 +147,11 @@ NGINX
   ln -sfn "${target}" "${link}"
 }
 
+remove_legacy_temp_site() {
+  rm -f "/etc/nginx/sites-enabled/${FORTRESS_LEGACY_TEMP_HOSTNAME}"
+  rm -f "/etc/nginx/sites-available/${FORTRESS_LEGACY_TEMP_HOSTNAME}"
+}
+
 maybe_issue_cert() {
   local host="$1"
   local email_mode="$2"
@@ -200,21 +205,16 @@ fallback_key="${fallback_paths[1]}"
 
 mapfile -t permanent_paths < <(cert_paths_for_host "${FORTRESS_REMOTE_HOSTNAME}" "${fallback_cert}" "${fallback_key}")
 write_nginx_site "${FORTRESS_REMOTE_HOSTNAME}" "${FORTRESS_REMOTE_HOSTNAME}" "${permanent_paths[0]}" "${permanent_paths[1]}"
-
-mapfile -t temp_paths < <(cert_paths_for_host "${FORTRESS_TEMP_HOSTNAME}" "${fallback_cert}" "${fallback_key}")
-write_nginx_site "${FORTRESS_TEMP_HOSTNAME}" "${FORTRESS_TEMP_HOSTNAME}" "${temp_paths[0]}" "${temp_paths[1]}"
+remove_legacy_temp_site
 
 nginx -t
 systemctl reload nginx || nginx -s reload
 
 maybe_issue_cert "${FORTRESS_REMOTE_HOSTNAME}" "email"
-maybe_issue_cert "${FORTRESS_TEMP_HOSTNAME}" "no-email"
 
 mapfile -t permanent_paths < <(cert_paths_for_host "${FORTRESS_REMOTE_HOSTNAME}" "${fallback_cert}" "${fallback_key}")
 write_nginx_site "${FORTRESS_REMOTE_HOSTNAME}" "${FORTRESS_REMOTE_HOSTNAME}" "${permanent_paths[0]}" "${permanent_paths[1]}"
-
-mapfile -t temp_paths < <(cert_paths_for_host "${FORTRESS_TEMP_HOSTNAME}" "${fallback_cert}" "${fallback_key}")
-write_nginx_site "${FORTRESS_TEMP_HOSTNAME}" "${FORTRESS_TEMP_HOSTNAME}" "${temp_paths[0]}" "${temp_paths[1]}"
+remove_legacy_temp_site
 
 nginx -t
 systemctl reload nginx || nginx -s reload
@@ -234,9 +234,6 @@ if [ -n "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
   curl -kfsS --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" \
     -u "${FORTRESS_BASIC_AUTH_USER}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
     "https://${FORTRESS_REMOTE_HOSTNAME}/api/healthz" >/dev/null
-  curl -fsS \
-    -u "${FORTRESS_BASIC_AUTH_USER}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
-    "https://${FORTRESS_TEMP_HOSTNAME}/api/healthz" >/dev/null
 fi
 
 docker compose -p "${FORTRESS_COMPOSE_PROJECT}" --env-file "${FORTRESS_ENV_FILE}" -f compose.yaml ps
