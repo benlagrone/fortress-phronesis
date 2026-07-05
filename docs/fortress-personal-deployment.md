@@ -26,8 +26,7 @@ The workspace deployment policy/lock remains owned by the first-level
 - Host bind: `127.0.0.1`
 - Watch UI: `127.0.0.1:15173`
 - API: `127.0.0.1:18080`
-- Permanent public host: `https://fortress.benjaminlagrone.com/`
-- Temporary public host: `https://fortress.89-117-151-145.sslip.io/`
+- Public host: `https://fortress.benjaminlagrone.com/`
 - Host Basic Auth file: `/etc/nginx/fortress-phronesis.htpasswd`
 
 This deployment intentionally does not change the locked PericopeAI compose
@@ -84,12 +83,8 @@ no htpasswd file exists.
 
 ## Nginx And TLS
 
-The remote script owns two host Nginx routes:
-
-- `fortress.benjaminlagrone.com`
-- `fortress.89-117-151-145.sslip.io`
-
-Both routes proxy to `http://127.0.0.1:15173` and require Basic Auth.
+The remote script owns the `fortress.benjaminlagrone.com` host Nginx route.
+That route proxies to `http://127.0.0.1:15173` and requires Basic Auth.
 
 The permanent host needs this DNS record at HostGator:
 
@@ -99,9 +94,7 @@ A  fortress  89.117.151.145
 
 When DNS resolves to the Contabo IP, the script attempts a webroot certbot
 certificate for `fortress.benjaminlagrone.com`. Until then it installs a
-self-signed fallback for the permanent hostname. The `sslip.io` hostname
-resolves directly to the VPS IP and can receive a normal Let's Encrypt
-certificate without HostGator DNS changes.
+self-signed fallback for the hostname.
 
 ## Server-Side Direct Run
 
@@ -112,7 +105,6 @@ present:
 FORTRESS_DEPLOY_ROOT=/root/workspace/Fortress \
 FORTRESS_COMPOSE_PROJECT=fortress-personal \
 FORTRESS_REMOTE_HOSTNAME=fortress.benjaminlagrone.com \
-FORTRESS_TEMP_HOSTNAME=fortress.89-117-151-145.sslip.io \
 bash /tmp/deploy-fortress-personal-remote.sh
 ```
 
@@ -133,9 +125,6 @@ docker compose -p fortress-personal --env-file /root/workspace/Fortress/.env.con
 Public checks with Basic Auth:
 
 ```bash
-curl -fsS -u "$FORTRESS_BASIC_AUTH_USER:$FORTRESS_BASIC_AUTH_PASSWORD" \
-  https://fortress.89-117-151-145.sslip.io/api/healthz
-
 curl -kfsS --resolve fortress.benjaminlagrone.com:443:89.117.151.145 \
   -u "$FORTRESS_BASIC_AUTH_USER:$FORTRESS_BASIC_AUTH_PASSWORD" \
   https://fortress.benjaminlagrone.com/api/healthz

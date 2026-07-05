@@ -39,7 +39,6 @@ jobs:
       FORTRESS_SOURCE_REPO: benlagrone/Fortress
       FORTRESS_DEPLOY_ROOT: /root/workspace/Fortress
       FORTRESS_REMOTE_HOSTNAME: fortress.benjaminlagrone.com
-      FORTRESS_TEMP_HOSTNAME: fortress.89-117-151-145.sslip.io
       FORTRESS_COMPOSE_PROJECT: fortress-personal
       FORTRESS_WATCH_PORT: "15173"
       FORTRESS_API_PORT: "18080"
@@ -223,7 +222,7 @@ jobs:
           fi
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "FORTRESS_SOURCE_REPO='${FORTRESS_SOURCE_REPO}' SOURCE_REF='${SOURCE_REF}' FORTRESS_DEPLOY_ROOT='${FORTRESS_DEPLOY_ROOT}' FORTRESS_REMOTE_HOSTNAME='${FORTRESS_REMOTE_HOSTNAME}' FORTRESS_TEMP_HOSTNAME='${FORTRESS_TEMP_HOSTNAME}' FORTRESS_COMPOSE_PROJECT='${FORTRESS_COMPOSE_PROJECT}' FORTRESS_WATCH_PORT='${FORTRESS_WATCH_PORT}' FORTRESS_API_PORT='${FORTRESS_API_PORT}' FORTRESS_PUBLIC_IP='${DEPLOY_PUBLIC_IP}' FORTRESS_BASIC_AUTH_USER='${FORTRESS_BASIC_AUTH_USER:-fortress}' SOURCE_READ_TOKEN_B64='${SOURCE_READ_TOKEN_B64}' BASIC_AUTH_PASSWORD_B64='${BASIC_AUTH_PASSWORD_B64}' bash -s" <<'REMOTE'
+            "FORTRESS_SOURCE_REPO='${FORTRESS_SOURCE_REPO}' SOURCE_REF='${SOURCE_REF}' FORTRESS_DEPLOY_ROOT='${FORTRESS_DEPLOY_ROOT}' FORTRESS_REMOTE_HOSTNAME='${FORTRESS_REMOTE_HOSTNAME}' FORTRESS_COMPOSE_PROJECT='${FORTRESS_COMPOSE_PROJECT}' FORTRESS_WATCH_PORT='${FORTRESS_WATCH_PORT}' FORTRESS_API_PORT='${FORTRESS_API_PORT}' FORTRESS_PUBLIC_IP='${DEPLOY_PUBLIC_IP}' FORTRESS_BASIC_AUTH_USER='${FORTRESS_BASIC_AUTH_USER:-fortress}' SOURCE_READ_TOKEN_B64='${SOURCE_READ_TOKEN_B64}' BASIC_AUTH_PASSWORD_B64='${BASIC_AUTH_PASSWORD_B64}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           SOURCE_READ_TOKEN=""
@@ -293,9 +292,6 @@ jobs:
           fi
 
           auth_user="${FORTRESS_BASIC_AUTH_USER:-fortress}"
-          curl -fsS -u "${auth_user}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
-            "https://${FORTRESS_TEMP_HOSTNAME}/api/healthz" >/dev/null
-
           dns_ip="$(getent ahostsv4 "${FORTRESS_REMOTE_HOSTNAME}" | awk '{print $1; exit}' || true)"
           if [ -n "${dns_ip:-}" ] && [ "${dns_ip}" = "${DEPLOY_PUBLIC_IP}" ]; then
             curl -fsS -u "${auth_user}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
@@ -318,6 +314,5 @@ jobs:
             echo "- Public smoke: \`${{ steps.resolve.outputs.run_public_smoke }}\`"
             echo "- Deploy credential source: \`${{ steps.resolve_deploy.outputs.credential_source }}\`"
             echo "- Source token configured: \`${{ steps.resolve_deploy.outputs.source_token_configured }}\`"
-            echo "- Temporary URL: https://${FORTRESS_TEMP_HOSTNAME}/"
             echo "- Permanent URL: https://${FORTRESS_REMOTE_HOSTNAME}/"
           } >> "$GITHUB_STEP_SUMMARY"
