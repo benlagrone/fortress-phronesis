@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - ".github/workflows/deploy-pericope-frontend.yml"
-      - "docs/pericopeai-deployment.md"
   workflow_dispatch:
     inputs:
       fe_ref:
@@ -76,8 +75,13 @@ jobs:
 
           FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
           FE_REPO_URL="git@github.com:benlagrone/AugustineFE.git"
-          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          PRIMARY_FORTRESS_ROOT="${DEPLOY_ROOT}"
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          FORTRESS_ROOT="${PRIMARY_FORTRESS_ROOT}"
+          if [ -d "${PRIMARY_FORTRESS_ROOT}/.git" ] && [ -n "$(git -C "${PRIMARY_FORTRESS_ROOT}" status --porcelain --untracked-files=all)" ]; then
+            FORTRESS_ROOT="${WORKSPACE_ROOT}/fortress-phronesis-deploy"
+            echo "Primary Fortress checkout is dirty; using clean frontend deploy checkout ${FORTRESS_ROOT}"
+          fi
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
           FE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-fe.env.restore"
           timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -117,11 +121,11 @@ jobs:
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
-          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+          git -C "${FORTRESS_ROOT}" merge --ff-only FETCH_HEAD
 
           git -C "${FE_ROOT}" fetch origin "${FE_REF}"
           git -C "${FE_ROOT}" checkout "${FE_REF}"
-          git -C "${FE_ROOT}" pull --ff-only origin "${FE_REF}"
+          git -C "${FE_ROOT}" merge --ff-only FETCH_HEAD
           if [ -n "${FE_SHA:-}" ]; then
             git -C "${FE_ROOT}" fetch origin "${FE_SHA}"
             git -C "${FE_ROOT}" checkout "${FE_SHA}"

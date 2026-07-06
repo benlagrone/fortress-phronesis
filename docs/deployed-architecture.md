@@ -135,3 +135,26 @@ The corpus logs sanitized phase timings for:
 - `corpus_generate_endpoint_complete`
 
 These logs report durations and character counts, not prompt bodies.
+
+## Production Monitoring
+
+Fortress Phronesis owns a scheduled/manual production monitor in
+`.github/workflows/monitor-pericope-prod.yml`. It uses the existing deploy SSH
+credentials and server checkout path to run `scripts/verify-pericope-prod-smoke.py`
+against the public `https://pericopeai.com/api` surface with the server-side API
+key from `/root/workspace/AugustineService/.env`.
+
+The monitor verifies:
+
+- `/api/healthz` returns `ok=true` and database health is good.
+- `/api/v1/authors` returns the required public author slugs and at least the
+  configured minimum visible author count.
+- `/api/v2/chat` returns a segmented `status=done` response with non-empty
+  answer, citations, summary, books, and metadata.
+- `pericopeai-api` logs include `api_summary_generate_complete` with
+  `source=local` after the smoke request.
+- `pericopeai-api` logs include an `api_chat_v2_complete` marker for the smoke
+  session and no chat/corpus/summary failure marker in the smoke window.
+
+The monitor does not rebuild containers, change environment files, or alter
+locked compose topology.

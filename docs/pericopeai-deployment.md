@@ -256,6 +256,20 @@ curl -sS -m 180 \
   https://pericopeai.com/api/v2/chat >/dev/null
 ```
 
+Gate 3b: production response contract and local-summary log monitor
+
+```bash
+python3 scripts/verify-pericope-prod-smoke.py \
+  --api-base-url https://pericopeai.com/api \
+  --env-file /root/workspace/AugustineService/.env \
+  --session-id "prod-smoke-$(date -u +%Y%m%dT%H%M%SZ)"
+```
+
+The scheduled/manual workflow `.github/workflows/monitor-pericope-prod.yml`
+runs this smoke through the existing Fortress deploy SSH route, then checks the
+`pericopeai-api` Docker logs for `api_summary_generate_complete ... source=local`
+and the matching `api_chat_v2_complete` session marker.
+
 Gate 4: model latency check when changing Ollama routing/model settings
 
 ```bash
