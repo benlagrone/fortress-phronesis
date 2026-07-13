@@ -34,8 +34,8 @@ env:
   RUN_FRONTEND_REFRESH: "false"
 
 concurrency:
-  group: pericope-api-prod
-  cancel-in-progress: true
+  group: pericope-prod
+  cancel-in-progress: false
 
 jobs:
   deploy:

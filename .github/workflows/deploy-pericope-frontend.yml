@@ -25,7 +25,7 @@ env:
   REQUIRED_MEDIA_PATHS: /media/authors/augustine.jpg,/media/authors/cyprian_of_carthage.jpg,/media/authors/boethius.jpg,/media/authors/anselm_of_canterbury.jpg
 
 concurrency:
-  group: pericope-frontend-prod
+  group: pericope-prod
   cancel-in-progress: false
 
 jobs:

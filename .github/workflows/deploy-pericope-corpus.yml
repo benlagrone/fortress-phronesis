@@ -153,17 +153,33 @@ jobs:
             candidate_keys+=("${candidate_key}")
           }
 
+          install_env_file() {
+            local source_path="$1"
+            local target_path="$2"
+            if cp "${source_path}" "${target_path}" 2>/dev/null; then
+              return 0
+            fi
+            if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+              sudo cp "${source_path}" "${target_path}" 2>/dev/null && return 0
+            fi
+            echo "::error::Unable to write ${target_path}; file is not writable and passwordless sudo is unavailable."
+            return 1
+          }
+
           write_corpus_key() {
             local candidate_key="${1:-}"
+            local temp_env
             [ -n "${candidate_key}" ] || {
               echo "::error::Candidate corpus key is empty."
               return 1
             }
-            CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_OPENAI_API_KEY_CANDIDATE="${candidate_key}" python3 - <<'PY'
+            temp_env="$(mktemp "${TMPDIR:-/tmp}/pericope-corpus-env.XXXXXX")"
+            CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_ENV_OUTPUT="${temp_env}" CORPUS_OPENAI_API_KEY_CANDIDATE="${candidate_key}" python3 - <<'PY'
           import os
           from pathlib import Path
 
           env_path = Path(os.environ["CORPUS_ROOT"]) / ".env"
+          output_path = Path(os.environ["CORPUS_ENV_OUTPUT"])
           key = os.environ.get("CORPUS_OPENAI_API_KEY_CANDIDATE", "").strip()
           if not key:
               raise SystemExit("CORPUS_OPENAI_API_KEY_CANDIDATE is empty")
@@ -179,9 +195,14 @@ jobs:
                   updated.append(line)
           if not replaced:
               updated.append(f"OPENAI_API_KEY={key}")
-          env_path.write_text("\\n".join(updated) + "\\n", encoding="utf-8")
+          output_path.write_text("\\n".join(updated) + "\\n", encoding="utf-8")
           print("corpus-env-key-written")
           PY
+            if ! install_env_file "${temp_env}" "${CORPUS_ROOT}/.env"; then
+              rm -f "${temp_env}"
+              return 1
+            fi
+            rm -f "${temp_env}"
           }
 
           wait_api_health() {
