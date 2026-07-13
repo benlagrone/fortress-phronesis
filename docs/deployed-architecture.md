@@ -26,6 +26,8 @@ is `scripts/deploy-pericopeai-prod.sh`; it verifies the deployment lock, syncs o
 validates the sibling `AugustineService` checkout, rebuilds `pericopeai-api`
 through `docker compose -p fortress-phronesis -f docker-compose.pericope.yml`,
 runs migrations/catalog sync, and smokes the local API plus host TLS vhost.
+Pushes that change the mirrored `docs/author_acquisition.json` ledger also invoke
+this API deployment runway after the service ledger has been published.
 
 Do not use `AugustineService/docker-compose.yml` for production API deploys.
 

@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/deploy-pericope-api.yml"
+      - "docs/author_acquisition.json"
       - "docker-compose.pericope.yml"
       - "scripts/update-nginx-pericopeai.sh"
       - "scripts/verify-pericope-author-profiles.py"
