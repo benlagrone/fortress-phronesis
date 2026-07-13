@@ -1,0 +1,166 @@
+flowchart TD
+  Owner["Owner / operator"]
+
+  subgraph OperatorPlane["Operator Plane - fortress.local"]
+    ReviewInbox["Review inbox<br/>packets, diffs, evidence"]
+    ApprovalGate["Approval controls<br/>approve, reject, defer, supersede"]
+    AuditTrail["Audit trail<br/>actor, timestamp, reason, old/new state"]
+    ReviewIndex["Review packet index<br/>pending, blocked, completed"]
+  end
+
+  subgraph WorkerPlane["Worker Plane - fortress.lan"]
+    CLI["author-acq CLI<br/>dry-run first"]
+    WorkerJobs["Bounded worker jobs<br/>audit, discovery, normalize, verify"]
+    RunStore["tmp/author-acq<br/>runs, reports, review packets"]
+    DailyReport["Daily Markdown report<br/>operator-ready summary"]
+  end
+
+  subgraph ControlTruth["Control Sources Of Truth"]
+    ProcessContract["author-acquisition-process.md<br/>completion gates and status vocabulary"]
+    FortressLedger["fortress-phronesis/docs/author_acquisition.json"]
+    ServiceLedger["AugustineService/metadata/author_acquisition.json"]
+    LedgerSyncGate{"Ledger sync guard<br/>byte-identical and valid JSON?"}
+  end
+
+  subgraph TrackerTrack["Track 1 - Tracker Control"]
+    TrackerSteward["Tracker Steward<br/>counts, duplicate names, status classes"]
+    TrackerAudit["tracker_audit_report"]
+    LedgerDryRun["ledger_update_dry_run<br/>diff before write"]
+    LedgerWriteGate{"Ledger write approved?"}
+  end
+
+  subgraph DiscoveryTrack["Tracks 2-4 - Discovery And Source Review"]
+    CoverageAuditor["Coverage Auditor<br/>local works and missing publications"]
+    CandidateScout["Candidate Scout<br/>new author and work proposals"]
+    SourceSteward["Source Steward<br/>provenance, edition, rights"]
+    RefIntelLeads["Reference intelligence leads<br/>reviewed handoff only"]
+    SourceProviders["Metadata/text providers<br/>Gutendex, IA, Open Library, Wikidata, Perseus, CCEL"]
+    GapPacket["publication_gap_packet"]
+    CandidatePacket["candidate_author_packet<br/>candidate_work_packet"]
+    SourceCard["source_card<br/>rights and provenance"]
+    DownloadPlan["download_plan<br/>only after source approval"]
+    SourceApprovalGate{"Source card approved?"}
+  end
+
+  subgraph CorpusBuildTrack["Track 5 - Local Corpus Build"]
+    AugustineCorpus["AugustineCorpus<br/>texts, metadata, indexes"]
+    AcquisitionOperator["Acquisition Operator<br/>download or curate approved texts"]
+    Normalizer["Normalize and metadata tools<br/>book metadata, catalog diff"]
+    IndexBuilder["Author-scoped index build"]
+    LocalAcqPacket["local_acquisition_run<br/>file inventory and rollback notes"]
+  end
+
+  subgraph LocalRuntimeTrack["Track 6 - Local Runtime Verification"]
+    LocalStack["pericopeai.local<br/>local frontend/API/corpus path"]
+    RuntimeVerifier["Runtime Verifier<br/>catalog, profile, portrait, retrieval"]
+    LocalVerificationPacket["local_runtime_verification_packet"]
+    LocalPassGate{"Local verification passed?"}
+  end
+
+  subgraph ReleaseTrack["Track 7 - Publication Handoff And Public Verification"]
+    PublicationHandoff["Publication Handoff<br/>prod corpus sync checklist"]
+    ProductionApprovalGate{"Explicit approval<br/>for production mutation?"}
+    UploadPath["Governed corpus upload/sync path<br/>upload-corpus.sh and runbooks"]
+    ProdStack["Fortress Phronesis prod stack<br/>corpus sync, index, restart"]
+    PublicSite["https://pericopeai.com<br/>public catalog/profile/media/runtime"]
+    PublicVerifier["Public Verifier<br/>catalog, profile, media, grounded runtime"]
+    PublicPacket["public_verification_packet"]
+    CompleteGate{"Public verification passed?"}
+    FinalStatus["Complete status allowed<br/>public evidence attached"]
+    RepairPacket["repair packet<br/>pending state remains"]
+  end
+
+  subgraph DeploymentBoundary["Deployment Boundary"]
+    WorkspaceLock["workspace-deployment lock<br/>compose project, network, ports"]
+    DeployDocs["deployed architecture docs<br/>runbooks, smoke checks"]
+  end
+
+  Owner --> ReviewInbox
+  ReviewInbox --> ApprovalGate
+  ApprovalGate --> AuditTrail
+  ReviewInbox --> ReviewIndex
+  ReviewIndex --> Owner
+
+  ReviewInbox --> CLI
+  CLI --> WorkerJobs
+  WorkerJobs --> RunStore
+  WorkerJobs --> DailyReport
+  DailyReport --> ReviewInbox
+  RunStore --> ReviewIndex
+
+  CLI --> TrackerSteward
+  ProcessContract --> TrackerSteward
+  FortressLedger --> LedgerSyncGate
+  ServiceLedger --> LedgerSyncGate
+  LedgerSyncGate --> TrackerSteward
+  TrackerSteward --> TrackerAudit
+  TrackerAudit --> RunStore
+  TrackerAudit --> ReviewInbox
+  TrackerAudit --> CoverageAuditor
+  TrackerAudit --> CandidateScout
+
+  TrackerSteward --> LedgerDryRun
+  LedgerDryRun --> ReviewInbox
+  ReviewInbox --> LedgerWriteGate
+  LedgerWriteGate -->|approved| FortressLedger
+  LedgerWriteGate -->|approved| ServiceLedger
+  LedgerWriteGate -->|not approved| ReviewInbox
+
+  RefIntelLeads --> CandidateScout
+  CandidateScout --> CandidatePacket
+  CandidatePacket --> ReviewInbox
+
+  CoverageAuditor --> AugustineCorpus
+  CoverageAuditor --> GapPacket
+  GapPacket --> ReviewInbox
+
+  ReviewInbox -->|approve source review| SourceSteward
+  SourceSteward --> SourceProviders
+  SourceProviders --> SourceSteward
+  SourceSteward --> SourceCard
+  SourceCard --> ReviewInbox
+  ReviewInbox --> SourceApprovalGate
+  SourceApprovalGate -->|approved| DownloadPlan
+  SourceApprovalGate -->|needs rights review| ReviewInbox
+  SourceApprovalGate -->|rejected or deferred| AuditTrail
+
+  DownloadPlan --> AcquisitionOperator
+  AcquisitionOperator --> AugustineCorpus
+  AcquisitionOperator --> Normalizer
+  Normalizer --> AugustineCorpus
+  AugustineCorpus --> IndexBuilder
+  IndexBuilder --> AugustineCorpus
+  AcquisitionOperator --> LocalAcqPacket
+  LocalAcqPacket --> RunStore
+  LocalAcqPacket --> ReviewInbox
+
+  ReviewInbox -->|approve local verification| RuntimeVerifier
+  AugustineCorpus --> RuntimeVerifier
+  RuntimeVerifier --> LocalStack
+  LocalStack --> RuntimeVerifier
+  RuntimeVerifier --> LocalVerificationPacket
+  LocalVerificationPacket --> RunStore
+  LocalVerificationPacket --> ReviewInbox
+  LocalVerificationPacket --> LocalPassGate
+  LocalPassGate -->|yes| PublicationHandoff
+  LocalPassGate -->|no| RepairPacket
+
+  PublicationHandoff --> ReviewInbox
+  ReviewInbox --> ProductionApprovalGate
+  ProductionApprovalGate -->|approved| UploadPath
+  ProductionApprovalGate -->|not approved| ReviewInbox
+  UploadPath --> ProdStack
+  ProdStack --> PublicSite
+  PublicSite --> PublicVerifier
+  PublicVerifier --> PublicPacket
+  PublicPacket --> RunStore
+  PublicPacket --> ReviewInbox
+  PublicPacket --> CompleteGate
+  CompleteGate -->|yes| FinalStatus
+  CompleteGate -->|no| RepairPacket
+  FinalStatus --> LedgerDryRun
+  RepairPacket --> ReviewInbox
+
+  ProdStack -. "must preserve locked topology" .-> WorkspaceLock
+  WorkspaceLock --> DeployDocs
+  DeployDocs -. "update only when runtime surface changes" .-> ReleaseTrack

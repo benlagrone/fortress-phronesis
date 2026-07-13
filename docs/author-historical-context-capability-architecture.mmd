@@ -1,0 +1,113 @@
+flowchart LR
+  subgraph UserIntent["Operator intent"]
+    Request["Historical context request<br/>author slug, scope, dry-run mode"]
+    Capability["Capability registry<br/>author_historical_context_enrichment"]
+  end
+
+  subgraph ExistingTruth["Existing PericopeAI truth"]
+    AuthorCatalog["Author catalog<br/>author_index.json"]
+    Biographies["Author biographies<br/>summary, history, body_of_thought,<br/>influence_era"]
+    AuthorBooks["Author books and works metadata"]
+    AcquisitionLedgers["Author acquisition ledgers<br/>read-only unless approved handoff"]
+    ProfileAPIShape["Existing profile payload<br/>biography, taxonomy, portrait,<br/>books, wikidata_id"]
+  end
+
+  subgraph SourceLayer["Codex LCP/MCP and source-card layer"]
+    SourceRegistry["Source registry and source policy"]
+    LCPConnectors["LCP/MCP data-source connectors<br/>Wikidata, Open Library,<br/>Crossref, OpenAlex, Gutenberg"]
+    SourceCards["Approved Source Steward cards<br/>rights, edition, source quality"]
+    RefEdges["Reviewed reference-intelligence edges<br/>influence and reception evidence"]
+  end
+
+  subgraph FortressLAN["fortress.lan execution plane"]
+    SourcePlanner["Source Planner<br/>allowed sources and fields"]
+    Collector["Source Collector<br/>bounded pulls, cache, redaction"]
+    IdentityResolver["Identity Resolver<br/>slug, aliases, external ids,<br/>traditional or contested mode"]
+    ClaimExtractor["Claim Extractor<br/>atomic historical claims<br/>with source refs"]
+    ConflictDetector["Conflict Detector<br/>date, place, authorship,<br/>work-attribution conflicts"]
+    ConfidenceScorer["Confidence Scorer<br/>source count, source tier,<br/>conflict penalties"]
+    Composer["Context Composer<br/>profile-sized draft sections"]
+    ReviewPacket["Review Packet Builder<br/>diff, evidence, confidence,<br/>publishability flags"]
+    Validator["Validation Suite<br/>schema, provenance,<br/>visibility and safety checks"]
+    RunArtifacts["Local run artifacts<br/>dry-run JSON, reports,<br/>fixtures"]
+  end
+
+  subgraph FortressLocal["fortress.local operator plane"]
+    ReviewInbox["Historical context review inbox"]
+    OperatorActions["Operator actions<br/>approve, reject, edit,<br/>defer, merge, needs source"]
+    AuditTrail["Audit trail<br/>actor, timestamp, old state,<br/>new state, reason, run id"]
+  end
+
+  subgraph PublishedSnapshot["Reviewed local publication artifact"]
+    SnapshotWriter["Snapshot Publisher<br/>requires approved review"]
+    Snapshot["author-historical-context.json<br/>approved snapshots only"]
+    SnapshotVersion["Snapshot version and rollback metadata"]
+  end
+
+  subgraph Runtime["PericopeAI runtime and reader surfaces"]
+    CorpusMetadata["Corpus metadata loader<br/>merge reviewed snapshot"]
+    AuthorProfileAPI["GET /api/v1/authors/:slug/profile<br/>additive historical_context"]
+    AuthorProfileUI["Author profile UI<br/>historical summary, timeline,<br/>places, influences, provenance"]
+    ChatPath["Normal chat path<br/>must work if historical context is absent"]
+  end
+
+  subgraph Guardrails["Promotion and safety guardrails"]
+    NoLivePublicCalls["No public request-time<br/>LCP/MCP calls"]
+    NoPendingClaims["No pending or rejected<br/>claims in public output"]
+    NoLedgerMutation["No acquisition ledger mutation<br/>without explicit handoff approval"]
+    DeployGate["Runtime promotion gate<br/>update deployment locks, architecture,<br/>and smoke checks if a service, route,<br/>env var, DB migration, or scheduler is added"]
+  end
+
+  Request --> Capability
+  Capability --> SourcePlanner
+
+  AuthorCatalog --> IdentityResolver
+  Biographies --> IdentityResolver
+  AuthorBooks --> IdentityResolver
+  AcquisitionLedgers --> IdentityResolver
+  ProfileAPIShape --> Composer
+
+  SourceRegistry --> SourcePlanner
+  SourceCards --> SourcePlanner
+  LCPConnectors --> Collector
+  RefEdges --> ClaimExtractor
+  SourcePlanner --> Collector
+  Collector --> ClaimExtractor
+  IdentityResolver --> ClaimExtractor
+
+  ClaimExtractor --> ConflictDetector
+  ConflictDetector --> ConfidenceScorer
+  ConfidenceScorer --> Composer
+  Composer --> ReviewPacket
+  ReviewPacket --> Validator
+  Validator --> RunArtifacts
+  RunArtifacts --> ReviewInbox
+
+  ReviewInbox --> OperatorActions
+  OperatorActions --> AuditTrail
+  OperatorActions --> SnapshotWriter
+  SnapshotWriter --> Snapshot
+  SnapshotWriter --> SnapshotVersion
+
+  Snapshot --> CorpusMetadata
+  CorpusMetadata --> AuthorProfileAPI
+  AuthorProfileAPI --> AuthorProfileUI
+  AuthorProfileAPI --> ChatPath
+
+  LCPConnectors -. "blocked from" .-> AuthorProfileAPI
+  NoLivePublicCalls -. "enforces" .-> AuthorProfileAPI
+  NoPendingClaims -. "enforces" .-> SnapshotWriter
+  NoLedgerMutation -. "enforces" .-> AcquisitionLedgers
+  DeployGate -. "applies if promoted" .-> FortressLAN
+
+  classDef source fill:#edf7ff,stroke:#3976a8,color:#0f2f47
+  classDef runtime fill:#edf9f0,stroke:#3b7c45,color:#193d20
+  classDef review fill:#fff7e6,stroke:#a87020,color:#503000
+  classDef guard fill:#fff0f0,stroke:#b34d4d,color:#5a1d1d
+  classDef artifact fill:#f3f0ff,stroke:#6b5bb5,color:#2b235a
+
+  class SourceRegistry,LCPConnectors,SourceCards,RefEdges source
+  class CorpusMetadata,AuthorProfileAPI,AuthorProfileUI,ChatPath runtime
+  class ReviewInbox,OperatorActions,AuditTrail review
+  class NoLivePublicCalls,NoPendingClaims,NoLedgerMutation,DeployGate guard
+  class SnapshotWriter,Snapshot,SnapshotVersion,RunArtifacts artifact

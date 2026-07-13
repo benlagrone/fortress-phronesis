@@ -1,0 +1,90 @@
+flowchart LR
+  subgraph Inputs["Inputs and Existing Truth"]
+    Corpus["Acquired corpus passages\nnormalized passage ids"]
+    SourceCards["Approved source cards\nfrom Source Steward\nmetadata only"]
+    Catalogs["Author/work/scripture catalogs"]
+    Ledgers["Author acquisition ledgers\nread-only until approved handoff"]
+    ExistingRefs["Existing MySQL reference state\npassages, passage_references,\npassage_semantic_similarity"]
+  end
+
+  subgraph FortressLAN["fortress.lan execution plane"]
+    Orchestrator["Run Orchestrator\nscope, idempotency, locks,\nretry, cancel, resume"]
+
+    subgraph Capabilities["Capability primitives"]
+      Extractor["Citations Agent capability\nextract raw references\nand evidence spans"]
+      Resolver["Reference Resolver capability\ncanonical target ids\nand target status"]
+      EdgeBuilder["Cross-Reference capability\nbuild typed evidence-backed edges"]
+      LeadBuilder["Author Discovery capability\nnon-acquired author/work leads"]
+      HandoffBuilder["Acquisition Handoff capability\ndry-run ledger proposals"]
+      ReportWriter["Report and validation capability\nJSON reports, offset checks,\nprovenance checks"]
+    end
+
+    ArtifactStore["Local dry-run artifacts first\nJSON reports and fixtures"]
+    OptionalReviewStore["Optional operator review store\nSQLite or MySQL only after gates"]
+  end
+
+  subgraph FortressLocal["fortress.local operator plane"]
+    ReviewInbox["Review inboxes\nreferences, edges, leads,\nhandoff proposals"]
+    OperatorActions["Operator actions\napprove, reject, defer,\nmerge, mark rights review"]
+    AuditTrail["Audit trail\nactor, timestamp,\nold state, new state, reason"]
+  end
+
+  subgraph PericopeAI["PericopeAI reader/runtime surfaces"]
+    ReaderAdapter["Reader Reference Adapter\nreviewed references only"]
+    APIUI["PericopeAI API/UI\nrelated passages, authors,\nworks, provenance"]
+    ChatPath["Normal chat path\nmust remain functional\nif reference layer is down"]
+  end
+
+  subgraph Acquisition["Author acquisition process"]
+    HandoffPacket["Approved acquisition\nhandoff packet"]
+    ProcessGates["Existing acquisition gates\nlocal acquisition, runtime wiring,\nprod corpus sync, activation,\npublic verification"]
+  end
+
+  subgraph DeploymentGate["Promotion boundary"]
+    LockDocs["Workspace deployment lock\narchitecture docs\nsmoke checks"]
+    RuntimePromotion["Runtime promotion only if\nservice, route, env, port,\nDB migration, or scheduler is added"]
+  end
+
+  PromotionPolicy["Promotion rule\nlocal artifacts can remain independent;\nruntime promotion updates locks, docs, and smokes"]
+  HandoffPolicy["Handoff rule\ndry-run only before explicit approval"]
+  ReaderPolicy["Reader rule\nhide pending/rejected leads\nand raw topology"]
+  SourcePolicy["Source Steward rule\nsource discovery and rights review\nstay external to this plan"]
+
+  Corpus --> Orchestrator
+  SourceCards --> Orchestrator
+  Catalogs --> Orchestrator
+  Ledgers --> Orchestrator
+  ExistingRefs --> Orchestrator
+
+  Orchestrator --> Extractor
+  Extractor --> Resolver
+  Resolver --> EdgeBuilder
+  EdgeBuilder --> LeadBuilder
+  LeadBuilder --> HandoffBuilder
+  HandoffBuilder --> ReportWriter
+  EdgeBuilder --> ReportWriter
+  Resolver --> ReportWriter
+
+  ReportWriter --> ArtifactStore
+  ArtifactStore --> ReviewInbox
+  ReviewInbox --> OperatorActions
+  OperatorActions --> AuditTrail
+  OperatorActions --> OptionalReviewStore
+
+  OptionalReviewStore --> ReaderAdapter
+  ReaderAdapter --> APIUI
+  APIUI --> ChatPath
+
+  OptionalReviewStore --> HandoffPacket
+  HandoffPacket --> ProcessGates
+
+  OptionalReviewStore -.-> RuntimePromotion
+  RuntimePromotion --> PromotionPolicy
+  RuntimePromotion --> LockDocs
+
+  HandoffBuilder -.-> HandoffPolicy
+  HandoffPolicy -.-> Ledgers
+  ReaderAdapter -.-> ReaderPolicy
+  ReaderPolicy -.-> APIUI
+  SourceCards -.-> SourcePolicy
+  SourcePolicy -.-> ReportWriter

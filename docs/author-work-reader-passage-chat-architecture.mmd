@@ -1,0 +1,54 @@
+graph TD
+  subgraph Browser["PericopeAI Browser UI"]
+    AuthorPage["Author profile<br/>/authors/:authorSlug"]
+    ChatPage["Author chat<br/>/author/:authorSlug and /chat"]
+    ReaderPage["Work reader<br/>/authors/:authorSlug/works/:source"]
+    Composer["Passage-anchored ask composer"]
+  end
+
+  subgraph API["AugustineService public API"]
+    ProfileAPI["GET /api/v1/authors/:authorSlug/profile"]
+    BookPartialAPI["POST /api/v1/book_partial"]
+    ChatAPI["POST /api/v2/chat<br/>additive source_context"]
+    PublicBoundary["Public author and access boundary"]
+  end
+
+  subgraph Corpus["AugustineCorpus"]
+    AuthorCatalog["author_index.json<br/>book_metadata.json"]
+    TextResolver["text resolver<br/>author_slug + source"]
+    Chunker["position chunker<br/>start_position/end_position"]
+    Retriever["RAG context retrieval<br/>nearby support passages"]
+    Generator["LLM generation<br/>same author persona"]
+  end
+
+  subgraph Persistence["MySQL-backed app state"]
+    Sessions["sessions and messages"]
+    Citations["citations"]
+    PassageTables["passages<br/>passage_references<br/>passage_semantic_similarity"]
+    Traces["response_traces"]
+  end
+
+  AuthorPage -->|"Read work"| ReaderPage
+  ChatPage -->|"Open selected author's works"| ReaderPage
+  ReaderPage -->|"load profile/works"| ProfileAPI
+  ReaderPage -->|"load chunk range"| BookPartialAPI
+  ProfileAPI --> PublicBoundary
+  BookPartialAPI --> PublicBoundary
+  PublicBoundary --> AuthorCatalog
+  BookPartialAPI --> TextResolver
+  TextResolver --> Chunker
+  Chunker -->|"chunk content + range metadata"| ReaderPage
+
+  ReaderPage -->|"select passage range"| Composer
+  Composer -->|"question + source_context"| ChatAPI
+  ChatAPI --> PublicBoundary
+  ChatAPI --> Retriever
+  ChatAPI -->|"selected passage as primary evidence"| Generator
+  Retriever --> PassageTables
+  Retriever --> Generator
+  Generator -->|"segmented answer + citations + follow_up_question"| ChatPage
+  ChatAPI --> Sessions
+  ChatAPI --> Citations
+  ChatAPI --> Traces
+
+  AuthorCatalog -. "future Source Steward metadata<br/>edition, license, translator, rights" .-> ReaderPage

@@ -49,6 +49,24 @@ Do not use `AugustineService/docker-compose.yml` for production API deploys.
 - `pericopeai-frontend`
   - Container port `80`; host port `13080`
 
+## Reader Range Contract
+
+The existing `POST /api/v1/book_partial` route now serves as the reader-range
+contract for the planned author-work reader flow.
+
+- `AugustineCorpus` returns the legacy `content` string plus additive reader
+  metadata: `entries`, `total_positions`, `previous_position`, and
+  `next_position`.
+- `entries` is the selected position window with per-entry `position`,
+  `reference`, and `content`; corpus may also include chapter and verse fields
+  when that metadata is available.
+- `AugustineService` preserves the same additive shape when proxying corpus
+  responses and when falling back to service-local text files after upstream
+  `404 Book not found`.
+
+This change does not add a new public route, host port, service, or environment
+variable. Legacy consumers may continue using `content` only.
+
 ## Browser Auth Bootstrap
 
 The public frontend renders immediately as an anonymous guest experience. It
@@ -98,31 +116,66 @@ neighbors.
 
 ## Planned Citation And Reference Agent Layer
 
-The planned citation, cross-reference, and author discovery workflow is
-documented in `docs/citation-cross-reference-author-discovery-plan.md`. It is a
-background enrichment and operator-review layer, not a deployed runtime service
-today.
+The planned citation, cross-reference, and author-discovery workflow is
+documented in `docs/citation-cross-reference-author-discovery-plan.md`. The
+broader non-Source-Steward reference-agent system that expands that lane is
+documented in `docs/reference-intelligence-agents-implementation-plan.md`. It
+covers the run orchestrator, citations agent, reference resolver,
+cross-reference agent, author discovery agent, acquisition handoff agent,
+operator review agent, and reader reference adapter.
 
 The planned split is:
 
-- `fortress.lan` runs bounded citation extraction, cross-reference building, and
-  author-discovery jobs.
+- `fortress.lan` runs bounded citation extraction, resolution, edge-building,
+  scoring, and acquisition-lead generation jobs.
 - `fortress.local` presents operator review queues for references,
-  cross-reference edges, and non-acquired author leads.
+  cross-reference edges, author discovery leads, and acquisition handoff
+  proposals.
 - `pericopeai.local` and the public PericopeAI app consume only reviewed or
-  confidence-gated citation/reference outputs.
+  confidence-gated reference outputs.
 
-The citations agent is the evidence layer for the workflow. Cross-reference
-edges and author-discovery leads must point back to resolved references with
-source evidence, provenance, confidence, and review status. The author discovery
-agent may create acquisition leads for non-acquired authors, but it must not
-modify acquisition ledgers or ingest third-party text without explicit review
-and the author-acquisition gates in `docs/author-acquisition-process.md`.
+The system is evidence-first. Durable references, cross-reference edges,
+author-discovery leads, and acquisition handoff proposals must point back to
+source evidence, provenance, confidence, and review status. The acquisition
+handoff path must not modify author-acquisition ledgers or ingest third-party
+text without explicit review and must preserve the gates in
+`docs/author-acquisition-process.md`.
 
-No public route, host port, graph database, new deployed service, or environment
-variable is introduced by this plan. If any of those are promoted later, update
-the workspace deployment lock, this architecture document, and the relevant
-smoke checks in the same change.
+This plan does not add a public route, host port, graph database, deployed
+service, or environment variable. If any of those are promoted later, update the
+workspace deployment lock, this architecture document, and smoke checks in the
+same change.
+
+## Planned Author Historical Context Capability
+
+The planned author historical-context capability is documented in
+`docs/author-historical-context-capability-execution-plan.md`. It defines the
+`author_historical_context_enrichment` agent capability and its supporting
+structure for Codex LCP/MCP data-source pulls, source registry policy,
+evidence-backed historical claims, operator review packets, and reviewed
+author-profile snapshots.
+
+The public PericopeAI profile path must consume only reviewed local snapshots.
+It must not call LCP/MCP data sources at request time or expose pending review
+claims, raw source responses, connector credentials, or operator-only notes.
+
+This plan does not add a public route, host port, graph database, deployed
+service, or environment variable. If promoted from plan to runtime, update the
+workspace deployment lock, this architecture document, and smoke checks in the
+same change.
+
+## Planned Author Acquisition Agents
+
+The planned author-acquisition operator system is documented in
+`docs/author-acquisition-agents-execution-plan.md`. It extends the existing
+author-acquisition process with tracker stewardship, publication-gap audits,
+candidate scouting, source cards, local acquisition, runtime verification,
+publication handoff, public verification, and operator review.
+
+The plan does not add a public route, host port, deployed service, environment
+variable, or deployment path by itself. If promoted from plan to runtime, the
+workspace deployment lock, this architecture document, and smoke checks must be
+updated in the same change.
 
 ## Inference And Retrieval
 

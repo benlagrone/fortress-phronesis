@@ -34,10 +34,17 @@
     "version": "0.5.0",
     "version_date": "2025-12-22",
     "persona_mode": "Authority",
+    "works": [
+      "Republic",
+      "Phaedo",
+      "Timaeus"
+    ],
     "notes": [
       "Time: c. 428–348 BC; Origin: Athens",
       "Role: Philosopher",
       "Key Works: Republic; Phaedo; Timaeus",
+      "Video extract timestamp: 15:28-16:00",
+      "Acquisition note: Timaeus is the relevant work for the Atlantis account and references to lands beyond the ocean.",
       "Contribution: Forms, metaphysics, groundwork for Christian thought"
     ]
   },
@@ -325,6 +332,20 @@
       "Key Works: Ethics; Metaphysics; Politics",
       "Contribution: Logic, causality, practical ethics",
       "Priority note (2026-06-29): previously queued for the v1.1.3 release train, but superseded by the economic theorists priority shift."
+    ]
+  },
+  {
+    "name": "Pseudo-Aristotle",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "On Marvelous Things Heard"
+    ],
+    "notes": [
+      "Video extract timestamp: 16:08-16:20",
+      "Text belongs to the Aristotelian corpus and preserves a Carthaginian sailor account of a fertile island to the west.",
+      "Contribution target: Classical reports of western lands beyond the ocean and inherited Aristotelian-corpus marvel traditions"
     ]
   },
   {
@@ -845,7 +866,42 @@
     "name": "Plutarch",
     "status": "pending",
     "persona_mode": "Authority",
-    "notes": []
+    "works": [
+      "On the Face Which Appears in the Orb of the Moon"
+    ],
+    "notes": [
+      "Video extract timestamp: 19:42-20:00",
+      "Acquisition lead: dialogue includes the account of a recurring Carthaginian embassy across the ocean to the land of Kronos.",
+      "Contribution target: Middle Platonist moral biography, comparative statesmanship, and classical Atlantic-geography traditions"
+    ]
+  },
+  {
+    "name": "Diodorus Siculus",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "Bibliotheca historica (Library of History)"
+    ],
+    "notes": [
+      "Video extract timestamp: 16:14-16:28",
+      "Preserves another version of the Carthaginian account also associated with On Marvelous Things Heard.",
+      "Contribution target: Universal-history source tradition and classical reports of western islands beyond the ocean"
+    ]
+  },
+  {
+    "name": "Virgil",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "Aeneid"
+    ],
+    "notes": [
+      "Video extract timestamp: 13:24-13:37",
+      "Acquisition lead: the Aeneid is highlighted as an epic deliberately echoing the structure of the Odyssey.",
+      "Contribution target: Roman epic, pietas, imperial destiny, and Homeric reception"
+    ]
   },
   {
     "name": "Titus Livius",
@@ -1004,14 +1060,112 @@
     "notes": []
   },
   {
+    "name": "Homer",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "Iliad",
+      "Odyssey"
+    ],
+    "notes": [
+      "Video extract timestamp: 2:35-3:03",
+      "Video extract timestamps: 0:00-0:14, 1:32-1:40",
+      "Attributed author of the Iliad and the Odyssey.",
+      "Acquisition lead: Mary Bachvarova's comparative argument is relevant for Anatolian and Near Eastern themes and plot elements incorporated into the Homeric epics.",
+      "Contribution target: Greek epic memory, heroic counsel, wrath, voyage, and homecoming structures"
+    ]
+  },
+  {
+    "name": "Sargon the Great",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Political",
+    "works": [
+      "Akkadian epic tradition about the destruction of Akkad"
+    ],
+    "notes": [
+      "Video extract timestamps: 14:24-14:38, 14:47-15:15",
+      "Historical and legendary Akkadian ruler whose dynasty is associated with epic traditions about Akkad.",
+      "Acquisition lead: compare Akkadian destruction-of-Akkad plot traditions with Iliad plot elements noted by Mary Bachvarova.",
+      "Contribution target: Mesopotamian royal legend, imperial memory, and Near Eastern epic parallels"
+    ]
+  },
+  {
+    "name": "Naram-Sin",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Political",
+    "works": [
+      "Akkadian traditions about Naram-Sin and the destruction of Akkad"
+    ],
+    "notes": [
+      "Video extract timestamp: 14:24-15:15",
+      "Son or grandson of Sargon and central figure in the Akkadian traditions discussed in the source video.",
+      "Acquisition lead: track Naram-Sin traditions as a comparative source for Iliad plot patterns.",
+      "Contribution target: Mesopotamian kingship, sacrilege, city-destruction memory, and epic-pattern comparison"
+    ]
+  },
+  {
+    "name": "The Song of Release",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "The Song of Release"
+    ],
+    "notes": [
+      "Video extract timestamp: 4:00-5:01",
+      "Anonymous bilingual Hurrian/Hittite epic about the destruction of Ebla.",
+      "Acquisition lead: capture subplots parallel to those in the Iliad.",
+      "Contribution target: Anatolian and Near Eastern epic substrate for Homeric comparison"
+    ]
+  },
+  {
+    "name": "Ramayana Tradition",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "Ramayana"
+    ],
+    "notes": [
+      "Video extract timestamp: 46:29-47:22",
+      "Ancient Indian epic tradition used as a parallel for culturally and gendered retellings.",
+      "Acquisition lead: use as a comparative epic case for how the same narrative can shift across perspective and transmission.",
+      "Contribution target: comparative epic, exile, duty, war, and perspective-shaped retelling"
+    ]
+  },
+  {
+    "name": "Epic of Gilgamesh Tradition",
+    "status": "pending",
+    "queue_date": "2026-07-08",
+    "persona_mode": "Authority",
+    "works": [
+      "Epic of Gilgamesh"
+    ],
+    "notes": [
+      "Video extract timestamp: 59:32-59:43",
+      "Anonymous Mesopotamian epic tradition referenced for deity type-scenes involving figures such as Ishtar.",
+      "Acquisition lead: track type-scenes later adapted in Greek literature.",
+      "Contribution target: Mesopotamian epic, mortality, divine-human conflict, and inherited literary scene patterns"
+    ]
+  },
+  {
     "name": "Hesiod",
     "status": "pending",
     "queue_date": "2026-04-29",
     "persona_mode": "Authority",
+    "works": [
+      "Works and Days",
+      "Theogony"
+    ],
     "notes": [
       "Time: c. 8th-7th century BC; Origin: Boeotia",
       "Role: Greek didactic poet",
       "Key Works: Works and Days; Theogony",
+      "Video extract timestamps: 8:04, 16:48-17:07",
+      "Acquisition lead: capture the Islands of the Blessed passage as part of the ocean-beyond-land tradition.",
       "Contribution target: Archaic Greek moral order, labor, justice, mythic genealogy"
     ]
   },

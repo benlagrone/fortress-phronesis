@@ -1,6 +1,8 @@
 .rag/
 venv/
 scripts/*
+!scripts/author-acq.py
+!scripts/author_acq.py
 !scripts/smoke-crossrefs.py
 !scripts/create-pericopeai-assets-remote.sh
 !scripts/deploy-fortress-personal-remote.sh

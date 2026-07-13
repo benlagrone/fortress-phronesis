@@ -486,7 +486,198 @@ deploy.
 
 ## v1.3.x — Cross-Reference Intelligence (Backward Compatible)
 
-**Design authority:** [Citation, Cross-Reference, and Author Discovery Agent Plan](citation-cross-reference-author-discovery-plan.md)
+**Design authority:** [Citation, Cross-Reference, and Author Discovery Agent Plan](citation-cross-reference-author-discovery-plan.md) and [Reference Intelligence Agents Implementation Plan](reference-intelligence-agents-implementation-plan.md)
+**Architecture diagram:** [Reference Intelligence Agents Architecture](reference-intelligence-agents-architecture.mmd)
+
+**Execution plan:** Build this roadmap lane as a structure/capability/agent
+sequence:
+
+1. Structure: contracts, fixture passages, review states, target statuses,
+   evidence-span validation, and idempotent run records.
+2. Capability: deterministic extractor, resolver, edge builder, author-lead
+   builder, handoff dry-run, report writer, and validators.
+3. Agent orchestration: run scopes, retries, review queues, approval actions,
+   acquisition handoff proposals, and reader-reference adapter.
+
+Execution releases:
+
+- R0: planning hygiene and worktree isolation.
+- R1: contracts and fixtures.
+- R2: dry-run capability CLI.
+- R3: citations and resolver capability.
+- R4: cross-reference and lead capability.
+- R5: local persistence prototype.
+- R6: agent orchestration.
+- R7: `fortress.local` operator review MVP.
+- R8: acquisition handoff dry-run.
+- R9: reader reference adapter.
+- R10: runtime promotion only if deployment locks, architecture docs, and smoke
+  checks are updated in the same change.
+
+This lane may proceed independently while it remains local, fixture-backed,
+dry-run, additive, and non-public. It rejoins the locked deployment path when it
+adds production DB migrations, public API/UI, scheduled `fortress.lan` runtime,
+mutable `fortress.local` operator state, acquisition ledger writes, graph DB,
+new service, host port, or environment variable.
+
+### v1.3.x Release Organization (`2026-07-08`)
+The newly added `v1.3.x` work is too broad to treat as one release. It now
+contains three different delivery classes and they should remain separated:
+
+- public Pericope user features
+- local/operator capabilities
+- promotion/runtime work that changes production behavior
+
+**Evaluation**
+
+- `v1.3.6 Reader Follow-On` is the cleanest next public user-facing slice:
+  bounded UI/API work, direct value, and independent of agent orchestration.
+- `v1.3.7` is a separate operator/ops release:
+  local-only, MDE-linked, and not coupled to author publication or public UX.
+- `v1.3.8` is too large for one release:
+  it mixes tracker control, source review, local acquisition, publication
+  handoff, and review UI; it must stay split.
+- `v1.3.9` depends on disciplined source/review structure:
+  it should not jump ahead of acquisition/source-card foundations even though
+  its first buildable slice is Augustine-only.
+- The reference-intelligence agent lane is foundational:
+  its dry-run/local stages should mature before public/runtime promotion is even
+  considered.
+
+**Release train**
+
+1. `v1.3.6R — Author Work Reader and Passage-Anchored Chat`
+   - features:
+     - extend `book_partial` with reader range metadata:
+       `entries`, `total_positions`, `previous_position`,
+       `next_position`
+     - add `/authors/:authorSlug/works/:source` reader route
+     - add `Read` actions from author profiles and selected-author chat context
+     - add stable deep links for author/work/range state
+     - add selected-passage state and a passage-anchored ask composer
+     - send additive `source_context` into `/api/v2/chat`
+     - prioritize selected passage text as primary evidence while keeping normal
+       RAG supplemental
+   - excludes:
+     - no Add Counsel changes
+     - no synthesis changes
+     - no acquisition, review-queue, or operator-agent work
+   - stop condition: a user can read a work, select a passage, and ask the same
+     author about it in one stable public flow
+2. `v1.3.7 — local_tools Model Release Watch + MDE Handoff`
+   - features:
+     - scheduled provider-model polling through MDE-owned catalog snapshots
+     - deduped release-event creation keyed by provider/model/first-seen
+     - notification delivery for new actionable model events
+     - operator actions to inspect release notes and raw diffs
+     - benchmark handoff into MDE with run ID and result-link tracking
+     - dashboard/event state for `new`, `acknowledged`, `deferred`,
+       `resolved`, `ignored`
+   - excludes:
+     - no Pericope public UI changes
+     - no author publication work
+     - no acquisition-ledger mutation
+   - stop condition: one newly released model creates one actionable event and
+     one benchmark handoff path
+3. `v1.3.x-RI1 — Reference Intelligence Foundation`
+   - features:
+     - contracts for references, targets, review states, evidence spans, and
+       idempotent runs
+     - fixture corpus snippets and validation tests
+     - dry-run CLI for extraction and validation
+     - deterministic citations/reference extraction capability
+     - canonical resolver for author/work/passage/scripture targets
+     - cross-reference edge builder
+     - author/work discovery lead generation
+     - report writer for dry-run evidence packets
+   - excludes:
+     - no local persistence yet
+     - no `fortress.local` review UI
+     - no public API/UI or runtime promotion
+   - stop condition: dry-run evidence and lead packets exist without
+     persistence, review UI, or runtime mutation
+4. `v1.3.8A — Author Acquisition Foundation`
+   - features:
+     - ledger sync validation across both acquisition ledgers
+     - status counts, duplicate-name checks, and dry-run diff reporting
+     - coverage audit for missed publications in acquired/partial authors
+     - `publication_gap_packet` generation
+     - candidate author/work proposal packets
+     - source-card preparation with provenance, edition, rights, and quality
+       notes
+     - run artifacts under `tmp/author-acq/`
+   - excludes:
+     - no full-text download before source approval
+     - no indexing, runtime wiring, or production mutation
+   - stop condition: bounded acquisition candidates can be reviewed and approved
+     before any full-text ingestion
+5. `v1.3.8B — Author Acquisition Execution`
+   - features:
+     - approved local source download and normalization
+     - metadata diffs and local file inventory
+     - author-scoped index build commands
+     - local catalog/profile/portrait/retrieval verification through
+       `pericopeai.local`
+     - production publication handoff packets and rollback notes
+     - public verification evidence requirement before complete status
+   - excludes:
+     - no autonomous production publish
+     - no status promotion when local verification fails
+   - stop condition: one approved author/work can move from source approval to
+     local verification with governed production handoff prepared but not
+     auto-executed
+6. `v1.3.9A — Historical Context Pilot`
+   - features:
+     - capability manifest for
+       `author_historical_context_enrichment`
+     - source registry with allowed/prohibited use policy
+     - evidence-backed claim records for dates, places, timeline, works,
+       influences, and reception
+     - Augustine-only dry-run claim generation
+     - review packet and approved snapshot artifact
+     - additive `historical_context` block in local author profile payload
+     - safe missing-data rendering path in frontend author profile
+   - excludes:
+     - no live LCP/MCP dependency in public profile requests
+     - no broad multi-author rollout yet
+     - no author-acquisition ledger mutation
+   - stop condition: one reviewed historical-context snapshot can be exposed in
+     profile payloads without request-time external dependencies
+7. `v1.3.x-OPS — Operator Review Surface`
+   - features:
+     - local persistence for runs, packets, approvals, and retries
+     - orchestration of bounded jobs and retry behavior
+     - `fortress.local` review queues for reference, acquisition, and
+       historical-context packets
+     - approval/reject/defer/supersede/audit actions
+     - acquisition handoff dry-run controls
+     - reader-reference adapter for reviewed outputs
+   - excludes:
+     - no public promotion by default
+     - no bypass of review gates through local UI
+   - stop condition: operators can review, approve, defer, retry, and audit
+     packets from one local surface without bypassing gates
+8. `v1.3.x-PROMOTE — Runtime Promotion Gate`
+   - features:
+     - production DB/API/UI/runtime promotion decision for reviewed
+       agent-derived outputs
+     - deployment-lock updates
+     - architecture-doc updates
+     - smoke-check and rollback-path updates
+     - explicit approval-path enforcement for promoted data surfaces
+   - excludes:
+     - no promotion unless the exact runtime contract is documented and tested
+   - stop condition: deployment locks, architecture docs, smoke checks, and
+     approval paths are updated in the same change as the promotion
+
+**Ordering rule**
+
+- Do not merge `v1.3.6R` with `v1.3.8` or `v1.3.9`; the trust model, rollback
+  surface, and validation path are different.
+- Do not treat `v1.3.8` as complete until both `v1.3.8A` and `v1.3.8B` are
+  closed; `v1.3.8` is not one shippable pass.
+- Keep `v1.4.0` pricing/subscriptions as a separate commercial lane; it should
+  not absorb the local agent/acquisition work above.
 
 ### v1.3.0
 **Goal:** Cross-reference scripture, Church Fathers, and works as first-class data.
@@ -771,6 +962,59 @@ deploy.
 - `SCR-001` is live in production.
 - `/api/v1/scripture/verse` now returns structured verse bundles with source witness metadata, canonical translation witnesses, derived notes, and commentary layers, and the References UI can open those bundles directly.
 
+### v1.3.6 Reader Follow-On — Author Work Reader and Passage-Anchored Chat
+**Goal:** Let a user open an author's available works from the author page or chat page, read the source text in stable sections, and ask that same author about a selected passage.
+
+**Execution plan:** [Author Work Reader and Passage-Anchored Chat Execution Plan](author-work-reader-passage-chat-execution-plan.md)
+
+**Architecture diagram:** [Author Work Reader and Passage-Anchored Chat Architecture](author-work-reader-passage-chat-architecture.mmd)
+
+- Execution plan:
+  - Phase 0: define additive contracts and fixtures for `source_context`, reader
+    range payloads, non-Bible author works, scripture-adjacent works, and
+    service-side public-author filtering.
+  - Phase 1: extend `book_partial` with reader-oriented range metadata
+    (`entries`, `total_positions`, `previous_position`, `next_position`) while
+    preserving existing `content`, reference, chapter, verse, section, and
+    testament fields for legacy reference expansion.
+  - Phase 2: add the frontend reader route at
+    `/authors/:authorSlug/works/:source`, wire `Read` actions from author
+    profiles and selected-author chat context, and render chunked source text
+    with stable position anchors and previous/next controls.
+  - Phase 3: add selected passage state and a passage-anchored ask composer,
+    send additive `source_context` to `/api/v2/chat`, and update prompt
+    assembly so selected passage text is primary evidence while normal RAG
+    remains supplemental.
+  - Phase 4: validate with corpus/service/frontend tests plus local browser
+    smoke against `REACT_APP_API_BASE_URL=http://localhost:13080/api`; update
+    architecture docs, UI endpoint contracts, and smoke checks if runtime
+    behavior is promoted.
+- User entry points:
+  - author profile works list adds a direct `Read` action for each available work
+  - chat author context exposes the selected author's works and can open the same reader
+  - reader deep links preserve author slug, source/work identity, and selected position range
+- Reader contract:
+  - use `book_partial` as the initial source-backed reading surface
+  - render text in stable position/range chunks instead of loading full books into the page by default
+  - expose previous/next range navigation and selected passage anchors
+  - preserve user-facing labels from source metadata (`book`, `work`, `reference`, `chapter`, `section`, `translation`, and source/provenance fields when available)
+- Passage-anchored chat contract:
+  - add an additive `source_context` / selected-passage payload to `/api/v2/chat`
+  - selected passage context includes author slug, book/work, source filename or stable work ID, start/end positions, reference label, and the selected text
+  - the selected passage is treated as primary evidence for that turn while normal retrieval may add nearby support
+  - same-author follow-up remains visually subordinate and grounded in the selected passage, not converted into an Add Counsel workflow
+- Trust and access boundaries:
+  - public reader data must pass through the `AugustineService` public-author boundary before it is cached or exposed
+  - position values remain retrieval offsets, not canonical verse numbers
+  - canonical verse/source-witness behavior stays with the v1.3.6 verse bundle path
+  - Source Steward metadata can enrich edition, license, translator, source URL, and rights notes later without changing the reader route shape
+
+**Definition of Done**
+- A user can open a work from `/authors/{author_slug}` and read chunked source text.
+- A user can open the selected author's works from `/author/{author_slug}` or `/chat` without losing the active chat context.
+- Selecting a passage and asking a question sends an anchored `/api/v2/chat` request and receives an answer that cites or names the selected section.
+- Reader links are bookmarkable and recover the same author/work/range.
+- Existing `/api/v2/chat`, references, verse bundles, and author browse flows remain backward compatible.
 
 ### v1.3.7 — `local_tools` Model Release Watch + MDE Test Handoff
 **Goal:** Make the local control plane detect newly released provider models, notify the operator once, and hand off directly into MDE benchmarking.
@@ -819,6 +1063,160 @@ deploy.
 - Email notification is sent once per new actionable event.
 - An operator can trigger an MDE benchmark from the control plane without manual CLI assembly.
 - The control plane records benchmark status and report link back onto the originating event.
+
+### v1.3.8 — Author Acquisition Agents
+**Goal:** Turn author acquisition from a manually maintained tracker into an operator-assisted workflow that advances authors through source review, local acquisition, indexing, publication handoff, and public verification without bypassing human approval gates.
+
+**Execution plan:** [Author Acquisition Agents Execution Plan](author-acquisition-agents-execution-plan.md)
+
+**Design authority:** [Author Acquisition Agents Execution Plan](author-acquisition-agents-execution-plan.md)
+
+**Architecture diagram:** [Author Acquisition Agents Architecture](author-acquisition-agents-architecture.mmd)
+
+**Status:** Active development. Phase 0 tracker control has started with the
+read-only `author-acq` CLI, ledger validation, status reporting, and tracker
+audit tests. Remaining roadmap work must stay dry-run-first and approval-gated
+until the local acquisition, publication, and public-verification packets exist.
+
+**Roadmap execution sequence**
+
+- R0 — Planning and architecture:
+  - keep this roadmap entry linked to the execution plan and `.mmd` diagram
+  - preserve the two-plane operating model: `fortress.lan` workers,
+    `fortress.local` operator review
+  - keep production topology unchanged unless deployment locks, architecture
+    docs, and smoke checks are updated in the same change
+- R1 — Tracker control:
+  - keep both acquisition ledgers synchronized and valid
+  - emit `tracker_audit_report`, status counts, duplicate-name checks, unknown
+    status warnings, and dry-run ledger diffs
+  - add run IDs, JSON artifacts, and daily Markdown reports under
+    `tmp/author-acq/`
+- R2 — Coverage audit:
+  - extract local works from corpus text directories and metadata
+  - start with `legacy_runtime_wired` and `texts_present_index_volume_wired`
+    cohorts
+  - emit `publication_gap_packet` records without source downloads
+- R3 — Candidate and source review:
+  - turn backlog priorities and reviewed reference-intelligence leads into
+    candidate author/work packets
+  - prepare `source_card` records with provenance, edition, translator/editor,
+    rights status, retrieval date, and source quality notes
+  - block full-text ingestion until the source card is approved
+- R4 — Local acquisition and indexing:
+  - wrap approved corpus download, normalization, metadata, and author-scoped
+    index commands
+  - emit local file inventory, expected changes, rollback notes, and
+    `local_acquisition_run` packets
+- R5 — Local runtime verification:
+  - verify local catalog, profile, portrait/media metadata, compose wiring, and
+    grounded retrieval through `pericopeai.local`
+  - keep failed local checks as repair packets, not status promotion
+- R6 — Publication handoff and public verification:
+  - prepare governed corpus sync/index/restart checklists without executing
+    production changes
+  - require explicit approval before production mutation
+  - require public catalog/profile/media/runtime evidence before complete status
+    is allowed
+- R7 — Operator review surface:
+  - expose run history and review packets through `fortress.local` or a
+    compatible JSON export
+  - support approve, reject, defer, supersede, retry, and audit-trail actions
+  - prevent the UI from bypassing source, local, production, or public gates
+
+- Tracker control:
+  - validate both acquisition ledgers before any write path
+  - summarize status counts and classify legacy/runtime-wired entries
+  - block ledger mutations when semantic or byte-level drift is detected
+- Coverage audit:
+  - inspect acquired and partially acquired authors for missed publications
+  - produce `publication_gap_packet` review records before source lookup or download
+  - start with `legacy_runtime_wired` and `texts_present_index_volume_wired` cohorts
+- Candidate and source pipeline:
+  - propose new author/work candidates with evidence and priority scoring
+  - prepare source cards with provenance, edition, and rights/review status
+  - keep metadata discovery separate from full-text ingestion
+- Local build pipeline:
+  - use existing corpus download, normalization, metadata, and index scripts through guarded commands
+  - emit local acquisition and runtime verification packets
+  - prevent `runtime wired` from being treated as production completion
+- Release pipeline:
+  - produce publication handoff packets for governed corpus sync/index/restart work
+  - require explicit approval for production mutation
+  - finalize complete status only after public catalog/profile/media/runtime verification passes
+- Monitoring and operator workflow:
+  - write local run/review artifacts under `tmp/author-acq/`
+  - produce daily review reports until `fortress.local` can render queues
+  - later surface review packets in `fortress.local` with approve/reject/defer actions
+
+**Definition of Done**
+- `author-acq validate-ledgers`, `status-report`, and `audit-tracker --dry-run` are stable and tested.
+- Coverage audit produces reviewable missed-publication packets for at least one acquired or partially acquired author.
+- Source cards can be prepared without downloading full text.
+- One approved bounded author/work can be acquired locally, indexed, and locally verified.
+- Publication handoff can be generated without executing production changes.
+- Public verification evidence is required before a complete acquisition status is written.
+- `fortress.local` can show review packets or consume a compatible JSON export.
+
+### v1.3.9 — Author Historical Context Capability
+**Goal:** Enrich author profiles with reviewed historical context built from
+Codex LCP/MCP data sources, Source Steward metadata, local corpus metadata, and
+reference-intelligence evidence without making public profile requests depend on
+live external sources.
+
+**Execution plan:** [Author Historical Context Capability Execution Plan](author-historical-context-capability-execution-plan.md)
+
+**Architecture diagram:** [Author Historical Context Capability Architecture](author-historical-context-capability-architecture.mmd)
+
+- Capability structure:
+  - define `author_historical_context_enrichment` as an agent capability with a
+    machine-readable manifest, input/output contracts, source policy, review
+    requirement, and no direct publish authority
+  - keep this capability reference-intelligence-adjacent, not a public chat
+    feature and not an author-acquisition ledger writer
+  - represent LCP/MCP providers as enrichment inputs, not runtime dependencies
+- Supporting structure:
+  - add a source registry that describes allowed source uses, reliability tier,
+    rights posture, and prohibited uses such as long-form biography copying
+  - create evidence-backed claim records for timeline events, dates, places,
+    context, works chronology, influences, contemporaries, and reception
+  - preserve confidence, conflict flags, source refs, and review status for
+    every candidate public claim
+- Operator workflow:
+  - run bounded jobs on `fortress.lan` for source planning, source collection,
+    identity resolution, claim extraction, conflict detection, draft assembly,
+    and validation
+  - produce review packets for `fortress.local` with approve/reject/edit/defer,
+    merge, needs-source, and rights-concern actions
+  - publish only approved local snapshots; do not expose pending/rejected claims
+    or operator notes in public payloads
+- Profile/API integration:
+  - add an additive `historical_context` block to
+    `/api/v1/authors/{author_slug}/profile`
+  - serve reviewed local snapshots only, with missing-data fallback
+  - keep author profile loading and chat functional when historical context is
+    absent or unavailable
+- First buildable slice:
+  - start with Augustine only
+  - use local author catalog, biographies, books, portrait metadata, source-card
+    fixtures, and optional cached/fixture-backed authority metadata
+  - produce period, places, five timeline items, world context, works
+    chronology, and influence/reception rows
+  - generate a review packet, approve a snapshot, expose it locally, and validate
+    profile behavior
+
+**Definition of Done**
+- Capability manifest, source registry, snapshot schema, and fixture set exist.
+- One Augustine dry-run produces evidence-backed historical claims and a review
+  packet without live public runtime dependencies.
+- Conflicting or uncertain authorship can be represented without false
+  certainty.
+- Approved snapshot data appears additively in the local author profile payload.
+- Pending, rejected, raw source, credential, and operator-only data remain
+  hidden from public profile output.
+- Frontend author profile renders historical context with a safe missing-data
+  fallback.
+- Validation proves no request-time LCP/MCP dependency is introduced.
 
 ---
 
