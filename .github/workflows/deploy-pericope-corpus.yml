@@ -72,6 +72,9 @@ jobs:
           WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
           CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          CORPUS_COMPOSE_OVERRIDE="$(mktemp "${TMPDIR:-/tmp}/pericope-corpus-override.XXXXXX.yml")"
+
+          trap 'rm -f "${CORPUS_COMPOSE_OVERRIDE}"' EXIT
 
           install -d "${WORKSPACE_ROOT}"
 
@@ -153,56 +156,29 @@ jobs:
             candidate_keys+=("${candidate_key}")
           }
 
-          install_env_file() {
-            local source_path="$1"
-            local target_path="$2"
-            if cp "${source_path}" "${target_path}" 2>/dev/null; then
-              return 0
-            fi
-            if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-              sudo cp "${source_path}" "${target_path}" 2>/dev/null && return 0
-            fi
-            echo "::error::Unable to write ${target_path}; file is not writable and passwordless sudo is unavailable."
-            return 1
-          }
-
           write_corpus_key() {
             local candidate_key="${1:-}"
-            local temp_env
             [ -n "${candidate_key}" ] || {
               echo "::error::Candidate corpus key is empty."
               return 1
             }
-            temp_env="$(mktemp "${TMPDIR:-/tmp}/pericope-corpus-env.XXXXXX")"
-            CORPUS_ROOT="${CORPUS_ROOT}" CORPUS_ENV_OUTPUT="${temp_env}" CORPUS_OPENAI_API_KEY_CANDIDATE="${candidate_key}" python3 - <<'PY'
+            CORPUS_COMPOSE_OVERRIDE="${CORPUS_COMPOSE_OVERRIDE}" CORPUS_OPENAI_API_KEY_CANDIDATE="${candidate_key}" python3 - <<'PY'
           import os
-          from pathlib import Path
-
-          env_path = Path(os.environ["CORPUS_ROOT"]) / ".env"
-          output_path = Path(os.environ["CORPUS_ENV_OUTPUT"])
           key = os.environ.get("CORPUS_OPENAI_API_KEY_CANDIDATE", "").strip()
+          output_path = os.environ["CORPUS_COMPOSE_OVERRIDE"]
           if not key:
               raise SystemExit("CORPUS_OPENAI_API_KEY_CANDIDATE is empty")
-
-          lines = env_path.read_text(encoding="utf-8").splitlines()
-          updated = []
-          replaced = False
-          for line in lines:
-              if line.startswith("OPENAI_API_KEY="):
-                  updated.append(f"OPENAI_API_KEY={key}")
-                  replaced = True
-              else:
-                  updated.append(line)
-          if not replaced:
-              updated.append(f"OPENAI_API_KEY={key}")
-          output_path.write_text("\\n".join(updated) + "\\n", encoding="utf-8")
-          print("corpus-env-key-written")
+          escaped = key.replace("\\", "\\\\").replace('"', '\\"')
+          payload = (
+              "services:\\n"
+              "  augustine-corpus-live:\\n"
+              "    environment:\\n"
+              f'      OPENAI_API_KEY: "{escaped}"\\n'
+          )
+          with open(output_path, "w", encoding="utf-8") as handle:
+              handle.write(payload)
+          print("corpus-compose-override-written")
           PY
-            if ! install_env_file "${temp_env}" "${CORPUS_ROOT}/.env"; then
-              rm -f "${temp_env}"
-              return 1
-            fi
-            rm -f "${temp_env}"
           }
 
           wait_api_health() {
@@ -381,7 +357,7 @@ jobs:
 
             write_corpus_key "${candidate_key}"
 
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build --force-recreate augustine-corpus-live pericopeai-api
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml -f "${CORPUS_COMPOSE_OVERRIDE}" up -d --no-build --force-recreate augustine-corpus-live pericopeai-api
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api
 
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T augustine-corpus-live \
