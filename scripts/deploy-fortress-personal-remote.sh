@@ -221,7 +221,7 @@ systemctl reload nginx || nginx -s reload
 
 log "Running local smokes"
 curl -fsS "http://127.0.0.1:${FORTRESS_API_PORT}/healthz"
-curl -fsSI "http://127.0.0.1:${FORTRESS_WATCH_PORT}/" >/dev/null
+curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/" >/dev/null
 curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/api/healthz"
 
 remote_status="$(curl -kIs --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/" | awk 'NR==1 {print $2}')"
