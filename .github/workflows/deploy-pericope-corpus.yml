@@ -94,7 +94,7 @@ jobs:
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
-          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+          git -C "${FORTRESS_ROOT}" merge --ff-only FETCH_HEAD
 
           if [ -d "${CORPUS_ROOT}/.git" ]; then
             git -C "${CORPUS_ROOT}" fetch origin "${CORPUS_REF}"
@@ -106,7 +106,7 @@ jobs:
               echo "Stashed tracked AugustineCorpus changes as ${stash_label}."
             fi
 
-            git -C "${CORPUS_ROOT}" pull --ff-only origin "${CORPUS_REF}"
+            git -C "${CORPUS_ROOT}" merge --ff-only FETCH_HEAD
 
             if [ -n "${SOURCE_SHA:-}" ]; then
               git -C "${CORPUS_ROOT}" checkout "${SOURCE_SHA}"

@@ -55,7 +55,7 @@ jobs:
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
-          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+          git -C "${FORTRESS_ROOT}" merge --ff-only FETCH_HEAD
 
           if [ ! -d "${CORPUS_ROOT}" ] || [ ! -f "${CORPUS_ROOT}/.env" ]; then
             if [ -d "${CORPUS_ROOT}" ]; then

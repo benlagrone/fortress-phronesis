@@ -183,7 +183,7 @@ jobs:
 
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
-          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+          git -C "${FORTRESS_ROOT}" merge --ff-only FETCH_HEAD
 
           if [ ! -d "${CORPUS_ROOT}" ] || [ ! -f "${CORPUS_ROOT}/Dockerfile" ] || [ ! -f "${CORPUS_ROOT}/.env" ]; then
             if [ -d "${CORPUS_ROOT}" ]; then
@@ -210,11 +210,11 @@ jobs:
 
           git -C "${CORPUS_ROOT}" fetch origin master
           git -C "${CORPUS_ROOT}" checkout master
-          git -C "${CORPUS_ROOT}" pull --ff-only origin master
+          git -C "${CORPUS_ROOT}" merge --ff-only FETCH_HEAD
 
           git -C "${SERVICE_ROOT}" fetch origin "${SERVICE_REF}"
           git -C "${SERVICE_ROOT}" checkout "${SERVICE_REF}"
-          git -C "${SERVICE_ROOT}" pull --ff-only origin "${SERVICE_REF}"
+          git -C "${SERVICE_ROOT}" merge --ff-only FETCH_HEAD
           if [ -n "${SOURCE_SHA:-}" ]; then
             git -C "${SERVICE_ROOT}" fetch origin "${SOURCE_SHA}"
             git -C "${SERVICE_ROOT}" checkout "${SOURCE_SHA}"
@@ -222,7 +222,7 @@ jobs:
 
           git -C "${FE_ROOT}" fetch origin master
           git -C "${FE_ROOT}" checkout master
-          git -C "${FE_ROOT}" pull --ff-only origin master
+          git -C "${FE_ROOT}" merge --ff-only FETCH_HEAD
 
           restore_env_file "${CORPUS_ENV_BACKUP}" "${CORPUS_ROOT}/.env"
           restore_env_file "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"

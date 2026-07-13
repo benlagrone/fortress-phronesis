@@ -95,7 +95,7 @@ jobs:
           git -C "${FORTRESS_ROOT}" remote set-url origin "${FORTRESS_REPO_URL}"
           git -C "${FORTRESS_ROOT}" fetch origin main
           git -C "${FORTRESS_ROOT}" checkout main
-          git -C "${FORTRESS_ROOT}" pull --ff-only origin main
+          git -C "${FORTRESS_ROOT}" merge --ff-only FETCH_HEAD
 
           [ -f "${SERVICE_ROOT}/.env" ] || {
             echo "::error::Missing service env file: ${SERVICE_ROOT}/.env"

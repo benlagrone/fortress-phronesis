@@ -82,7 +82,9 @@ jobs:
             FORTRESS_ROOT="${WORKSPACE_ROOT}/fortress-phronesis-deploy"
             echo "Primary Fortress checkout is dirty; using clean frontend deploy checkout ${FORTRESS_ROOT}"
           fi
+          SERVICE_ROOT="${WORKSPACE_ROOT}/AugustineService"
           FE_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          SERVICE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-service.env.restore"
           FE_ENV_BACKUP="${WORKSPACE_ROOT}/.pericope-fe.env.restore"
           timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
@@ -103,6 +105,15 @@ jobs:
             backup_root="$(ls -1dt "${FE_ROOT}".pre-git-* 2>/dev/null | head -n 1 || true)"
             if [ -n "${backup_root:-}" ] && [ -f "${backup_root}/.env" ]; then
               cp "${backup_root}/.env" "${FE_ENV_BACKUP}"
+            fi
+          fi
+
+          if [ -f "${SERVICE_ROOT}/.env" ]; then
+            cp "${SERVICE_ROOT}/.env" "${SERVICE_ENV_BACKUP}"
+          else
+            backup_root="$(ls -1dt "${SERVICE_ROOT}".pre-codex-* "${SERVICE_ROOT}".pre-git-* 2>/dev/null | head -n 1 || true)"
+            if [ -n "${backup_root:-}" ] && [ -f "${backup_root}/.env" ]; then
+              cp "${backup_root}/.env" "${SERVICE_ENV_BACKUP}"
             fi
           fi
 
@@ -134,9 +145,17 @@ jobs:
           if [ -f "${FE_ENV_BACKUP}" ]; then
             cp "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
           fi
+          if [ -f "${SERVICE_ENV_BACKUP}" ]; then
+            install -d "${SERVICE_ROOT}"
+            cp "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
+          fi
 
           [ -f "${FE_ROOT}/.env" ] || {
             echo "::error::AugustineFE/.env is missing on the server."
+            exit 1
+          }
+          [ -f "${SERVICE_ROOT}/.env" ] || {
+            echo "::error::AugustineService/.env is missing on the server."
             exit 1
           }
 
