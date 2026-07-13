@@ -173,7 +173,7 @@ jobs:
               "services:\\n"
               "  augustine-corpus-live:\\n"
               "    environment:\\n"
-              f'      OPENAI_API_KEY: "{escaped}"\\n'
+              f'      - "OPENAI_API_KEY={escaped}"\\n'
           )
           with open(output_path, "w", encoding="utf-8") as handle:
               handle.write(payload)
