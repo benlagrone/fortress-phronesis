@@ -170,10 +170,10 @@ jobs:
               raise SystemExit("CORPUS_OPENAI_API_KEY_CANDIDATE is empty")
           escaped = key.replace("\\", "\\\\").replace('"', '\\"')
           payload = (
-              "services:\\n"
-              "  augustine-corpus-live:\\n"
-              "    environment:\\n"
-              f'      - "OPENAI_API_KEY={escaped}"\\n'
+              "services:\n"
+              "  augustine-corpus-live:\n"
+              "    environment:\n"
+              f'      - "OPENAI_API_KEY={escaped}"\n'
           )
           with open(output_path, "w", encoding="utf-8") as handle:
               handle.write(payload)
