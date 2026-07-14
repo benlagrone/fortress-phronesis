@@ -47,7 +47,11 @@ def default_fortress_ledger_path() -> Path:
 
 
 def default_service_ledger_path() -> Path:
-    return _repo_root().parent / "AugustineService" / "metadata" / "author_acquisition.json"
+    workspace_root = _repo_root().parent
+    nested = workspace_root / "pericopeai.com" / "AugustineService" / "metadata" / "author_acquisition.json"
+    if nested.exists():
+        return nested
+    return workspace_root / "AugustineService" / "metadata" / "author_acquisition.json"
 
 
 def _issue(severity: str, code: str, message: str, **details: Any) -> dict[str, Any]:

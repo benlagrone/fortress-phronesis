@@ -171,41 +171,50 @@
   },
   {
     "name": "Benjamin Franklin",
-    "status": "next-up queued; pending text acquisition",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
     "queue_date": "2026-07-13",
+    "acquired_date": "2026-07-13",
     "persona_mode": "Authority",
     "notes": [
       "Time: 1706-1790; Origin: Boston, later Philadelphia",
       "Role: Statesman, scientist, printer, political philosopher",
-      "Key Works: The Autobiography of Benjamin Franklin; Poor Richard's Almanack; The Way to Wealth",
+      "Key Works: The Autobiography of Benjamin Franklin; The Way to Wealth; Experiments and Observations on Electricity",
       "Contribution target: Civic virtue, practical wisdom, self-government, industry, and the American founding",
-      "Queue note (2026-07-13): prioritized to the top of the author acquisition list."
+      "Portrait: Public-domain Joseph-Siffred Duplessis portrait published at /media/authors/benjamin_franklin.jpg.",
+      "Acquisition note (2026-07-13): source texts and metadata downloaded from Project Gutenberg.",
+      "Production note (2026-07-13): corpus direct-uploaded to prod; dedicated index built; runtime retrieval and public catalog, profile, and portrait checks passed in workflow run 29304308727."
     ]
   },
   {
     "name": "Thomas Paine",
-    "status": "next-up queued; pending text acquisition",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
     "queue_date": "2026-07-13",
+    "acquired_date": "2026-07-13",
     "persona_mode": "Authority",
     "notes": [
       "Time: 1737-1809; Origin: Thetford, England; later America and France",
       "Role: Political theorist, revolutionary pamphleteer",
-      "Key Works: Common Sense; Rights of Man; The Age of Reason; Agrarian Justice",
+      "Key Works: Common Sense; The American Crisis; Rights of Man; The Age of Reason",
       "Contribution target: Natural rights, republican government, revolution, religious criticism, and social provision",
-      "Queue note (2026-07-13): prioritized immediately after Benjamin Franklin."
+      "Portrait: Public-domain portrait published at /media/authors/thomas_paine.jpg.",
+      "Acquisition note (2026-07-13): source texts and metadata downloaded from Project Gutenberg.",
+      "Production note (2026-07-13): corpus direct-uploaded to prod; dedicated index built; runtime retrieval and public catalog, profile, and portrait checks passed in workflow run 29304308727."
     ]
   },
   {
     "name": "Thomas Jefferson",
-    "status": "next-up queued; pending text acquisition",
+    "status": "texts downloaded; prod corpus synced; index built; runtime wired; public verification passed",
     "queue_date": "2026-07-13",
+    "acquired_date": "2026-07-13",
     "persona_mode": "Authority",
     "notes": [
       "Time: 1743-1826; Origin: Virginia",
       "Role: Statesman, political philosopher, principal author of the Declaration of Independence",
       "Key Works: Declaration of Independence; Notes on the State of Virginia; selected letters and public papers",
       "Contribution target: Natural rights, republicanism, religious liberty, education, and the contradictions of the American founding",
-      "Queue note (2026-07-13): prioritized immediately after Thomas Paine."
+      "Portrait: Public-domain Rembrandt Peale portrait published at /media/authors/thomas_jefferson.jpg.",
+      "Acquisition note (2026-07-13): source texts and metadata downloaded from Project Gutenberg.",
+      "Production note (2026-07-13): corpus direct-uploaded to prod; dedicated index built; runtime retrieval and public catalog, profile, and portrait checks passed in workflow run 29304308727."
     ]
   },
   {
