@@ -168,7 +168,8 @@ jobs:
           IFS=',' read -r -a slugs <<< "${AUTHOR_SLUGS}"
           for slug in "${slugs[@]}"; do
             "${COMPOSE[@]}" --profile index run -T --rm pericopeai-indexer \
-              python preprocess_and_index.py --author "${slug}" --index-dir "/app/indexes/${slug}"
+              python preprocess_and_index.py --author "${slug}" --index-dir "/app/indexes/${slug}" \
+              </dev/null
           done
 
           "${COMPOSE[@]}" up -d --no-deps --force-recreate augustine-corpus-live
