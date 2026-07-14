@@ -197,6 +197,11 @@ Corpus retrieval keeps author indexes in an in-process LRU cache:
 - `INDEX_CACHE_SIZE=16` by default in the Fortress compose file.
 - `PREWARM_AUTHOR_INDEXES` defaults to:
   `augustine,freud,solomon,plato,paul,marcus_aurelius,john_chrysostom,irenaeus,adam_smith,ludwig_von_mises`
+- Benjamin Franklin, Thomas Paine, and Thomas Jefferson use direct-uploaded
+  `texts/<slug>_texts` directories and dedicated persistent
+  `corpus_<slug>_index` volumes in both corpus compose services. Their text
+  payloads are intentionally excluded from Git and must be published through
+  the corpus upload path before production indexing.
 
 ## Latency Observability
 

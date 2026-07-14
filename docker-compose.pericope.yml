@@ -10,6 +10,9 @@ volumes:
   corpus_2_maccabees_index:
   corpus_alpha_index:
   corpus_adam_smith_index:
+  corpus_benjamin_franklin_index:
+  corpus_thomas_paine_index:
+  corpus_thomas_jefferson_index:
   corpus_amos_index:
   corpus_augustine_index:
   corpus_baruch_index:
@@ -125,6 +128,9 @@ services:
       - ../AugustineCorpus/texts/2_maccabees_texts:/app/texts/2_maccabees_texts:ro
       - ../AugustineCorpus/texts/alpha_texts:/app/texts/alpha_texts:ro
       - ../AugustineCorpus/texts/adam_smith_texts:/app/texts/adam_smith_texts:ro
+      - ../AugustineCorpus/texts/benjamin_franklin_texts:/app/texts/benjamin_franklin_texts:ro
+      - ../AugustineCorpus/texts/thomas_paine_texts:/app/texts/thomas_paine_texts:ro
+      - ../AugustineCorpus/texts/thomas_jefferson_texts:/app/texts/thomas_jefferson_texts:ro
       - ../AugustineCorpus/texts/amos_texts:/app/texts/amos_texts:ro
       - ../AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - ../AugustineCorpus/texts/baruch_texts:/app/texts/baruch_texts:ro
@@ -195,6 +201,9 @@ services:
       - corpus_2_maccabees_index:/app/indexes/2_maccabees
       - corpus_alpha_index:/app/indexes/alpha
       - corpus_adam_smith_index:/app/indexes/adam_smith
+      - corpus_benjamin_franklin_index:/app/indexes/benjamin_franklin
+      - corpus_thomas_paine_index:/app/indexes/thomas_paine
+      - corpus_thomas_jefferson_index:/app/indexes/thomas_jefferson
       - corpus_amos_index:/app/indexes/amos
       - corpus_augustine_index:/app/indexes/augustine
       - corpus_baruch_index:/app/indexes/baruch
@@ -285,6 +294,9 @@ services:
       - ../AugustineCorpus/texts/2_maccabees_texts:/app/texts/2_maccabees_texts:ro
       - ../AugustineCorpus/texts/alpha_texts:/app/texts/alpha_texts:ro
       - ../AugustineCorpus/texts/adam_smith_texts:/app/texts/adam_smith_texts:ro
+      - ../AugustineCorpus/texts/benjamin_franklin_texts:/app/texts/benjamin_franklin_texts:ro
+      - ../AugustineCorpus/texts/thomas_paine_texts:/app/texts/thomas_paine_texts:ro
+      - ../AugustineCorpus/texts/thomas_jefferson_texts:/app/texts/thomas_jefferson_texts:ro
       - ../AugustineCorpus/texts/amos_texts:/app/texts/amos_texts:ro
       - ../AugustineCorpus/texts/augustine_texts:/app/texts/augustine_texts:ro
       - ../AugustineCorpus/texts/baruch_texts:/app/texts/baruch_texts:ro
@@ -355,6 +367,9 @@ services:
       - corpus_2_maccabees_index:/app/indexes/2_maccabees
       - corpus_alpha_index:/app/indexes/alpha
       - corpus_adam_smith_index:/app/indexes/adam_smith
+      - corpus_benjamin_franklin_index:/app/indexes/benjamin_franklin
+      - corpus_thomas_paine_index:/app/indexes/thomas_paine
+      - corpus_thomas_jefferson_index:/app/indexes/thomas_jefferson
       - corpus_amos_index:/app/indexes/amos
       - corpus_augustine_index:/app/indexes/augustine
       - corpus_baruch_index:/app/indexes/baruch
