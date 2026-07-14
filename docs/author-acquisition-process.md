@@ -44,6 +44,16 @@ Relevant references:
 - [Prod Release Runbook v1.1.1](release-runbook-prod-v1.1.1.md)
 - [PericopeAI Deployment Guide](pericopeai-deployment.md)
 - [upload-corpus.sh](../scripts/upload-corpus.sh)
+- [Publish Pericope Author Content workflow](../.github/workflows/publish-pericope-author-content.yml)
+
+When the workstation does not hold the production SSH key, publish the
+git-ignored text directories as a checksum-pinned temporary release asset and
+dispatch `Publish Pericope Author Content`. The workflow accepts only
+`texts/<author_slug>_texts/` archive members for the requested slugs, transfers
+the payload with the protected production SSH credential, runs targeted
+indexing, activates the locked Compose services, and enforces public catalog,
+profile, portrait, and runtime checks. Delete the temporary release after the
+workflow succeeds.
 
 ### 4) Production Activation
 

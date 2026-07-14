@@ -1,0 +1,243 @@
+name: Publish Pericope Author Content
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Temporary Fortress release containing the corpus archive
+        required: true
+        type: string
+      asset_name:
+        description: Release asset filename
+        required: true
+        type: string
+      asset_sha256:
+        description: Expected SHA-256 of the release asset
+        required: true
+        type: string
+      author_slugs:
+        description: Comma-separated author slugs contained in the archive
+        required: true
+        type: string
+      corpus_sha:
+        description: AugustineCorpus commit to publish
+        required: true
+        type: string
+      frontend_sha:
+        description: AugustineFE commit to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pericope-prod
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checkout Fortress control plane
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        shell: bash
+        env:
+          ASSET_SHA256: ${{ inputs.asset_sha256 }}
+          AUTHOR_SLUGS: ${{ inputs.author_slugs }}
+          CORPUS_SHA: ${{ inputs.corpus_sha }}
+          FRONTEND_SHA: ${{ inputs.frontend_sha }}
+        run: |
+          set -euo pipefail
+          [[ "${ASSET_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+          [[ "${CORPUS_SHA}" =~ ^[a-f0-9]{7,40}$ ]]
+          [[ "${FRONTEND_SHA}" =~ ^[a-f0-9]{7,40}$ ]]
+          [[ "${AUTHOR_SLUGS}" =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]]
+
+      - name: Download and verify corpus payload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ASSET_NAME: ${{ inputs.asset_name }}
+          ASSET_SHA256: ${{ inputs.asset_sha256 }}
+        run: |
+          set -euo pipefail
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --pattern "${ASSET_NAME}" --dir /tmp
+          printf '%s  %s\n' "${ASSET_SHA256}" "/tmp/${ASSET_NAME}" | sha256sum --check --strict
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Transfer corpus payload
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          ASSET_NAME: ${{ inputs.asset_name }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 "/tmp/${ASSET_NAME}" "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/${ASSET_NAME}"
+
+      - name: Publish and activate authors
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          ASSET_NAME: ${{ inputs.asset_name }}
+          ASSET_SHA256: ${{ inputs.asset_sha256 }}
+          AUTHOR_SLUGS: ${{ inputs.author_slugs }}
+          CORPUS_SHA: ${{ inputs.corpus_sha }}
+          FRONTEND_SHA: ${{ inputs.frontend_sha }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' ASSET_NAME='${ASSET_NAME}' ASSET_SHA256='${ASSET_SHA256}' AUTHOR_SLUGS='${AUTHOR_SLUGS}' CORPUS_SHA='${CORPUS_SHA}' FRONTEND_SHA='${FRONTEND_SHA}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          FORTRESS_ROOT="${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${FORTRESS_ROOT}")"
+          CORPUS_ROOT="${WORKSPACE_ROOT}/AugustineCorpus"
+          FRONTEND_ROOT="${WORKSPACE_ROOT}/AugustineFE"
+          API_ROOT="${WORKSPACE_ROOT}/AugustineService"
+          ARCHIVE="/tmp/${ASSET_NAME}"
+          COMPOSE=(docker compose -p fortress-phronesis -f docker-compose.pericope.yml)
+
+          printf '%s  %s\n' "${ASSET_SHA256}" "${ARCHIVE}" | sha256sum --check --strict
+
+          sync_repo() {
+            local root="$1"
+            local branch="$2"
+            local expected_sha="${3:-}"
+            git -C "${root}" fetch origin "${branch}"
+            git -C "${root}" checkout "${branch}"
+            if ! git -C "${root}" diff --quiet || ! git -C "${root}" diff --cached --quiet; then
+              git -C "${root}" stash push --message "pre-author-content-${GITHUB_RUN_ID:-manual}" >/dev/null
+            fi
+            git -C "${root}" merge --ff-only "origin/${branch}"
+            if [ -n "${expected_sha}" ]; then
+              test "$(git -C "${root}" rev-parse HEAD)" = "$(git -C "${root}" rev-parse "${expected_sha}^{commit}")"
+            fi
+          }
+
+          sync_repo "${FORTRESS_ROOT}" main
+          sync_repo "${CORPUS_ROOT}" master "${CORPUS_SHA}"
+          sync_repo "${FRONTEND_ROOT}" master "${FRONTEND_SHA}"
+          sync_repo "${API_ROOT}" master
+
+          ARCHIVE="${ARCHIVE}" AUTHOR_SLUGS="${AUTHOR_SLUGS}" python3 - <<'PY'
+          import os
+          import tarfile
+
+          archive = os.environ["ARCHIVE"]
+          slugs = set(os.environ["AUTHOR_SLUGS"].split(","))
+          prefixes = tuple(f"texts/{slug}_texts/" for slug in slugs)
+          with tarfile.open(archive, "r:gz") as bundle:
+              members = bundle.getmembers()
+              if not members:
+                  raise SystemExit("Corpus archive is empty")
+              for member in members:
+                  if member.issym() or member.islnk() or not member.name.startswith(prefixes):
+                      raise SystemExit(f"Disallowed archive member: {member.name}")
+          print(f"archive-members-ok count={len(members)}")
+          PY
+
+          tar -xzf "${ARCHIVE}" -C "${CORPUS_ROOT}"
+          rm -f "${ARCHIVE}"
+
+          cd "${FORTRESS_ROOT}"
+          bash scripts/verify-pericope-deploy-lock.sh
+          "${COMPOSE[@]}" config --quiet
+          "${COMPOSE[@]}" build augustine-corpus-live pericopeai-indexer
+
+          IFS=',' read -r -a slugs <<< "${AUTHOR_SLUGS}"
+          for slug in "${slugs[@]}"; do
+            "${COMPOSE[@]}" --profile index run --rm pericopeai-indexer \
+              python preprocess_and_index.py --author "${slug}" --index-dir "/app/indexes/${slug}"
+          done
+
+          "${COMPOSE[@]}" up -d --no-deps --force-recreate augustine-corpus-live
+          docker compose --env-file "${FRONTEND_ROOT}/.env" -p fortress-phronesis \
+            -f docker-compose.pericope.yml up -d --build --no-deps pericopeai-frontend
+
+          for _ in $(seq 1 30); do
+            if "${COMPOSE[@]}" exec -T augustine-corpus-live \
+              python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=5).read()"; then
+              break
+            fi
+            sleep 2
+          done
+
+          "${COMPOSE[@]}" exec -T pericopeai-api python sync_author_catalog.py \
+            --corpus-base http://augustine-corpus-live:8001 --exclude-local-only
+          "${COMPOSE[@]}" restart pericopeai-api
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          "${COMPOSE[@]}" exec -T -e "AUTHOR_SLUGS=${AUTHOR_SLUGS}" augustine-corpus-live python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          for slug in os.environ["AUTHOR_SLUGS"].split(","):
+              body = json.dumps({"query": "What is a central principle in your work?", "author": slug}).encode()
+              request = urllib.request.Request(
+                  "http://127.0.0.1:8001/v1/context",
+                  data=body,
+                  headers={"Content-Type": "application/json"},
+              )
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  payload = json.load(response)
+              if not str(payload.get("context") or "").strip() or not payload.get("metadata"):
+                  raise SystemExit(f"Runtime retrieval failed for {slug}")
+              print(f"runtime-ok {slug}")
+          PY
+          REMOTE
+
+      - name: Verify public author release
+        shell: bash
+        env:
+          AUTHOR_SLUGS: ${{ inputs.author_slugs }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            if curl -fsS https://pericopeai.com/api/healthz >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          authors_json="$(curl -fsS https://pericopeai.com/api/v1/authors)"
+          AUTHORS_JSON="${authors_json}" AUTHOR_SLUGS="${AUTHOR_SLUGS}" python3 - <<'PY'
+          import json
+          import os
+
+          rows = json.loads(os.environ["AUTHORS_JSON"])
+          visible = {str(row.get("slug") or "") for row in rows}
+          missing = set(os.environ["AUTHOR_SLUGS"].split(",")) - visible
+          if missing:
+              raise SystemExit(f"Authors missing from public catalog: {sorted(missing)}")
+          PY
+
+          IFS=',' read -r -a slugs <<< "${AUTHOR_SLUGS}"
+          for slug in "${slugs[@]}"; do
+            curl -fsS "https://pericopeai.com/api/v1/authors/${slug}/profile" >/dev/null
+            headers="$(curl -fsSI "https://pericopeai.com/media/authors/${slug}.jpg")"
+            grep -Eiq '^content-type: image/' <<< "${headers}"
+          done
