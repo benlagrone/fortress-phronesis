@@ -54,7 +54,7 @@ Do not use `AugustineService/docker-compose.yml` for production API deploys.
 ## Reader Range Contract
 
 The existing `POST /api/v1/book_partial` route now serves as the reader-range
-contract for the planned author-work reader flow.
+contract for the author-work reader flow.
 
 - `AugustineCorpus` returns the legacy `content` string plus additive reader
   metadata: `entries`, `total_positions`, `previous_position`, and
@@ -69,6 +69,18 @@ contract for the planned author-work reader flow.
   `/authors/{author_slug}/works/{source}` and recovers `start` / `end`
   retrieval-position offsets from the URL query string before calling
   `POST /api/v1/book_partial`.
+- The reader also allows the user to select one or more passage positions from
+  the active range and launch a same-author chat turn from that selection.
+  The frontend sends additive `source_context` in `POST /api/v2/chat` with the
+  selected `author_slug`, `book`, `source`, `start_position`, `end_position`,
+  optional `reference`, and literal selected `content`.
+- `pericopeai-api` validates that `source_context.author_slug` matches the
+  active persona, then places the selected source text ahead of retrieved
+  passages when constructing the chat prompt. Retrieved passages and semantic
+  neighbors remain additive supplemental context.
+- Response traces prepend a synthetic `selected_source_context` retrieval row
+  so audit surfaces can distinguish explicit reader anchors from normal corpus
+  retrieval.
 
 This change does not add a new public route, host port, service, or environment
 variable. Legacy consumers may continue using `content` only.
@@ -93,15 +105,18 @@ The main browser chat path is:
 3. API calls corpus `POST /v1/context`.
 4. Corpus loads or reuses the selected author vector index and returns retrieved
    context plus metadata.
-5. API calls corpus `POST /v1/generate` for the answer using the normal
+5. If the request includes reader-selected `source_context`, API injects that
+   literal source text as primary evidence for the turn before the retrieved
+   context block.
+6. API calls corpus `POST /v1/generate` for the answer using the normal
    `CORPUS_GENERATE_MAX_TOKENS` answer budget.
-6. API compacts the response summary locally for session state and response
+7. API compacts the response summary locally for session state and response
    metadata; summary generation must not issue a second corpus/LLM call.
-7. API derives an optional same-author `follow_up_question` segment from the
+8. API derives an optional same-author `follow_up_question` segment from the
    answer, explicit session state, and optional compact clock advisory context.
    `clock_followup_weight` may bias the follow-up question angle only; it must
    not change answer grounding or expose raw clock internals.
-8. API persists chat/session/reference state and returns segmented response data.
+9. API persists chat/session/reference state and returns segmented response data.
 
 VibeVoice/TTS endpoints are separate from this normal chat response path.
 
