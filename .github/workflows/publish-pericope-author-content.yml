@@ -162,8 +162,8 @@ jobs:
 
           cd "${FORTRESS_ROOT}"
           bash scripts/verify-pericope-deploy-lock.sh
-          "${COMPOSE[@]}" config --quiet
-          "${COMPOSE[@]}" build augustine-corpus-live pericopeai-indexer
+          "${COMPOSE[@]}" config --quiet </dev/null
+          "${COMPOSE[@]}" build augustine-corpus-live pericopeai-indexer </dev/null
 
           IFS=',' read -r -a slugs <<< "${AUTHOR_SLUGS}"
           for slug in "${slugs[@]}"; do
@@ -172,21 +172,24 @@ jobs:
               </dev/null
           done
 
-          "${COMPOSE[@]}" up -d --no-deps --force-recreate augustine-corpus-live
+          "${COMPOSE[@]}" up -d --no-deps --force-recreate augustine-corpus-live </dev/null
           docker compose --env-file "${FRONTEND_ROOT}/.env" -p fortress-phronesis \
-            -f docker-compose.pericope.yml up -d --build --no-deps pericopeai-frontend
+            -f docker-compose.pericope.yml up -d --build --no-deps pericopeai-frontend \
+            </dev/null
 
           for _ in $(seq 1 30); do
             if "${COMPOSE[@]}" exec -T augustine-corpus-live \
-              python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=5).read()"; then
+              python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=5).read()" \
+              </dev/null; then
               break
             fi
             sleep 2
           done
 
           "${COMPOSE[@]}" exec -T pericopeai-api python sync_author_catalog.py \
-            --corpus-base http://augustine-corpus-live:8001 --exclude-local-only
-          "${COMPOSE[@]}" restart pericopeai-api
+            --corpus-base http://augustine-corpus-live:8001 --exclude-local-only \
+            </dev/null
+          "${COMPOSE[@]}" restart pericopeai-api </dev/null
 
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:18000/api/healthz >/dev/null; then
