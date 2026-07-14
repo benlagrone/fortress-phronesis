@@ -7,14 +7,17 @@
 
 ---
 
-## Current Roadmap Control State (2026-06-22)
+## Current Roadmap Control State (2026-07-13)
 
-**Status:** cleanup gate complete except mobile remote publication.
+**Status:** sequencing corrected; PericopeAI web product work is not blocked by
+the side-repo mobile upstream gap.
 **Audit:** [Unpublished Work Audit — 2026-06-22](unpublished-work-audit-2026-06-22.md)
 
-This roadmap is the planning source of truth, but remaining workspace state
-must be cleaned before starting net-new implementation. Treat the items below
-as the active carryover gate.
+The June control-state section mixed product sequencing with unrelated
+publication cleanup and created the wrong next-step signal. The governing
+product model is now explicit: PericopeAI's public web stack is organized
+around `matter -> counsel -> stack -> synthesis`, and the next public work must
+extend that model instead of bypassing it.
 
 ### Published / Operationally Closed
 
@@ -47,19 +50,50 @@ as the active carryover gate.
   - dirty/untracked files preserved as stash `quarantine fortress dirty worktree 2026-06-22`
   - local `main` now tracks clean `origin/main`
 
+### Product Model Lock
+
+- Treat [PericopeAI — Counsel Stacking & Synthesis Implementation Plan](../../docs/pericopeai_implementation_plan.md)
+  as governing product intent, not as a side document.
+- Public web work should deepen the matter/counsel/synthesis flow already
+  implemented in the frontend instead of introducing a competing interaction
+  model.
+- Pricing and subscription work remains important, but it is a separate
+  commercial lane and must not replace the next product-facing commitment.
+
+### Sequenced Product Order
+
+1. The current public surface already establishes the base interaction:
+   matter anchor, multi-author counsel stack, and neutral synthesis.
+2. The next public commitment is `v1.3.6R` / `v1.3.6`: author-work reader and
+   passage-anchored same-author chat.
+3. After the reader flow, continue with `v1.2.2` and `v1.2.3` so sessions can
+   carry matters, counsels, follow-up questions, and synthesis without prompt
+   bloat.
+4. After continuity, continue the evidence/review expansion in `v1.3.8A`,
+   `v1.3.8B`, `v1.3.9A`, `v1.3.x-OPS`, and `v1.3.x-PROMOTE`.
+5. `v1.4.0` and `v1.4.0-ops` stay on the roadmap as a commercial and ops lane,
+   but they do not define the next default product build.
+
 ### Unfinished Publication / Merge Gate
 
-Do not treat the roadmap as fully published until this is resolved:
+This remains a real operational follow-up, but it is now scoped correctly as a
+side-repo issue rather than the blocker for PericopeAI web-stack sequencing:
 
 - `pericopeai-mobile-app` has no upstream configured, so `b357260` is committed
   locally but not published to a remote.
 
-### Immediate Cleanup Order
+### Immediate Execution Order
 
-1. Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push
-   `b357260`.
-2. Proceed with `v1.4.0`
-   pricing/subscriptions and `v1.4.0-ops` reliability work.
+1. Execute `v1.3.6R` / `v1.3.6` as the next public commitment:
+   author-work reader, stable range navigation, selected passage anchors, and
+   additive `source_context` into same-author chat.
+2. After the reader flow, execute `v1.2.2` and `v1.2.3` against the same
+   matter/counsel/synthesis model so continuity improves without broad prompt
+   replay.
+3. Keep `v1.4.0` pricing/subscriptions and `v1.4.0-ops` reliability work as a
+   separate commercial and operational lane.
+4. Resolve `pericopeai-mobile-app` upstream publication when mobile work
+   resumes; do not treat it as the front-of-queue blocker for the web stack.
 
 ---
 
@@ -73,11 +107,31 @@ PericopeAI is treated as a **platform and framework**, not just a website.
 
 ---
 
-## Front-of-Queue: Pricing, Subscriptions, and Invite-Only Access
+## Front-of-Queue: Reader-Anchored Counsel Flow
 
-**Status:** next feature priority after the cleanup gate.
-**Reason:** PericopeAI needs a public commercial surface and subscription wiring
-before broader feature expansion creates more unmonetized access complexity.
+**Status:** next public product commitment.
+**Reason:** the counsel stack already exists in the product surface, so the next
+clean step is to bind that flow to source reading and passage-anchored
+same-author chat rather than jump to a separate commercial surface.
+
+- This front-of-queue slice is defined in detail by `v1.3.6R` in the
+  cross-reference release organization and by the `v1.3.6 Reader Follow-On`
+  roadmap entry below.
+- It should preserve the current matter anchor, Add Counsel flow, and synthesis
+  contract while adding direct reading, stable passage selection, and
+  same-author contextual asking.
+- It should not be expanded into author-acquisition, operator review, pricing,
+  or subscription scope.
+
+---
+
+## Separate Commercial Lane: Pricing, Subscriptions, and Invite-Only Access
+
+**Status:** parallel commercial priority; not the default next product-facing
+commitment.
+**Reason:** PericopeAI still needs a public commercial surface and subscription
+wiring, but that work should run as its own lane instead of replacing the
+reader-centered product sequence above.
 
 ### v1.4.0 — Pricing Page and Stripe Subscription Foundation
 **Goal:** Ship a clear PericopeAI pricing page and a Stripe-backed subscription

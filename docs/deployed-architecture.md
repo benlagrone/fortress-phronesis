@@ -65,6 +65,10 @@ contract for the planned author-work reader flow.
 - `AugustineService` preserves the same additive shape when proxying corpus
   responses and when falling back to service-local text files after upstream
   `404 Book not found`.
+- `AugustineFE` now exposes the browser reader route
+  `/authors/{author_slug}/works/{source}` and recovers `start` / `end`
+  retrieval-position offsets from the URL query string before calling
+  `POST /api/v1/book_partial`.
 
 This change does not add a new public route, host port, service, or environment
 variable. Legacy consumers may continue using `content` only.
@@ -173,6 +177,9 @@ The planned author-acquisition operator system is documented in
 author-acquisition process with tracker stewardship, publication-gap audits,
 candidate scouting, source cards, local acquisition, runtime verification,
 publication handoff, public verification, and operator review.
+Tracker stewardship is expected to reconcile ledger works inventory against the
+mounted AugustineCorpus texts so acquisition status is tied to all acquired
+works, not only highlighted titles.
 
 The plan does not add a public route, host port, deployed service, environment
 variable, or deployment path by itself. If promoted from plan to runtime, the
