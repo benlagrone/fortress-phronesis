@@ -142,13 +142,17 @@ jobs:
 
           archive = os.environ["ARCHIVE"]
           slugs = set(os.environ["AUTHOR_SLUGS"].split(","))
-          prefixes = tuple(f"texts/{slug}_texts/" for slug in slugs)
+          roots = tuple(f"texts/{slug}_texts" for slug in slugs)
           with tarfile.open(archive, "r:gz") as bundle:
               members = bundle.getmembers()
               if not members:
                   raise SystemExit("Corpus archive is empty")
               for member in members:
-                  if member.issym() or member.islnk() or not member.name.startswith(prefixes):
+                  allowed = any(
+                      member.name == root or member.name.startswith(f"{root}/")
+                      for root in roots
+                  )
+                  if member.issym() or member.islnk() or not allowed:
                       raise SystemExit(f"Disallowed archive member: {member.name}")
           print(f"archive-members-ok count={len(members)}")
           PY
