@@ -17,6 +17,14 @@ on:
         description: Optional AugustineFE commit SHA to deploy
         required: false
         type: string
+      source_sha:
+        description: Legacy AugustineFE commit SHA input accepted for compatibility
+        required: false
+        type: string
+      environment:
+        description: Legacy environment input accepted for compatibility
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -56,11 +64,12 @@ jobs:
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
           INPUT_FE_REF: ${{ github.event.inputs.fe_ref }}
           INPUT_FE_SHA: ${{ github.event.inputs.fe_sha }}
+          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
         run: |
           set -euo pipefail
 
           FE_REF="${INPUT_FE_REF:-master}"
-          FE_SHA="${INPUT_FE_SHA:-}"
+          FE_SHA="${INPUT_FE_SHA:-${INPUT_SOURCE_SHA:-}}"
           SSH_OPTS=(
             -i ~/.ssh/id_ed25519
             -o BatchMode=yes
