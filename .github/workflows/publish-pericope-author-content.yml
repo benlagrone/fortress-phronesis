@@ -167,7 +167,7 @@ jobs:
 
           IFS=',' read -r -a slugs <<< "${AUTHOR_SLUGS}"
           for slug in "${slugs[@]}"; do
-            "${COMPOSE[@]}" --profile index run --rm pericopeai-indexer \
+            "${COMPOSE[@]}" --profile index run -T --rm pericopeai-indexer \
               python preprocess_and_index.py --author "${slug}" --index-dir "/app/indexes/${slug}"
           done
 
@@ -227,12 +227,13 @@ jobs:
             sleep 2
           done
 
-          authors_json="$(curl -fsS https://pericopeai.com/api/v1/authors)"
-          AUTHORS_JSON="${authors_json}" AUTHOR_SLUGS="${AUTHOR_SLUGS}" python3 - <<'PY'
+          curl -fsS https://pericopeai.com/api/v1/authors -o /tmp/pericope-authors.json
+          AUTHOR_SLUGS="${AUTHOR_SLUGS}" python3 - <<'PY'
           import json
           import os
 
-          rows = json.loads(os.environ["AUTHORS_JSON"])
+          with open("/tmp/pericope-authors.json", encoding="utf-8") as catalog:
+              rows = json.load(catalog)
           visible = {str(row.get("slug") or "") for row in rows}
           missing = set(os.environ["AUTHOR_SLUGS"].split(",")) - visible
           if missing:
