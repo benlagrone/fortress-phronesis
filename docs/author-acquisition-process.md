@@ -55,6 +55,11 @@ indexing, activates the locked Compose services, and enforces public catalog,
 profile, portrait, and runtime checks. Delete the temporary release after the
 workflow succeeds.
 
+Keep `rebuild_indexes` enabled for normal acquisitions. Set it to `false` only
+when retrying the same checksum-pinned payload after a post-index activation or
+verification failure; the workflow then requires each persistent index store to
+exist and still runs runtime retrieval plus all public checks.
+
 ### 4) Production Activation
 
 - Run author-scoped indexing on prod for the changed author.

@@ -27,6 +27,11 @@ on:
         description: AugustineFE commit to publish
         required: true
         type: string
+      rebuild_indexes:
+        description: Rebuild indexes instead of validating and reusing existing persistent volumes
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -100,10 +105,11 @@ jobs:
           AUTHOR_SLUGS: ${{ inputs.author_slugs }}
           CORPUS_SHA: ${{ inputs.corpus_sha }}
           FRONTEND_SHA: ${{ inputs.frontend_sha }}
+          REBUILD_INDEXES: ${{ inputs.rebuild_indexes }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' ASSET_NAME='${ASSET_NAME}' ASSET_SHA256='${ASSET_SHA256}' AUTHOR_SLUGS='${AUTHOR_SLUGS}' CORPUS_SHA='${CORPUS_SHA}' FRONTEND_SHA='${FRONTEND_SHA}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' ASSET_NAME='${ASSET_NAME}' ASSET_SHA256='${ASSET_SHA256}' AUTHOR_SLUGS='${AUTHOR_SLUGS}' CORPUS_SHA='${CORPUS_SHA}' FRONTEND_SHA='${FRONTEND_SHA}' REBUILD_INDEXES='${REBUILD_INDEXES}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_ROOT="${DEPLOY_ROOT}"
@@ -166,11 +172,19 @@ jobs:
           "${COMPOSE[@]}" build augustine-corpus-live pericopeai-indexer </dev/null
 
           IFS=',' read -r -a slugs <<< "${AUTHOR_SLUGS}"
-          for slug in "${slugs[@]}"; do
-            "${COMPOSE[@]}" --profile index run -T --rm pericopeai-indexer \
-              python preprocess_and_index.py --author "${slug}" --index-dir "/app/indexes/${slug}" \
-              </dev/null
-          done
+          if [ "${REBUILD_INDEXES}" = "true" ]; then
+            for slug in "${slugs[@]}"; do
+              "${COMPOSE[@]}" --profile index run -T --rm pericopeai-indexer \
+                python preprocess_and_index.py --author "${slug}" --index-dir "/app/indexes/${slug}" \
+                </dev/null
+            done
+          else
+            for slug in "${slugs[@]}"; do
+              "${COMPOSE[@]}" --profile index run -T --rm pericopeai-indexer \
+                test -s "/app/indexes/${slug}/index_store.json" \
+                </dev/null
+            done
+          fi
 
           "${COMPOSE[@]}" up -d --no-deps --force-recreate augustine-corpus-live </dev/null
           docker compose --env-file "${FRONTEND_ROOT}/.env" -p fortress-phronesis \
@@ -204,7 +218,7 @@ jobs:
           import urllib.request
 
           for slug in os.environ["AUTHOR_SLUGS"].split(","):
-              body = json.dumps({"query": "What is a central principle in your work?", "author": slug}).encode()
+              body = json.dumps({"question": "What is a central principle in your work?", "author": slug}).encode()
               request = urllib.request.Request(
                   "http://127.0.0.1:8001/v1/context",
                   data=body,
