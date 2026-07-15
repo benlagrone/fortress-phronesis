@@ -180,10 +180,20 @@ The public PericopeAI profile path must consume only reviewed local snapshots.
 It must not call LCP/MCP data sources at request time or expose pending review
 claims, raw source responses, connector credentials, or operator-only notes.
 
-This plan does not add a public route, host port, graph database, deployed
-service, or environment variable. If promoted from plan to runtime, update the
-workspace deployment lock, this architecture document, and smoke checks in the
-same change.
+The first implementation slice is now defined in code and local fixtures:
+
+- reviewed public snapshots live in
+  `AugustineCorpus/metadata/author-historical-context.json`
+- `GET /api/v1/authors/{author_slug}/profile` may now return additive
+  `historical_context` when a reviewed snapshot exists, or `null` when it does
+  not
+- the author detail UI renders the reviewed snapshot as dense profile context
+  and falls back to biography text when no reviewed snapshot is present
+
+This slice still adds no public route, host port, graph database, deployed
+service, or environment variable. Before treating the capability as deployed,
+the runtime must make the reviewed snapshot available inside the API container
+and the production smoke checks must verify the additive field.
 
 ## Planned Author Acquisition Agents
 
