@@ -1,6 +1,8 @@
 name: Deploy Pericope Frontend
 
 on:
+  # Keep the self-push trigger as the low-level fallback when workflow_dispatch
+  # cannot be invoked from the current GitHub identity.
   push:
     branches:
       - main
