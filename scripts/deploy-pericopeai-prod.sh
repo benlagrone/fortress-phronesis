@@ -18,9 +18,10 @@ COMPOSE_PROJECT=${COMPOSE_PROJECT:-fortress-phronesis}
 COMPOSE_FILE=${COMPOSE_FILE:-"$ROOT_DIR/docker-compose.pericope.yml"}
 API_SERVICE=${API_SERVICE:-pericopeai-api}
 LOCAL_BASE_URL=${LOCAL_BASE_URL:-http://127.0.0.1:18000}
+LOCAL_ASSETS_BASE_URL=${LOCAL_ASSETS_BASE_URL:-http://127.0.0.1:13080}
 HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:18000/api/healthz}
 AUTHORS_URL=${AUTHORS_URL:-http://127.0.0.1:18000/api/v1/authors}
-AUTHOR_PROFILE_VERIFY_CMD=${AUTHOR_PROFILE_VERIFY_CMD:-python3 scripts/verify-pericope-author-profiles.py --base-url ${LOCAL_BASE_URL} --required-slugs augustine --require-books-for augustine --require-historical-context-for augustine --only-slugs augustine}
+AUTHOR_PROFILE_VERIFY_CMD=${AUTHOR_PROFILE_VERIFY_CMD:-python3 scripts/verify-pericope-author-profiles.py --base-url ${LOCAL_BASE_URL} --assets-base-url ${LOCAL_ASSETS_BASE_URL} --required-slugs augustine --require-books-for augustine --require-historical-context-for augustine --only-slugs augustine}
 PUBLIC_HOST=${PUBLIC_HOST:-pericopeai.com}
 PUBLIC_RESOLVE_IP=${PUBLIC_RESOLVE_IP:-127.0.0.1}
 PUBLIC_HEALTH_URL=${PUBLIC_HEALTH_URL:-https://${PUBLIC_HOST}/api/healthz}
@@ -198,7 +199,7 @@ cat <<'EOF'
 Deployment complete. Follow-up checks:
   docker compose -p fortress-phronesis -f docker-compose.pericope.yml logs --tail=200 pericopeai-api
   curl -fsS http://127.0.0.1:18000/api/healthz
-  python3 scripts/verify-pericope-author-profiles.py --base-url http://127.0.0.1:18000 --required-slugs augustine --require-books-for augustine --require-historical-context-for augustine --only-slugs augustine
+  python3 scripts/verify-pericope-author-profiles.py --base-url http://127.0.0.1:18000 --assets-base-url http://127.0.0.1:13080 --required-slugs augustine --require-books-for augustine --require-historical-context-for augustine --only-slugs augustine
   curl -fsS --resolve pericopeai.com:443:127.0.0.1 https://pericopeai.com/api/healthz
 
 Note: Uses server-specific .env in the app directory; do not overwrite prod secrets.
