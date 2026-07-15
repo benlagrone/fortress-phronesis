@@ -443,6 +443,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ../AugustineService/.env
+    volumes:
+      - ../AugustineCorpus/metadata/author-historical-context.json:/app/metadata/author-historical-context.json:ro
     environment:
       - CORPUS_API_URL=${CORPUS_API_URL:-http://augustine-corpus-live:8001}
       - MYSQL_HOST=${MYSQL_HOST:-mysql}

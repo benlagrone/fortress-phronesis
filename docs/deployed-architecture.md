@@ -189,11 +189,14 @@ The first implementation slice is now defined in code and local fixtures:
   not
 - the author detail UI renders the reviewed snapshot as dense profile context
   and falls back to biography text when no reviewed snapshot is present
+- the Fortress deployment compose file mounts the reviewed snapshot into the API
+  container at `/app/metadata/author-historical-context.json`
+- the API deploy helper now syncs both `AugustineService` and `AugustineCorpus`
+  before rebuild and verifies the Augustine profile historical-context contract
+  locally and through the public vhost
 
 This slice still adds no public route, host port, graph database, deployed
-service, or environment variable. Before treating the capability as deployed,
-the runtime must make the reviewed snapshot available inside the API container
-and the production smoke checks must verify the additive field.
+service, or environment variable.
 
 ## Planned Author Acquisition Agents
 
