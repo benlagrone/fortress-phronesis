@@ -62,6 +62,11 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
 4) Frontend-only GitHub Actions redeploy:
    - Workflow: `.github/workflows/deploy-pericope-frontend.yml`
    - Use this when frontend/public media files need to be republished without waiting for a full corpus/API rollout.
+   - Normal source-repo handoff is a `repository_dispatch` event from
+     `AugustineFE/.github/workflows/build-pericope-frontend.yml` with
+     event type `deploy-pericope-frontend`, `fe_ref`, and `fe_sha` payload
+     fields. Manual `workflow_dispatch` remains available as the operator
+     fallback.
    - If the server `AugustineFE` checkout is dirty, the workflow preserves it as
      `AugustineFE.pre-deploy-dirty-<timestamp>` and clones a clean checkout before
      pulling the requested frontend ref. The existing `AugustineFE/.env` is

@@ -28,6 +28,11 @@ through `docker compose -p fortress-phronesis -f docker-compose.pericope.yml`,
 runs migrations/catalog sync, and smokes the local API plus host TLS vhost.
 Pushes that change the mirrored `docs/author_acquisition.json` ledger also invoke
 this API deployment runway after the service ledger has been published.
+Production frontend deploys are also owned by Fortress Phronesis. Normal
+frontend publication starts in `AugustineFE` CI, which build-smokes the pushed
+frontend SHA and then sends a `repository_dispatch` event to the Fortress
+frontend deploy workflow with the requested `fe_ref` and `fe_sha`. Manual
+`workflow_dispatch` in Fortress remains the operator fallback.
 
 Do not use `AugustineService/docker-compose.yml` for production API deploys.
 
