@@ -9,19 +9,27 @@ It exists to close a gap that previously allowed local acquisition and runtime w
 An author acquisition is complete only when all of the following are true:
 
 1. Source texts and metadata are acquired locally.
-2. The author is wired into the corpus/runtime stack locally.
-3. The production corpus payload is published to the prod host.
-4. Production author-scoped indexing and service restart are completed.
-5. Public verification passes for catalog/profile/media/runtime behavior.
+2. The acquisition ledger records the full set of acquired works mounted in the
+   corpus for that author.
+3. The author is wired into the corpus/runtime stack locally.
+4. The production corpus payload is published to the prod host.
+5. Production author-scoped indexing and service restart are completed.
+6. Public verification passes for catalog/profile/media/runtime behavior.
 
 `runtime wired` by itself is not sufficient proof of completion.
+`Key Works` notes are optional metadata only. They must not substitute for the
+full acquired-works inventory.
+`public verification passed` is release completion, not a claim that the author
+is bibliographically exhaustive forever.
 
 ## Required Stages
 
 ### 1) Local Acquisition
 
 - Download or curate the source texts.
-- Record works/notes in the acquisition ledger.
+- Record all acquired works in the acquisition ledger.
+- If `Key Works` notes are useful for editorial context, keep them separate from
+  the full works inventory.
 - Add catalog metadata and portrait metadata/assets as needed.
 
 ### 2) Local Runtime Wiring
@@ -75,6 +83,19 @@ At minimum, verify:
 - public portrait/media path if one exists
 - grounded retrieval/runtime behavior for the author when applicable
 
+## Ongoing Coverage Audit
+
+Completed and historically acquired authors remain subject to periodic coverage
+audit.
+
+- Coverage audit must check acquired authors for likely missing public-domain
+  works using bounded bibliographic sources.
+- Any likely misses must be emitted as reviewable `publication_gap_packet`
+  items and optional source-card candidates.
+- Coverage audit findings do not silently mutate ledgers or reclassify an
+  author as incomplete. They reopen operator review for additional acquisition
+  work.
+
 ## Status Vocabulary
 
 Use status strings that make the production state explicit.
@@ -99,3 +120,6 @@ Older acquisition entries may predate this hardened process and may not include 
 Treat those entries as historical records, not as sufficient proof that the author is complete on prod.
 
 If an older entry is still live in current operations, update its status string and notes when prod corpus publication and public verification are re-confirmed.
+When repairing older entries, also reconcile the ledger works inventory against
+the corpus text directory or `book_metadata.json` so the tracker reflects all
+acquired works, not only highlighted titles.

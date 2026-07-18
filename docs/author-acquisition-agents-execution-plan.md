@@ -72,8 +72,9 @@ Use the same two-plane control pattern as the reference-intelligence plan:
 
 - `fortress.lan` runs bounded background jobs for audits, source discovery,
   downloads, normalization, indexing, local checks, and public verification.
-- `fortress.local` presents review queues, evidence packets, approvals, rejects,
-  deferrals, run status, and failure recovery.
+- `fortress.lan` presents the canonical review queues, evidence packets,
+  approvals, rejects, deferrals, run status, and failure recovery control
+  surface, with `fortress.local` available as the workstation mirror route.
 - `pericopeai.local` is used for local runtime verification.
 - `https://pericopeai.com` is used only for public verification after an
   approved production publication path.
@@ -105,8 +106,9 @@ The diagram separates the system into seven execution tracks:
 5. `Publication Handoff And Public Verification`: prepares the governed
    production sync checklist, stops for explicit approval, then captures public
    evidence before any complete status is allowed.
-6. `Operator Plane`: keeps `fortress.local` as the review surface for packet
-   approval, rejection, deferral, run history, and audit trail.
+6. `Operator Plane`: keeps `fortress.lan` as the canonical review surface for
+   packet approval, rejection, deferral, run history, and audit trail, with
+   `fortress.local` as the workstation mirror.
 7. `Deployment Boundary`: preserves the workspace deployment lock and requires
    deployed-architecture/runbook updates only when a runtime surface changes.
 
@@ -185,6 +187,7 @@ Required tools:
   metadata
 - normalize titles, subtitles, alternate spellings, translations, and fragments
 - compare local works against known bibliographic inventories
+- query a bounded public-domain catalog for already acquired authors
 - classify missing works by confidence and actionability
 - suppress duplicates already present under alternate titles
 
@@ -197,6 +200,13 @@ Candidate external metadata/source surfaces:
 - Crossref and OpenAlex for bibliographic metadata
 - domain-specific public-domain libraries such as Perseus, CCEL, and similar
   source collections when appropriate
+
+Phase 0 CLI note:
+
+- `audit-coverage` should resolve a likely canonical author record first and
+  then inspect bounded works metadata from Open Library.
+- Gutendex remains a supplemental source for public-domain full-text candidates
+  when catalog-level evidence needs a likely ingestable text surface.
 
 Outputs:
 
@@ -218,6 +228,8 @@ Acceptance:
 - every proposed gap includes evidence of why it is missing
 - every ingestable gap includes source and provenance candidates
 - no modern or rights-sensitive work is routed to ingestion without review
+- already acquired or publicly verified authors can still emit new gap packets
+  when the audit finds likely missing public-domain works
 
 ### 3) Candidate Scout Capabilities
 
@@ -452,6 +464,14 @@ Every daily run should bucket the tracker into operational segments:
 - `public_verification_passed`: complete only if the evidence packet remains
   available and current.
 
+Tracker stewardship must also distinguish `key works` metadata from the full
+works inventory. The ledger inventory is expected to enumerate all acquired
+corpus titles for the author, and coverage audits should warn when the ledger
+underreports what `AugustineCorpus` already mounts.
+Coverage audits must also search for likely missing public-domain works beyond
+the current corpus and emit `publication_gap_packet` items for operator review
+instead of treating previously shipped authors as permanently exhaustive.
+
 The first priority is not the largest group. The priority order is:
 
 1. Ledger safety and drift prevention.
@@ -467,6 +487,7 @@ Daily automated dry-run:
 ```bash
 python3 scripts/author-acq.py validate-ledgers
 python3 scripts/author-acq.py audit-tracker --dry-run --format json
+python3 scripts/author-acq.py audit-coverage --format json
 python3 scripts/author-acq.py status-report
 ```
 
@@ -554,6 +575,15 @@ tmp/author-acq/
 
 These files are local operator artifacts. Do not commit them unless a specific
 fixture is intentionally added under `tests/fixtures/`.
+
+Current operator-surface contract:
+
+- the canonical review UI is `http://fortress.lan/author-acquisition`
+- `http://fortress.local/author-acquisition` remains the workstation mirror
+  route
+- the Fortress LAN page is read-only and calls
+  `fortress-phronesis/scripts/author_acq.py` for tracker and coverage JSON
+- Pericope feature/UI repos do not own this operator dashboard
 
 Minimum daily report:
 
@@ -1094,8 +1124,6 @@ The first complete author-acquisition-agent release is done when:
 
 - Should first persistence be JSON artifacts under Fortress Phronesis or MySQL
   operator tables?
-- Which project owns the first `fortress.local` review UI implementation:
-  `local_tools`, `fortress-lan`, or a Pericope-specific panel?
 - Should the first coverage audit target all legacy runtime-wired authors or
   just one author with known broad coverage such as Hermes Trismegistus?
 - Which source providers are approved for automatic metadata lookup on day one?

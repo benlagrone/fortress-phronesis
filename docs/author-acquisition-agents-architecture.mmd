@@ -1,7 +1,8 @@
 flowchart TD
   Owner["Owner / operator"]
 
-  subgraph OperatorPlane["Operator Plane - fortress.local"]
+  subgraph OperatorPlane["Operator Plane - fortress.lan primary, fortress.local mirror"]
+    Dashboard["fortress-lan /author-acquisition<br/>read-only queue and coverage dashboard"]
     ReviewInbox["Review inbox<br/>packets, diffs, evidence"]
     ApprovalGate["Approval controls<br/>approve, reject, defer, supersede"]
     AuditTrail["Audit trail<br/>actor, timestamp, reason, old/new state"]
@@ -76,6 +77,8 @@ flowchart TD
   end
 
   Owner --> ReviewInbox
+  Owner --> Dashboard
+  Dashboard --> ReviewInbox
   ReviewInbox --> ApprovalGate
   ApprovalGate --> AuditTrail
   ReviewInbox --> ReviewIndex
