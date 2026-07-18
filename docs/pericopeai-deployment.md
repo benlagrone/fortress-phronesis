@@ -35,6 +35,11 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
    ```
    bash scripts/deploy-pericopeai-prod.sh
    ```
+   This helper now syncs both `/root/workspace/AugustineService` and
+   `/root/workspace/AugustineCorpus`, verifies that
+   `/root/workspace/AugustineCorpus/metadata/author-historical-context.json`
+   exists, rebuilds `pericopeai-api`, and checks the Augustine author profile
+   contract for reviewed `historical_context`.
 
 2) Core services (from control plane repo):
    ```
@@ -57,6 +62,11 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
 4) Frontend-only GitHub Actions redeploy:
    - Workflow: `.github/workflows/deploy-pericope-frontend.yml`
    - Use this when frontend/public media files need to be republished without waiting for a full corpus/API rollout.
+   - Normal source-repo handoff is a `repository_dispatch` event from
+     `AugustineFE/.github/workflows/build-pericope-frontend.yml` with
+     event type `deploy-pericope-frontend`, `fe_ref`, and `fe_sha` payload
+     fields. Manual `workflow_dispatch` remains available as the operator
+     fallback.
    - If the server `AugustineFE` checkout is dirty, the workflow preserves it as
      `AugustineFE.pre-deploy-dirty-<timestamp>` and clones a clean checkout before
      pulling the requested frontend ref. The existing `AugustineFE/.env` is
@@ -67,6 +77,10 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
   - API: `/root/workspace/AugustineService` (uses `/root/workspace/AugustineService/.env`)
   - Clock: `/root/workspace/Solomonic_Seals`
   - FE:  `/root/workspace/AugustineFE` (build args come from `docker-compose.pericope.yml`; set `REACT_APP_*` there or in the FE Dockerfile ARGs)
+- Runtime metadata mounts:
+  - API reads reviewed author historical-context snapshots from
+    `/root/workspace/AugustineCorpus/metadata/author-historical-context.json`
+    via a read-only bind mount to `/app/metadata/author-historical-context.json`
 - Key API envs:
   - `CORPUS_API_URL=http://augustine-corpus-live:8001`
   - DB defaults (if not overridden): `MYSQL_HOST=mysql`, `MYSQL_DB=augustine_chat`, `MYSQL_USER=augustine`, `MYSQL_PASS=password`, `MYSQL_ROOT_PASSWORD=rootpass`
@@ -232,6 +246,12 @@ Gate 1: local health
 ```bash
 curl -fsS http://127.0.0.1:18000/api/healthz
 curl -fsS http://127.0.0.1:18000/api/v1/authors >/dev/null
+python3 scripts/verify-pericope-author-profiles.py \
+  --base-url http://127.0.0.1:18000 \
+  --required-slugs augustine \
+  --require-books-for augustine \
+  --require-historical-context-for augustine \
+  --only-slugs augustine
 curl -fsS http://127.0.0.1:8086/api/clock >/dev/null
 ```
 
@@ -256,7 +276,22 @@ curl -sS -m 180 \
   https://pericopeai.com/api/v2/chat >/dev/null
 ```
 
-Gate 3b: production response contract and local-summary log monitor
+Gate 3b: public author profile historical-context contract
+
+```bash
+curl -fsS https://pericopeai.com/api/v1/authors/augustine/profile | python3 - <<'PY'
+import json
+import sys
+
+payload = json.load(sys.stdin)
+historical_context = payload.get("historical_context")
+assert isinstance(historical_context, dict), "historical_context missing"
+assert historical_context.get("summary"), "historical_context.summary missing"
+assert isinstance(historical_context.get("provenance"), dict), "historical_context.provenance missing"
+PY
+```
+
+Gate 3c: production response contract and local-summary log monitor
 
 ```bash
 python3 scripts/verify-pericope-prod-smoke.py \

@@ -70,6 +70,11 @@ def main() -> int:
     parser.add_argument("--assets-base-url", default="", help="Optional base URL for portrait asset checks")
     parser.add_argument("--required-slugs", default="", help="Comma-separated slugs that must be visible")
     parser.add_argument("--require-books-for", default="", help="Comma-separated slugs that must have at least one book")
+    parser.add_argument(
+        "--require-historical-context-for",
+        default="",
+        help="Comma-separated slugs that must expose reviewed historical_context",
+    )
     parser.add_argument("--only-slugs", default="", help="Optional comma-separated visible slugs to check in detail")
     parser.add_argument("--timeout", type=int, default=30)
     args = parser.parse_args()
@@ -78,6 +83,7 @@ def main() -> int:
     assets_base = (args.assets_base_url or base_url).rstrip("/")
     required_slugs = _csv_set(args.required_slugs)
     require_books_for = _csv_set(args.require_books_for)
+    require_historical_context_for = _csv_set(args.require_historical_context_for)
     only_slugs = _csv_set(args.only_slugs)
 
     status, authors_payload, error = _request_json(f"{base_url}/api/v1/authors", timeout=args.timeout)
@@ -112,6 +118,7 @@ def main() -> int:
         portrait = profile_payload.get("portrait")
         media_path = portrait.get("media_path") if isinstance(portrait, dict) else None
         books = profile_payload.get("books")
+        historical_context = profile_payload.get("historical_context")
 
         if not catalog_name:
             failures.append(f"{slug}: missing catalog_name")
@@ -123,6 +130,17 @@ def main() -> int:
             failures.append(f"{slug}: books is not a list")
         elif slug in require_books_for and not books:
             failures.append(f"{slug}: expected non-empty books")
+        if slug in require_historical_context_for:
+            if not isinstance(historical_context, dict):
+                failures.append(f"{slug}: historical_context missing or not an object")
+            else:
+                if not str(historical_context.get("summary") or "").strip():
+                    failures.append(f"{slug}: historical_context.summary missing")
+                provenance = historical_context.get("provenance")
+                if not isinstance(provenance, dict):
+                    failures.append(f"{slug}: historical_context.provenance missing")
+                elif provenance.get("source_count") is None:
+                    failures.append(f"{slug}: historical_context.provenance.source_count missing")
 
         if media_path:
             asset_url = urllib.parse.urljoin(f"{assets_base}/", str(media_path).lstrip("/"))

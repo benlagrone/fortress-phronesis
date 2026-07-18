@@ -443,6 +443,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ../AugustineService/.env
+    volumes:
+      - ../AugustineCorpus/metadata/author-historical-context.json:/app/metadata/author-historical-context.json:ro
     environment:
       - CORPUS_API_URL=${CORPUS_API_URL:-http://augustine-corpus-live:8001}
       - MYSQL_HOST=${MYSQL_HOST:-mysql}
@@ -470,8 +472,8 @@ services:
       - SOLOMONIC_PSALM_SOURCE_MODE=${SOLOMONIC_PSALM_SOURCE_MODE:-pericope_first}
       - SOLOMONIC_PERICOPE_API_BASE=${SOLOMONIC_PERICOPE_API_BASE:-http://augustine-corpus-live:8001}
       - SOLOMONIC_GUIDED_PROMPTS_API_KEY=${SOLOMONIC_GUIDED_PROMPTS_API_KEY:-}
-      - SOLOMONIC_VIBEVOICE_API_BASE=${SOLOMONIC_VIBEVOICE_API_BASE:-http://192.168.0.126:8011}
-      - SOLOMONIC_VIBEVOICE_FALLBACK_API_BASE=${SOLOMONIC_VIBEVOICE_FALLBACK_API_BASE:-http://192.168.0.126:8013}
+      - SOLOMONIC_VIBEVOICE_API_BASE=${SOLOMONIC_VIBEVOICE_API_BASE:-http://192.168.0.126:8133}
+      - SOLOMONIC_VIBEVOICE_FALLBACK_API_BASE=${SOLOMONIC_VIBEVOICE_FALLBACK_API_BASE:-}
       - SOLOMONIC_VIBEVOICE_API_TOKEN=${SOLOMONIC_VIBEVOICE_API_TOKEN:-}
       - SOLOMONIC_VIBEVOICE_PROJECT_ID=${SOLOMONIC_VIBEVOICE_PROJECT_ID:-solomonic-seals}
       - SOLOMONIC_VIBEVOICE_SPEAKER=${SOLOMONIC_VIBEVOICE_SPEAKER:-Carter}

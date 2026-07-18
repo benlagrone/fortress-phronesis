@@ -28,6 +28,11 @@ through `docker compose -p fortress-phronesis -f docker-compose.pericope.yml`,
 runs migrations/catalog sync, and smokes the local API plus host TLS vhost.
 Pushes that change the mirrored `docs/author_acquisition.json` ledger also invoke
 this API deployment runway after the service ledger has been published.
+Production frontend deploys are also owned by Fortress Phronesis. Normal
+frontend publication starts in `AugustineFE` CI, which build-smokes the pushed
+frontend SHA and then sends a `repository_dispatch` event to the Fortress
+frontend deploy workflow with the requested `fe_ref` and `fe_sha`. Manual
+`workflow_dispatch` in Fortress remains the operator fallback.
 
 Do not use `AugustineService/docker-compose.yml` for production API deploys.
 
@@ -223,10 +228,23 @@ The public PericopeAI profile path must consume only reviewed local snapshots.
 It must not call LCP/MCP data sources at request time or expose pending review
 claims, raw source responses, connector credentials, or operator-only notes.
 
-This plan does not add a public route, host port, graph database, deployed
-service, or environment variable. If promoted from plan to runtime, update the
-workspace deployment lock, this architecture document, and smoke checks in the
-same change.
+The first implementation slice is now defined in code and local fixtures:
+
+- reviewed public snapshots live in
+  `AugustineCorpus/metadata/author-historical-context.json`
+- `GET /api/v1/authors/{author_slug}/profile` may now return additive
+  `historical_context` when a reviewed snapshot exists, or `null` when it does
+  not
+- the author detail UI renders the reviewed snapshot as dense profile context
+  and falls back to biography text when no reviewed snapshot is present
+- the Fortress deployment compose file mounts the reviewed snapshot into the API
+  container at `/app/metadata/author-historical-context.json`
+- the API deploy helper now syncs both `AugustineService` and `AugustineCorpus`
+  before rebuild and verifies the Augustine profile historical-context contract
+  locally and through the public vhost
+
+This slice still adds no public route, host port, graph database, deployed
+service, or environment variable.
 
 ## Planned Author Acquisition Agents
 

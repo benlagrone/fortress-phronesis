@@ -1,11 +1,16 @@
 name: Deploy Pericope Frontend
 
 on:
+  # Keep the self-push trigger as the low-level fallback when workflow_dispatch
+  # cannot be invoked from the current GitHub identity.
   push:
     branches:
       - main
     paths:
       - ".github/workflows/deploy-pericope-frontend.yml"
+  repository_dispatch:
+    types:
+      - deploy-pericope-frontend
   workflow_dispatch:
     inputs:
       fe_ref:
@@ -43,6 +48,23 @@ jobs:
     env:
       COMPOSE_PROJECT: fortress-phronesis
     steps:
+      - name: Resolve Trigger Inputs
+        id: resolve
+        shell: bash
+        env:
+          RAW_FE_REF: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.fe_ref || github.event.inputs.fe_ref }}
+          RAW_FE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.fe_sha || github.event.client_payload.source_sha || github.event.inputs.fe_sha || github.event.inputs.source_sha }}
+        run: |
+          set -euo pipefail
+
+          FE_REF="${RAW_FE_REF:-master}"
+          FE_SHA="${RAW_FE_SHA:-}"
+
+          {
+            echo "fe_ref=${FE_REF}"
+            echo "fe_sha=${FE_SHA}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
@@ -62,14 +84,13 @@ jobs:
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
-          INPUT_FE_REF: ${{ github.event.inputs.fe_ref }}
-          INPUT_FE_SHA: ${{ github.event.inputs.fe_sha }}
-          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+          INPUT_FE_REF: ${{ steps.resolve.outputs.fe_ref }}
+          INPUT_FE_SHA: ${{ steps.resolve.outputs.fe_sha }}
         run: |
           set -euo pipefail
 
           FE_REF="${INPUT_FE_REF:-master}"
-          FE_SHA="${INPUT_FE_SHA:-${INPUT_SOURCE_SHA:-}}"
+          FE_SHA="${INPUT_FE_SHA:-}"
           SSH_OPTS=(
             -i ~/.ssh/id_ed25519
             -o BatchMode=yes
@@ -250,8 +271,9 @@ jobs:
           {
             echo "## Pericope Frontend Deploy"
             echo ""
-            echo "- FE ref: \`${{ github.event.inputs.fe_ref || 'master' }}\`"
-            echo "- FE sha: \`${{ github.event.inputs.fe_sha || 'origin ref head' }}\`"
+            echo "- FE ref: \`${{ steps.resolve.outputs.fe_ref }}\`"
+            echo "- FE sha: \`${{ steps.resolve.outputs.fe_sha || 'origin ref head' }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
             echo "- Public root: https://pericopeai.com/"
             echo "- Verified assets:"
             IFS=',' read -r -a paths <<< "${REQUIRED_MEDIA_PATHS}"
