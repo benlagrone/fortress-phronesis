@@ -56,6 +56,8 @@ require_pattern "ENV=\${ENV:-dev}" "Corpus ENV wiring is locked"
 require_pattern "../AugustineCorpus/metadata/author-historical-context.json:/app/metadata/author-historical-context.json:ro" "API historical-context snapshot mount is locked"
 require_pattern "CORPUS_API_URL=\${CORPUS_API_URL:-http://augustine-corpus-live:8001}" "API corpus URL wiring is locked"
 require_pattern "SOLOMONIC_PERICOPE_API_BASE=\${SOLOMONIC_PERICOPE_API_BASE:-http://augustine-corpus-live:8001}" "Clock corpus wiring is locked"
+require_pattern "SOLOMONIC_VIBEVOICE_API_BASE=\${SOLOMONIC_VIBEVOICE_API_BASE:-http://192.168.0.126:8133}" "Clock voice gateway wiring is locked"
+require_pattern "SOLOMONIC_VIBEVOICE_FALLBACK_API_BASE=\${SOLOMONIC_VIBEVOICE_FALLBACK_API_BASE:-}" "Clock legacy direct voice fallback is disabled by default"
 require_pattern "REACT_APP_ENVIRONMENT: \${REACT_APP_ENVIRONMENT:-dev}" "Frontend build environment wiring is locked"
 require_pattern "SOLOMONIC_CLOCK_UPSTREAM=\${SOLOMONIC_CLOCK_UPSTREAM:-http://solomonic-clock:8080}" "Frontend clock upstream wiring is locked"
 
