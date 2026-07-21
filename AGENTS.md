@@ -14,6 +14,20 @@ environment work, read and follow:
 Do not create or endorse a competing deployment path unless the user explicitly
 asks to replace the workspace deployment runway in the same thread.
 
+# Shared Capability Boundary
+
+Shared workspace capabilities follow this mandatory shape:
+
+```text
+client or browser -> app same-origin route -> owning capability service -> provider adapters
+```
+
+For voice, PericopeAI, TrueVineOS/Solomonic Clock, and Fortress Personal are
+consumers. Production voice must route through `fortress-lan:voice-gateway`.
+Direct VibeVoice, Azure Voice, OpenAI Audio, browser speech synthesis, or local
+STT/TTS provider routes are diagnostic bypasses only unless the workspace lock
+explicitly changes in the same task.
+
 # Immutable Deployment Contract (PericopeAI)
 
 These rules are mandatory for this repo unless the user explicitly asks to change them with exact replacement values.

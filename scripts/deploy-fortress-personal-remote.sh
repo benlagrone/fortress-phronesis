@@ -26,6 +26,23 @@ require_file() {
   fi
 }
 
+retry_curl() {
+  local attempts="${SMOKE_RETRY_ATTEMPTS:-12}"
+  local delay_seconds="${SMOKE_RETRY_DELAY_SECONDS:-2}"
+  local attempt
+
+  for attempt in $(seq 1 "${attempts}"); do
+    if curl "$@"; then
+      return 0
+    fi
+    if [ "${attempt}" -lt "${attempts}" ]; then
+      sleep "${delay_seconds}"
+    fi
+  done
+
+  return 1
+}
+
 write_default_env() {
   cat >"${FORTRESS_ENV_FILE}" <<EOF_ENV
 FORTRESS_BIND=${FORTRESS_BIND}
@@ -220,9 +237,9 @@ nginx -t
 systemctl reload nginx || nginx -s reload
 
 log "Running local smokes"
-curl -fsS "http://127.0.0.1:${FORTRESS_API_PORT}/healthz"
-curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/" >/dev/null
-curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/api/healthz"
+retry_curl -fsS "http://127.0.0.1:${FORTRESS_API_PORT}/healthz"
+retry_curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/" >/dev/null
+retry_curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/api/healthz"
 
 remote_status="$(curl -kIs --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/" | awk 'NR==1 {print $2}')"
 if [ "${remote_status}" != "401" ] && [ -z "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
@@ -231,9 +248,13 @@ if [ "${remote_status}" != "401" ] && [ -z "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]
 fi
 
 if [ -n "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
-  curl -kfsS --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" \
+  if ! retry_curl -kfsS --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" \
     -u "${FORTRESS_BASIC_AUTH_USER}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
-    "https://${FORTRESS_REMOTE_HOSTNAME}/api/healthz" >/dev/null
+    "https://${FORTRESS_REMOTE_HOSTNAME}/api/healthz" >/dev/null; then
+    retry_curl -kfsS --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:${FORTRESS_PUBLIC_IP}" \
+      -u "${FORTRESS_BASIC_AUTH_USER}:${FORTRESS_BASIC_AUTH_PASSWORD}" \
+      "https://${FORTRESS_REMOTE_HOSTNAME}/api/healthz" >/dev/null
+  fi
 fi
 
 docker compose -p "${FORTRESS_COMPOSE_PROJECT}" --env-file "${FORTRESS_ENV_FILE}" -f compose.yaml ps
