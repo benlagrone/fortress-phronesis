@@ -85,7 +85,11 @@ file and fails only when no htpasswd file exists.
 ## Nginx And TLS
 
 The remote script owns the `fortress.benjaminlagrone.com` host Nginx route.
-That route proxies to `http://127.0.0.1:15173` and requires Basic Auth.
+That route proxies to `http://127.0.0.1:15173` and requires Basic Auth, except
+for exact `GET /install.apk`. The public install APK exception exists because
+older Android watch download managers can drop Basic Auth credentials during
+browser-to-Downloads handoff; the installed app still authenticates before
+loading the protected Fortress UI or update manifest.
 
 The permanent host needs this DNS record at HostGator:
 
@@ -129,4 +133,11 @@ Public checks with Basic Auth:
 curl -kfsS --resolve fortress.benjaminlagrone.com:443:89.117.151.145 \
   -u "$FORTRESS_BASIC_AUTH_USER:$FORTRESS_BASIC_AUTH_PASSWORD" \
   https://fortress.benjaminlagrone.com/api/healthz
+```
+
+Public install bootstrap check without Basic Auth:
+
+```bash
+curl -kfsS --resolve fortress.benjaminlagrone.com:443:89.117.151.145 \
+  https://fortress.benjaminlagrone.com/install.apk -o /tmp/fortress-watch.apk
 ```

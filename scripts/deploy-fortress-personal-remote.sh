@@ -150,6 +150,16 @@ server {
 
     add_header Cache-Control "no-store";
 
+    location = /install.apk {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:${FORTRESS_WATCH_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${FORTRESS_WATCH_PORT};
         proxy_http_version 1.1;
@@ -244,6 +254,12 @@ retry_curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/api/healthz"
 remote_status="$(curl -kIs --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/" | awk 'NR==1 {print $2}')"
 if [ "${remote_status}" != "401" ] && [ -z "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
   printf 'Expected unauthenticated %s route to return 401, got %s\n' "${FORTRESS_REMOTE_HOSTNAME}" "${remote_status}" >&2
+  exit 1
+fi
+
+install_status="$(curl -k -sS -o /dev/null -w '%{http_code}' --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/install.apk")"
+if [ "${install_status}" != "200" ]; then
+  printf 'Expected unauthenticated %s install APK route to return 200, got %s\n' "${FORTRESS_REMOTE_HOSTNAME}" "${install_status}" >&2
   exit 1
 fi
 
