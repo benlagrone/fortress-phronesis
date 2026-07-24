@@ -43,6 +43,29 @@ retry_curl() {
   return 1
 }
 
+retry_http_status() {
+  local expected_status="$1"
+  shift
+  local attempts="${SMOKE_RETRY_ATTEMPTS:-12}"
+  local delay_seconds="${SMOKE_RETRY_DELAY_SECONDS:-2}"
+  local attempt
+  local status=""
+
+  for attempt in $(seq 1 "${attempts}"); do
+    status="$(curl -k -sS -o /dev/null -w '%{http_code}' "$@" || true)"
+    if [ "${status}" = "${expected_status}" ]; then
+      printf '%s' "${status}"
+      return 0
+    fi
+    if [ "${attempt}" -lt "${attempts}" ]; then
+      sleep "${delay_seconds}"
+    fi
+  done
+
+  printf '%s' "${status}"
+  return 1
+}
+
 write_default_env() {
   cat >"${FORTRESS_ENV_FILE}" <<EOF_ENV
 FORTRESS_BIND=${FORTRESS_BIND}
@@ -251,14 +274,13 @@ retry_curl -fsS "http://127.0.0.1:${FORTRESS_API_PORT}/healthz"
 retry_curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/" >/dev/null
 retry_curl -fsS "http://127.0.0.1:${FORTRESS_WATCH_PORT}/api/healthz"
 
-remote_status="$(curl -kIs --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/" | awk 'NR==1 {print $2}')"
-if [ "${remote_status}" != "401" ] && [ -z "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
+if ! remote_status="$(retry_http_status "401" --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/")" \
+  && [ -z "${FORTRESS_BASIC_AUTH_PASSWORD:-}" ]; then
   printf 'Expected unauthenticated %s route to return 401, got %s\n' "${FORTRESS_REMOTE_HOSTNAME}" "${remote_status}" >&2
   exit 1
 fi
 
-install_status="$(curl -k -sS -o /dev/null -w '%{http_code}' --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/install.apk")"
-if [ "${install_status}" != "200" ]; then
+if ! install_status="$(retry_http_status "200" --resolve "${FORTRESS_REMOTE_HOSTNAME}:443:127.0.0.1" "https://${FORTRESS_REMOTE_HOSTNAME}/install.apk")"; then
   printf 'Expected unauthenticated %s install APK route to return 200, got %s\n' "${FORTRESS_REMOTE_HOSTNAME}" "${install_status}" >&2
   exit 1
 fi
