@@ -58,6 +58,9 @@ gh api repos/benlagrone/fortress-phronesis/dispatches \
 The workflow downloads the `benlagrone/Fortress` tarball for `source_ref`,
 replaces `/root/workspace/Fortress` with that source tree while preserving
 `.env.contabo`, then runs the remote deployment script on the Contabo host.
+If the source tree includes `apps/android/updates/latest.json`, the remote
+script copies that directory into the Fortress API container's Android update
+directory before smoke-checking `/install.apk`.
 
 ## Secrets
 

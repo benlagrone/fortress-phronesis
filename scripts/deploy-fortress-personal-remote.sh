@@ -10,6 +10,7 @@ FORTRESS_PUBLIC_IP="${FORTRESS_PUBLIC_IP:-89.117.151.145}"
 FORTRESS_BIND="${FORTRESS_BIND:-127.0.0.1}"
 FORTRESS_WATCH_PORT="${FORTRESS_WATCH_PORT:-15173}"
 FORTRESS_API_PORT="${FORTRESS_API_PORT:-18080}"
+FORTRESS_ANDROID_UPDATE_DIR="${FORTRESS_ANDROID_UPDATE_DIR:-/data/android-updates}"
 FORTRESS_BASIC_AUTH_USER="${FORTRESS_BASIC_AUTH_USER:-benjaminlagrone@gmail.com}"
 FORTRESS_HTPASSWD_FILE="${FORTRESS_HTPASSWD_FILE:-/etc/nginx/fortress-phronesis.htpasswd}"
 FORTRESS_CERTBOT_EMAIL="${FORTRESS_CERTBOT_EMAIL:-benjaminlagrone@gmail.com}"
@@ -105,6 +106,19 @@ ensure_basic_auth() {
   else
     chmod 644 "${FORTRESS_HTPASSWD_FILE}"
   fi
+}
+
+publish_bundled_android_updates() {
+  local update_source="${FORTRESS_DEPLOY_ROOT}/apps/android/updates"
+  local api_container="${FORTRESS_COMPOSE_PROJECT}-api-1"
+
+  if [ ! -f "${update_source}/latest.json" ]; then
+    return 0
+  fi
+
+  log "Publishing bundled Android update files"
+  docker exec "${api_container}" mkdir -p "${FORTRESS_ANDROID_UPDATE_DIR}"
+  docker cp "${update_source}/." "${api_container}:${FORTRESS_ANDROID_UPDATE_DIR}/"
 }
 
 ensure_self_signed_cert() {
@@ -243,6 +257,7 @@ log "Deploying Docker Compose project ${FORTRESS_COMPOSE_PROJECT}"
 cd "${FORTRESS_DEPLOY_ROOT}"
 docker compose -p "${FORTRESS_COMPOSE_PROJECT}" --env-file "${FORTRESS_ENV_FILE}" -f compose.yaml config --quiet
 docker compose -p "${FORTRESS_COMPOSE_PROJECT}" --env-file "${FORTRESS_ENV_FILE}" -f compose.yaml up -d --build
+publish_bundled_android_updates
 
 log "Configuring Basic Auth"
 ensure_basic_auth
