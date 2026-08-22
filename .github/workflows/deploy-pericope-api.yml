@@ -12,6 +12,9 @@ on:
       - "scripts/verify-pericope-author-profiles.py"
       - "scripts/verify-pericope-deploy-lock.sh"
       - "scripts/deploy-pericopeai-prod.sh"
+  repository_dispatch:
+    types:
+      - deploy-pericope-api
   workflow_dispatch:
     inputs:
       service_ref:
@@ -64,8 +67,8 @@ jobs:
           DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
-          INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
-          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+          INPUT_SERVICE_REF: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.service_ref || github.event.inputs.service_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || github.event.inputs.source_sha }}
         run: |
           set -euo pipefail
 
