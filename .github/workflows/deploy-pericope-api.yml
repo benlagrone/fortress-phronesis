@@ -69,6 +69,19 @@ jobs:
           DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
           INPUT_SERVICE_REF: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.service_ref || github.event.inputs.service_ref }}
           INPUT_SOURCE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || github.event.inputs.source_sha }}
+          PERICOPE_BILLING_PROVIDER: ${{ secrets.PERICOPE_BILLING_PROVIDER }}
+          PERICOPE_BILLING_TEST_MODE: ${{ secrets.PERICOPE_BILLING_TEST_MODE }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_READER_PRICE_ID: ${{ secrets.STRIPE_READER_PRICE_ID }}
+          STRIPE_SCHOLAR_PRICE_ID: ${{ secrets.STRIPE_SCHOLAR_PRICE_ID }}
+          STRIPE_FAMILY_GROUP_PRICE_ID: ${{ secrets.STRIPE_FAMILY_GROUP_PRICE_ID }}
+          STRIPE_INSTITUTION_PRICE_ID: ${{ secrets.STRIPE_INSTITUTION_PRICE_ID }}
+          STRIPE_READER_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_READER_PRICE_LOOKUP_KEY }}
+          STRIPE_SCHOLAR_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_SCHOLAR_PRICE_LOOKUP_KEY }}
+          STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY }}
+          STRIPE_INSTITUTION_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_INSTITUTION_PRICE_LOOKUP_KEY }}
         run: |
           set -euo pipefail
 
@@ -83,7 +96,7 @@ jobs:
           )
 
           ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' AUTHOR_PROFILE_VERIFY_TIMEOUT='${AUTHOR_PROFILE_VERIFY_TIMEOUT}' RUN_CORPUS_REFRESH='${RUN_CORPUS_REFRESH}' RUN_AUTHOR_INDEXING='${RUN_AUTHOR_INDEXING}' RUN_FRONTEND_REFRESH='${RUN_FRONTEND_REFRESH}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' AUTHOR_PROFILE_VERIFY_TIMEOUT='${AUTHOR_PROFILE_VERIFY_TIMEOUT}' RUN_CORPUS_REFRESH='${RUN_CORPUS_REFRESH}' RUN_AUTHOR_INDEXING='${RUN_AUTHOR_INDEXING}' RUN_FRONTEND_REFRESH='${RUN_FRONTEND_REFRESH}' PERICOPE_BILLING_PROVIDER='${PERICOPE_BILLING_PROVIDER}' PERICOPE_BILLING_TEST_MODE='${PERICOPE_BILLING_TEST_MODE}' STRIPE_SECRET_KEY='${STRIPE_SECRET_KEY}' STRIPE_WEBHOOK_SECRET='${STRIPE_WEBHOOK_SECRET}' STRIPE_PUBLISHABLE_KEY='${STRIPE_PUBLISHABLE_KEY}' STRIPE_READER_PRICE_ID='${STRIPE_READER_PRICE_ID}' STRIPE_SCHOLAR_PRICE_ID='${STRIPE_SCHOLAR_PRICE_ID}' STRIPE_FAMILY_GROUP_PRICE_ID='${STRIPE_FAMILY_GROUP_PRICE_ID}' STRIPE_INSTITUTION_PRICE_ID='${STRIPE_INSTITUTION_PRICE_ID}' STRIPE_READER_PRICE_LOOKUP_KEY='${STRIPE_READER_PRICE_LOOKUP_KEY}' STRIPE_SCHOLAR_PRICE_LOOKUP_KEY='${STRIPE_SCHOLAR_PRICE_LOOKUP_KEY}' STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY='${STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY}' STRIPE_INSTITUTION_PRICE_LOOKUP_KEY='${STRIPE_INSTITUTION_PRICE_LOOKUP_KEY}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
@@ -231,6 +244,47 @@ jobs:
           restore_env_file "${CORPUS_ENV_BACKUP}" "${CORPUS_ROOT}/.env"
           restore_env_file "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
           restore_env_file "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
+
+          SERVICE_ROOT="${SERVICE_ROOT}" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          env_path = Path(os.environ["SERVICE_ROOT"]) / ".env"
+          keys = [
+              "PERICOPE_BILLING_PROVIDER",
+              "PERICOPE_BILLING_TEST_MODE",
+              "STRIPE_SECRET_KEY",
+              "STRIPE_WEBHOOK_SECRET",
+              "STRIPE_PUBLISHABLE_KEY",
+              "STRIPE_READER_PRICE_ID",
+              "STRIPE_SCHOLAR_PRICE_ID",
+              "STRIPE_FAMILY_GROUP_PRICE_ID",
+              "STRIPE_INSTITUTION_PRICE_ID",
+              "STRIPE_READER_PRICE_LOOKUP_KEY",
+              "STRIPE_SCHOLAR_PRICE_LOOKUP_KEY",
+              "STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY",
+              "STRIPE_INSTITUTION_PRICE_LOOKUP_KEY",
+          ]
+          updates = {key: os.environ[key] for key in keys if os.environ.get(key)}
+          if not updates:
+              raise SystemExit(0)
+          lines = env_path.read_text().splitlines() if env_path.exists() else []
+          seen = set()
+          next_lines = []
+          for line in lines:
+              if "=" in line and not line.lstrip().startswith("#"):
+                  key = line.split("=", 1)[0].strip()
+                  if key in updates:
+                      next_lines.append(f"{key}={updates[key]}")
+                      seen.add(key)
+                      continue
+              next_lines.append(line)
+          for key in keys:
+              if key in updates and key not in seen:
+                  next_lines.append(f"{key}={updates[key]}")
+          env_path.write_text("\n".join(next_lines) + "\n")
+          print(f"Applied {len(updates)} Pericope billing environment override(s) to AugustineService/.env")
+          PY
 
           [ -f "${CORPUS_ROOT}/Dockerfile" ] || {
             echo "::error::AugustineCorpus/Dockerfile is missing on the server."
