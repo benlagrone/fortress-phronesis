@@ -75,10 +75,12 @@ npm run check:layout
 npm run check:billing
 ```
 
-The backend auth suite separately verifies that `/api/v2/mobile/chat` rejects
-an authenticated account without `reader` and accepts a `reader` token. The
-mobile helper check covers all four billing access states and keeps chat
-disabled until the status is `paid_active`.
+The backend auth suite separately verifies that `/api/v2/mobile/free/chat`
+accepts a guest without an API key, emits quota headers, and returns `429` when
+the daily allowance is exhausted. It also verifies that `/api/v2/mobile/chat`
+rejects an authenticated account without `reader` and accepts a `reader` token.
+The mobile helper check covers all four billing access states and selects the
+free lane unless the status is `paid_active`.
 
 Browser payment E2E:
 ```bash

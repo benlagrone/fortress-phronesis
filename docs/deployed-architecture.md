@@ -164,12 +164,17 @@ Restricted access remains separate from public paid subscription roles.
 
 The separately packaged Expo/React Native client consumes the same billing
 status, checkout, and portal endpoints without embedding Stripe or OIDC client
-secrets. Its chat traffic uses `POST /api/v2/mobile/chat`, which requires the
-Keycloak `reader` role server-side; the existing browser `POST /api/v2/chat`
-contract remains unchanged. Native sign-in uses the `pericopeai://auth`
-redirect and requires a public PKCE Keycloak client named `pericope-mobile`.
-That client and redirect must be verified in the live realm before an APK is
-considered deployable.
+secrets. Guest traffic uses `POST /api/v2/mobile/free/chat` without an API key;
+the API bounds that lane to 10 messages per client IP per UTC day and returns
+standard rate-limit headers. The initial counter is process-local, which is
+appropriate for the current single API process but must move to shared durable
+storage before horizontal scaling. Paid traffic uses `POST /api/v2/mobile/chat`,
+which requires the Keycloak `reader` role server-side; the existing browser
+`POST /api/v2/chat` contract remains unchanged. Native sign-in uses the
+`pericopeai://auth` redirect and requires a public PKCE Keycloak client named
+`pericope-mobile`. That client and redirect must be verified in the live realm
+before paid APK access is considered deployable; free chat does not depend on
+Keycloak.
 
 ## Chat Request Path
 
