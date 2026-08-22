@@ -66,6 +66,9 @@ Prereqs for the payment smoke:
 - `AugustineService` is running with `AUTH_ENFORCED=false`, `DEV_FAKE_AUTH=true`, and `PERICOPE_BILLING_PROVIDER=fixture`.
 - The smoke uses `X-Dev-Auth-*` headers to drive the dummy account flow without a live Keycloak browser login.
 - Browser-side billing regression remains covered by `AugustineFE` `src/App.test.js`.
+- On deployed environments, verify `GET /api/v1/billing/config/public` before
+  declaring public checkout live; that route reports whether runtime billing is
+  still on the fixture provider or is actually ready for Stripe.
 - This smoke proves the fixture lane only. A real public checkout requires `PERICOPE_BILLING_PROVIDER=stripe`, a mode-matched Stripe API key, live price configuration, and a valid webhook secret on the deployed runtime.
 
 Mobile paid-access checks:
