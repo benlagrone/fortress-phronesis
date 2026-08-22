@@ -396,8 +396,8 @@ jobs:
       - name: Deployment Summary
         shell: bash
         env:
-          INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
-          INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
+          INPUT_SERVICE_REF: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.service_ref || github.event.inputs.service_ref }}
+          INPUT_SOURCE_SHA: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source_sha || github.event.inputs.source_sha }}
         run: |
           set -euo pipefail
           SERVICE_REF="${INPUT_SERVICE_REF:-master}"
@@ -409,6 +409,7 @@ jobs:
             echo "- AugustineService SHA: \`${SOURCE_SHA}\`"
             echo "- Public API: https://pericopeai.com/api/v1/services/augustine.en/version"
             echo "- Public History: https://pericopeai.com/api/v1/services/augustine.en/versions"
+            echo "- Billing dummy-account route: https://pericopeai.com/api/v1/billing/test/dummy-account"
             echo "- Public Augustine profile: https://pericopeai.com/api/v1/authors/augustine/profile"
             echo "- Public Cyprian profile: https://pericopeai.com/api/v1/authors/cyprian_of_carthage/profile"
             echo "- Public Boethius profile: https://pericopeai.com/api/v1/authors/boethius/profile"
