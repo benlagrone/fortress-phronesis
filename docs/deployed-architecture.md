@@ -101,6 +101,59 @@ Sign In still redirects to Keycloak using Authorization Code + PKCE, and
 authenticated API calls attach `Authorization: Bearer ...` after token
 exchange/refresh.
 
+The `/history` frontend route is now dual-mode:
+
+- authenticated users load account-backed history from `GET /api/v1/history`
+- guests load recent local-only sessions from browser `localStorage`
+  (`pericope:lastSessions:v1`)
+
+Guest history is intentionally device-local and additive. It is not synced to
+MySQL, does not call the history API, and currently resumes only the locally
+stored frontend snapshot for that browser.
+
+## Paid Access Role Boundary
+
+The Keycloak bearer-auth layer now distinguishes plain authenticated users from
+paid subscribers.
+
+- `default-roles-pericope` resolves to an authenticated-only runtime role and
+  must not be treated as paid access.
+- Public paid access must come from an explicit subscription role:
+  `reader`, `scholar`, `family_group`, or `institution`.
+- Higher paid tiers still satisfy lower reader-class gates; for example,
+  `scholar`, `family_group`, and `institution` all satisfy routes that require
+  `reader`.
+- Invite-only access remains separate from paid access. Sacred / restricted
+  authors still require `invited`, `sacred`, `admin`, or `operator` runtime
+  roles even when the user already has a paid subscription role.
+- `POST /api/v1/user/profile/sync` and the other profile endpoints now return
+  the resolved runtime roles plus additive access fields:
+  `subscription_tier`, `subscription_tier_label`, `has_paid_access`, and
+  `has_invite_only_access`.
+
+## Billing Test Harness
+
+The Pericope API now exposes a deterministic billing test harness for the
+commercial lane:
+
+- `GET /api/v1/billing/test/dummy-account` returns the dummy paid-reader account
+  contract and the role sets expected after subscription activation.
+- `POST /api/v1/billing/checkout/session` creates a subscription-mode checkout
+  session through the configured provider. The default local/CI provider is the
+  fixture provider, which returns `checkout.stripe.test` URLs and never stores
+  Stripe keys in source.
+- `POST /api/v1/billing/customer-portal/session` creates a customer portal
+  session for authenticated accounts.
+- `POST /api/v1/billing/webhooks/stripe` processes a Stripe-shaped
+  `checkout.session.completed` or `customer.subscription.updated` event and
+  returns explicit simulated Keycloak claims / role-sync output. Production
+  identity mutation must remain a separate, audited Keycloak operation.
+
+The frontend `/pricing` route consumes the checkout and portal endpoints. The
+automated test path covers dummy account -> checkout -> webhook -> role sync
+simulation -> paid route access. Sacred / Restricted access remains separate
+from public paid subscription roles.
+
 ## Chat Request Path
 
 The main browser chat path is:
@@ -122,6 +175,11 @@ The main browser chat path is:
    `clock_followup_weight` may bias the follow-up question angle only; it must
    not change answer grounding or expose raw clock internals.
 9. API persists chat/session/reference state and returns segmented response data.
+10. `GET /api/v1/history/{session_id}` now restores same-author follow-up
+    companions additively through a `message_companions` map keyed by
+    `messages[].message_id`. The frontend uses that map to restore follow-up
+    prompts on resumed assistant turns without changing the stored message row
+    contract.
 
 VibeVoice/TTS endpoints are separate from this normal chat response path.
 
@@ -131,6 +189,17 @@ MySQL is the current deployed source of truth for PericopeAI application
 persistence, including sessions, messages, citations, explicit session state,
 relationship memory, response traces, normalized passages, explicit passage
 references, and semantic passage-neighbor rows.
+
+Unauthenticated browsers may also persist a bounded recent-session cache in
+`localStorage` under `pericope:lastSessions:v1` so the guest `/history` route
+can resume local sessions without a server round trip. This guest cache is not
+canonical persistence, is not shared across devices or browsers, and must not
+be treated as proof that a server-backed session exists.
+
+`response_traces` now persist additive `follow_up_question_json` alongside
+`assistant_message_id`. That makes the follow-up prompt reproducible for the
+history resume path and trace audit surfaces without introducing a second chat
+message record or mutating the `messages` table contract.
 
 No graph database is currently deployed in the Fortress-managed PericopeAI stack.
 The planned graph conversation memory migration is documented in

@@ -141,6 +141,9 @@ path while keeping Sacred and Restricted access invite-only.
 
 - Add `/pricing` to `AugustineFE` with Free, Reader, Scholar, Family / Group,
   and Institution tiers.
+- Treat generic authenticated users as `authenticated` only; paid access must
+  come from explicit runtime roles such as `reader`, `scholar`,
+  `family_group`, or `institution`.
 - Use Stripe Billing with Checkout Sessions for paid public tiers.
 - Add backend billing routes for checkout, customer portal, and webhooks.
 - Persist subscription state and sync paid roles into the configured
@@ -155,6 +158,8 @@ path while keeping Sacred and Restricted access invite-only.
 - Public pricing page exists and explains paid tiers plus invite-only access.
 - Stripe test-mode checkout and webhooks work for Reader, Scholar, and
   Family / Group.
+- Dummy-account E2E tests cover checkout session creation, webhook completion,
+  paid role sync simulation, customer portal creation, and paid-gate access.
 - Paid subscriptions assign expected runtime roles.
 - Customer Portal sessions can be created for subscribed users.
 - Sacred and Restricted access remain invite-only and independent of public
