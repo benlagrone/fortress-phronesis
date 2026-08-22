@@ -109,6 +109,16 @@ jobs:
           fi
 
           cd "${DEPLOY_ROOT}"
+          WORKSPACE_ROOT="$(dirname "${DEPLOY_ROOT}")"
+          for env_file in \
+            "${WORKSPACE_ROOT}/AugustineService/.env" \
+            "${WORKSPACE_ROOT}/AugustineCorpus/.env" \
+            "${WORKSPACE_ROOT}/AugustineFE/.env"; do
+            if [ ! -f "${env_file}" ]; then
+              install -d "$(dirname "${env_file}")"
+              touch "${env_file}"
+            fi
+          done
 
           SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" \
             SOLOMONIC_APP_VERSION="${SOLOMONIC_APP_VERSION:-}" \
