@@ -132,6 +132,14 @@ jobs:
             BILLING_ALLOWED_RETURN_ORIGINS="${BILLING_ALLOWED_RETURN_ORIGINS:-}" \
             SOLOMONIC_BILLING_ENFORCEMENT="${SOLOMONIC_BILLING_ENFORCEMENT:-audit}" \
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml pull solomonic-clock
+
+          STRIPE_SECRET_KEY="${STRIPE_SECRET_KEY:-}" \
+            STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-}" \
+            BILLING_SERVICE_API_KEY="${BILLING_SERVICE_API_KEY:-}" \
+            BILLING_FULFILLMENT_SECRET="${BILLING_FULFILLMENT_SECRET:-}" \
+            BILLING_ALLOWED_RETURN_ORIGINS="${BILLING_ALLOWED_RETURN_ORIGINS:-}" \
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml build lecrown-billing
+
           SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" \
             SOLOMONIC_APP_VERSION="${SOLOMONIC_APP_VERSION:-}" \
             SOLOMONIC_RELEASE="${SOLOMONIC_RELEASE:-}" \
@@ -143,7 +151,7 @@ jobs:
             BILLING_FULFILLMENT_SECRET="${BILLING_FULFILLMENT_SECRET:-}" \
             BILLING_ALLOWED_RETURN_ORIGINS="${BILLING_ALLOWED_RETURN_ORIGINS:-}" \
             SOLOMONIC_BILLING_ENFORCEMENT="${SOLOMONIC_BILLING_ENFORCEMENT:-audit}" \
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --build lecrown-billing solomonic-clock
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build lecrown-billing solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps lecrown-billing solomonic-clock
 
           for url in http://127.0.0.1:8086/api/clock http://127.0.0.1:8086/ http://127.0.0.1:8086/api/billing/entitlement; do
