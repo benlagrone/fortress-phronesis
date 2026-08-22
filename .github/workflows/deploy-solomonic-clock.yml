@@ -102,6 +102,11 @@ jobs:
 
           git -C "${DEPLOY_ROOT}" fetch origin main
           git -C "${DEPLOY_ROOT}" checkout main
+          if ! git -C "${DEPLOY_ROOT}" diff --quiet -- .github/workflows/deploy-solomonic-clock.yml docker-compose.pericope.yml; then
+            echo "Stashing tracked deploy-file edits before fast-forwarding Fortress."
+            git -C "${DEPLOY_ROOT}" status --short -- .github/workflows/deploy-solomonic-clock.yml docker-compose.pericope.yml
+            git -C "${DEPLOY_ROOT}" stash push -m "pre-solomonic-deploy-${SOLOMONIC_RELEASED_AT}" -- .github/workflows/deploy-solomonic-clock.yml docker-compose.pericope.yml
+          fi
           git -C "${DEPLOY_ROOT}" pull --ff-only origin main
 
           if [ -n "${GHCR_READ_TOKEN:-}" ]; then
