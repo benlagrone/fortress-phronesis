@@ -163,13 +163,13 @@ jobs:
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps lecrown-billing
           for attempt in $(seq 1 12); do
             if docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T lecrown-billing \
-              python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8090/v1/health', timeout=5).read().decode())"; then
+              python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8090/v1/health', timeout=5).read().decode())" </dev/null; then
               break
             fi
             sleep 2
           done
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T lecrown-billing \
-            python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8090/v1/health', timeout=5).read().decode())" \
+            python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8090/v1/health', timeout=5).read().decode())" </dev/null \
             || { docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml logs --tail=120 lecrown-billing; exit 1; }
 
           SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" \
@@ -187,7 +187,7 @@ jobs:
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps lecrown-billing solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T solomonic-clock \
-            python -c "import socket, urllib.request; print(socket.getaddrinfo('lecrown-billing', 8090)[0]); print(urllib.request.urlopen('http://lecrown-billing:8090/v1/health', timeout=5).read().decode())" \
+            python -c "import socket, urllib.request; print(socket.getaddrinfo('lecrown-billing', 8090)[0]); print(urllib.request.urlopen('http://lecrown-billing:8090/v1/health', timeout=5).read().decode())" </dev/null \
             || docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml logs --tail=80 lecrown-billing
 
           for url in http://127.0.0.1:8086/api/clock http://127.0.0.1:8086/ http://127.0.0.1:8086/api/billing/entitlement http://127.0.0.1:8086/api/billing/catalog; do
