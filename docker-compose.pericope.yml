@@ -478,7 +478,15 @@ services:
     volumes:
       - lecrown_billing_data:/var/lib/lecrown-billing
     networks:
-      - pericope_net
+      pericope_net:
+        aliases:
+          - lecrown-billing
+          - lecrown_billing
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8090/v1/health', timeout=5).read()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   solomonic-clock:
@@ -507,8 +515,10 @@ services:
     ports:
       - "8086:8080"
     depends_on:
-      - augustine-corpus-live
-      - lecrown-billing
+      augustine-corpus-live:
+        condition: service_started
+      lecrown-billing:
+        condition: service_healthy
     volumes:
       - lecrown_billing_data:/var/lib/solomonic-clock
     healthcheck:
@@ -517,7 +527,9 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - pericope_net
+      pericope_net:
+        aliases:
+          - solomonic-clock
     restart: unless-stopped
 
   pericopeai-assets:

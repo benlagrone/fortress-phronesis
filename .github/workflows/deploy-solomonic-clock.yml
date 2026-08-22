@@ -153,8 +153,11 @@ jobs:
             SOLOMONIC_BILLING_ENFORCEMENT="${SOLOMONIC_BILLING_ENFORCEMENT:-audit}" \
             docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build lecrown-billing solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps lecrown-billing solomonic-clock
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T solomonic-clock \
+            python -c "import socket, urllib.request; print(socket.getaddrinfo('lecrown-billing', 8090)[0]); print(urllib.request.urlopen('http://lecrown-billing:8090/v1/health', timeout=5).read().decode())" \
+            || docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml logs --tail=80 lecrown-billing
 
-          for url in http://127.0.0.1:8086/api/clock http://127.0.0.1:8086/ http://127.0.0.1:8086/api/billing/entitlement; do
+          for url in http://127.0.0.1:8086/api/clock http://127.0.0.1:8086/ http://127.0.0.1:8086/api/billing/entitlement http://127.0.0.1:8086/api/billing/catalog; do
             for attempt in $(seq 1 20); do
               if curl -fsS "$url" >/dev/null 2>&1; then
                 break
