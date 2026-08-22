@@ -156,7 +156,31 @@ jobs:
             BILLING_FULFILLMENT_SECRET="${BILLING_FULFILLMENT_SECRET:-}" \
             BILLING_ALLOWED_RETURN_ORIGINS="${BILLING_ALLOWED_RETURN_ORIGINS:-}" \
             SOLOMONIC_BILLING_ENFORCEMENT="${SOLOMONIC_BILLING_ENFORCEMENT:-audit}" \
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build lecrown-billing solomonic-clock
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build lecrown-billing
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps lecrown-billing
+          for attempt in $(seq 1 12); do
+            if docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T lecrown-billing \
+              python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8090/v1/health', timeout=5).read().decode())"; then
+              break
+            fi
+            sleep 2
+          done
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T lecrown-billing \
+            python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8090/v1/health', timeout=5).read().decode())" \
+            || { docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml logs --tail=120 lecrown-billing; exit 1; }
+
+          SOLOMONIC_CLOCK_IMAGE="${SOLOMONIC_CLOCK_IMAGE}" \
+            SOLOMONIC_APP_VERSION="${SOLOMONIC_APP_VERSION:-}" \
+            SOLOMONIC_RELEASE="${SOLOMONIC_RELEASE:-}" \
+            SOLOMONIC_RELEASED_AT="${SOLOMONIC_RELEASED_AT:-}" \
+            SOLOMONIC_VIBEVOICE_API_TOKEN="${SOLOMONIC_VIBEVOICE_API_TOKEN:-}" \
+            STRIPE_SECRET_KEY="${STRIPE_SECRET_KEY:-}" \
+            STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-}" \
+            BILLING_SERVICE_API_KEY="${BILLING_SERVICE_API_KEY:-}" \
+            BILLING_FULFILLMENT_SECRET="${BILLING_FULFILLMENT_SECRET:-}" \
+            BILLING_ALLOWED_RETURN_ORIGINS="${BILLING_ALLOWED_RETURN_ORIGINS:-}" \
+            SOLOMONIC_BILLING_ENFORCEMENT="${SOLOMONIC_BILLING_ENFORCEMENT:-audit}" \
+            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml up -d --no-build solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps lecrown-billing solomonic-clock
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T solomonic-clock \
             python -c "import socket, urllib.request; print(socket.getaddrinfo('lecrown-billing', 8090)[0]); print(urllib.request.urlopen('http://lecrown-billing:8090/v1/health', timeout=5).read().decode())" \
