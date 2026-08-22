@@ -145,6 +145,11 @@ commercial lane:
   session through the configured provider. The default local/CI provider is the
   fixture provider, which returns `checkout.stripe.test` URLs and never stores
   Stripe keys in source.
+- When `PERICOPE_BILLING_PROVIDER=stripe`, the runtime may operate in Stripe
+  test or live mode. `PERICOPE_BILLING_TEST_MODE=true` requires a Stripe test
+  key, while `PERICOPE_BILLING_TEST_MODE=false` requires a Stripe live key
+  (`sk_live_...` or `rk_live_...`). Mismatched key/mode pairs fail closed at
+  runtime instead of silently downgrading to fixture behavior.
 - `POST /api/v1/billing/customer-portal/session` creates a customer portal
   session for authenticated accounts.
 - `POST /api/v1/billing/test/complete-checkout` completes the fixture checkout
