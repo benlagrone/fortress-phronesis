@@ -141,6 +141,11 @@ commercial lane:
 - `GET /api/v1/billing/status` reports the stored checkout/subscription state
   without mutating the paid-access gate. The current access-state contract is
   `unpaid`, `checkout_pending`, `awaiting_role_sync`, and `paid_active`.
+- `GET /api/v1/billing/config/public` exposes a non-secret runtime snapshot of
+  the configured billing provider, Stripe mode readiness, publishable/webhook
+  wiring state, and the tier lookup keys expected by the public commercial
+  lane. This route is intended for public prod verification without requiring a
+  Keycloak login.
 - `POST /api/v1/billing/checkout/session` creates a subscription-mode checkout
   session through the configured provider. The default local/CI provider is the
   fixture provider, which returns `checkout.stripe.test` URLs and never stores
