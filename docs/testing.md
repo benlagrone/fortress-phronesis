@@ -52,6 +52,53 @@ python3 scripts/smoke-tests.py \
 
 This prints live progress plus a final PASS/FAIL summary table in terminal.
 
+Payment fixture smoke:
+```bash
+cd fortress-phronesis
+python3 scripts/verify-pericope-payment-smoke.py \
+  --api-base-url http://127.0.0.1:18000/api \
+  --user-id dummy-paid-reader \
+  --initial-roles default-roles-pericope \
+  --promoted-roles reader
+```
+
+Prereqs for the payment smoke:
+- `AugustineService` is running with `AUTH_ENFORCED=false`, `DEV_FAKE_AUTH=true`, and `PERICOPE_BILLING_PROVIDER=fixture`.
+- The smoke uses `X-Dev-Auth-*` headers to drive the dummy account flow without a live Keycloak browser login.
+- Browser-side billing regression remains covered by `AugustineFE` `src/App.test.js`.
+
+Mobile paid-access checks:
+```bash
+cd pericopeai-mobile-app
+npm run typecheck
+npm run check:layout
+npm run check:billing
+```
+
+The backend auth suite separately verifies that `/api/v2/mobile/chat` rejects
+an authenticated account without `reader` and accepts a `reader` token. The
+mobile helper check covers all four billing access states and keeps chat
+disabled until the status is `paid_active`.
+
+Browser payment E2E:
+```bash
+cd fortress-phronesis
+PERICOPE_PYTHON_BIN=/tmp/pericopeai-test-venv/bin/python \
+python3 scripts/verify-pericope-payment-browser-e2e.py
+```
+
+What the browser harness covers:
+- starts a local fixture API with `DEV_FAKE_AUTH=true`
+- starts `AugustineFE` with dummy local auth enabled
+- opens `/pricing` in a real browser via Playwright CLI
+- starts the Reader checkout
+- completes the dummy payment on `/billing/success`
+- creates the customer portal link
+- promotes the local dummy runtime role to `reader`
+- verifies the paid state on `/user/profile/home`
+
+Artifacts land under `fortress-phronesis/output/playwright/pericope-payment-e2e/`.
+
 Cross-reference API smoke (v1.3.0 bootstrap):
 ```bash
 cd fortress-phronesis

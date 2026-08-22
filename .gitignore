@@ -8,8 +8,11 @@ scripts/*
 !scripts/deploy-fortress-personal-remote.sh
 !scripts/update-nginx-pericopeai-assets.sh
 !scripts/verify-pericope-author-profiles.py
+!scripts/verify-pericope-payment-browser-e2e.py
+!scripts/verify-pericope-payment-smoke.py
 !scripts/verify-pericope-prod-smoke.py
 .env
 .env*.local
 scripts/.env
 runtime/solar-potential-backend/
+output/

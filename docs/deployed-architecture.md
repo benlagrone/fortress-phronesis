@@ -138,21 +138,38 @@ commercial lane:
 
 - `GET /api/v1/billing/test/dummy-account` returns the dummy paid-reader account
   contract and the role sets expected after subscription activation.
+- `GET /api/v1/billing/status` reports the stored checkout/subscription state
+  without mutating the paid-access gate. The current access-state contract is
+  `unpaid`, `checkout_pending`, `awaiting_role_sync`, and `paid_active`.
 - `POST /api/v1/billing/checkout/session` creates a subscription-mode checkout
   session through the configured provider. The default local/CI provider is the
   fixture provider, which returns `checkout.stripe.test` URLs and never stores
   Stripe keys in source.
 - `POST /api/v1/billing/customer-portal/session` creates a customer portal
   session for authenticated accounts.
+- `POST /api/v1/billing/test/complete-checkout` completes the fixture checkout
+  locally for the authenticated dummy user and records the active subscription
+  state without requiring a real Stripe callback.
 - `POST /api/v1/billing/webhooks/stripe` processes a Stripe-shaped
   `checkout.session.completed` or `customer.subscription.updated` event and
   returns explicit simulated Keycloak claims / role-sync output. Production
   identity mutation must remain a separate, audited Keycloak operation.
 
-The frontend `/pricing` route consumes the checkout and portal endpoints. The
-automated test path covers dummy account -> checkout -> webhook -> role sync
-simulation -> paid route access. Sacred / Restricted access remains separate
-from public paid subscription roles.
+The frontend `/pricing` and `/billing/success` routes consume the billing
+endpoints. Billing state persists in MySQL `billing_accounts` independently of
+the Keycloak role claims so the commercial state and the runtime access state
+can be observed separately. The automated test path covers dummy account ->
+checkout -> completion -> role sync simulation -> portal session. Sacred /
+Restricted access remains separate from public paid subscription roles.
+
+The separately packaged Expo/React Native client consumes the same billing
+status, checkout, and portal endpoints without embedding Stripe or OIDC client
+secrets. Its chat traffic uses `POST /api/v2/mobile/chat`, which requires the
+Keycloak `reader` role server-side; the existing browser `POST /api/v2/chat`
+contract remains unchanged. Native sign-in uses the `pericopeai://auth`
+redirect and requires a public PKCE Keycloak client named `pericope-mobile`.
+That client and redirect must be verified in the live realm before an APK is
+considered deployable.
 
 ## Chat Request Path
 
@@ -188,7 +205,8 @@ VibeVoice/TTS endpoints are separate from this normal chat response path.
 MySQL is the current deployed source of truth for PericopeAI application
 persistence, including sessions, messages, citations, explicit session state,
 relationship memory, response traces, normalized passages, explicit passage
-references, and semantic passage-neighbor rows.
+references, semantic passage-neighbor rows, and billing subscription state in
+`billing_accounts`.
 
 Unauthenticated browsers may also persist a bounded recent-session cache in
 `localStorage` under `pericope:lastSessions:v1` so the guest `/history` route
