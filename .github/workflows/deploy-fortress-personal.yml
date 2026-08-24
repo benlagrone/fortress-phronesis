@@ -233,6 +233,8 @@ jobs:
           if [ -n "${BASIC_AUTH_PASSWORD_B64:-}" ]; then
             export FORTRESS_BASIC_AUTH_PASSWORD
             FORTRESS_BASIC_AUTH_PASSWORD="$(printf '%s' "${BASIC_AUTH_PASSWORD_B64}" | base64 -d)"
+            export FORTRESS_HEALTH_TOKEN
+            FORTRESS_HEALTH_TOKEN="$(printf 'fortress-health-read:%s' "${FORTRESS_BASIC_AUTH_PASSWORD}" | sha256sum | awk '{print $1}')"
           fi
 
           DEPLOY_PARENT="$(dirname "${FORTRESS_DEPLOY_ROOT}")"
