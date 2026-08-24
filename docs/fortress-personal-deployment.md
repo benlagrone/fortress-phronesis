@@ -33,6 +33,21 @@ The workspace deployment policy/lock remains owned by the first-level
 This deployment intentionally does not change the locked PericopeAI compose
 project, compose file, network, ports, or environment wiring.
 
+## Shared Voice Capability Boundary
+
+Fortress Personal follows the same shared-capability rule as PericopeAI and
+TrueVineOS:
+
+```text
+client or browser -> app same-origin route -> owning capability service -> provider adapters
+```
+
+The Watch UI calls the Fortress same-origin `/api` route. The Fortress API is
+the consumer proxy. Voice provider selection, fallback, health semantics, and
+credentials belong behind `fortress-lan:voice-gateway`. Do not add a browser
+TTS/STT provider fallback ladder or direct provider calls to the public Watch UI
+as normal production wiring.
+
 ## GitHub Actions Control Plane
 
 Manual dispatch:
