@@ -215,6 +215,49 @@ The main browser chat path is:
 
 VibeVoice/TTS endpoints are separate from this normal chat response path.
 
+## Planned Context-Faithful Staged Author Responses
+
+The urgent `v1.3.6S` response-pipeline change is documented in
+`docs/context-faithful-staged-author-response-execution-plan.md`. It replaces
+the planned single monolithic author answer with an additive, feature-gated
+orchestration path while preserving the current complete JSON response for
+legacy clients.
+
+The planned data flow is:
+
+1. Retrieve selected-author works and assemble a versioned evidence packet
+   before user-facing prose.
+2. Preserve the original user question and apply only minimal temporal
+   mediation for referents the author could not recognize. Mediation must not
+   interpret the user's circumstances or choose the author's conclusion.
+3. Run a hidden source-bound structural planner that organizes connected
+   movements, binds them to evidence, protects lexical/address choices, and
+   places historical understanding before bounded modern application.
+4. Generate and audit opening and development movements independently under
+   bounded concurrency, releasing each movement only after evidence,
+   anachronism, translation, lexical-fidelity, and address checks pass.
+5. Automatically enqueue and cache opening speech after opening text passes;
+   continue later text, audit, and TTS work concurrently while preserving
+   ordered playback.
+6. Generate the final author synthesis from the actual audited movements.
+7. Deliberate on the most appropriate next conversational move from the
+   original intent and completed answer, including the option to conclude.
+8. Persist response-run, segment, evidence, audit, audio, synthesis, follow-up,
+   prompt/model version, and timing state in MySQL-backed application storage.
+
+The temporal mediator, intent interpreter, counsel planner, segment generators,
+closing synthesizer, and follow-up deliberator are separate logical roles. The
+first implementation may host them inside `pericopeai-api`; this plan does not
+add a new service, public route, port, hostname, graph database, or live
+external-data dependency by itself. Negotiated streaming should remain on
+`POST /api/v2/chat`, with the existing non-streaming JSON behavior as fallback.
+
+The current local-only summary compaction rule remains deployed truth until
+`v1.3.6S` is implemented and promoted. Promotion of the separate user-facing
+closing-synthesis model call requires matching updates to migrations,
+configuration, prompt/version manifests, latency monitors, smoke checks,
+deployment locks when applicable, and rollback coverage.
+
 ## Persistence And Memory
 
 MySQL is the current deployed source of truth for PericopeAI application
@@ -256,9 +299,9 @@ The planned split is:
 
 - `fortress.lan` runs bounded citation extraction, resolution, edge-building,
   scoring, and acquisition-lead generation jobs.
-- `fortress.local` presents operator review queues for references,
+- `fortress.lan` presents the canonical operator review queues for references,
   cross-reference edges, author discovery leads, and acquisition handoff
-  proposals.
+  proposals, with `fortress.local` available as the workstation mirror route.
 - `pericopeai.local` and the public PericopeAI app consume only reviewed or
   confidence-gated reference outputs.
 
@@ -315,6 +358,15 @@ publication handoff, public verification, and operator review.
 Tracker stewardship is expected to reconcile ledger works inventory against the
 mounted AugustineCorpus texts so acquisition status is tied to all acquired
 works, not only highlighted titles.
+
+The canonical operator surface for this system is now the read-only Fortress LAN
+page at `http://fortress.lan/author-acquisition`, with
+`http://fortress.local/author-acquisition` remaining the workstation mirror
+route. The Fortress LAN control plane renders tracker and coverage data by
+invoking the Fortress Phronesis `scripts/author_acq.py` dry-run commands
+against the mirrored ledgers. This route is a control-plane/operator surface,
+not a Pericope feature route, and it must not mutate acquisition ledgers or
+trigger source ingestion/publication by itself.
 
 The plan does not add a public route, host port, deployed service, environment
 variable, or deployment path by itself. If promoted from plan to runtime, the

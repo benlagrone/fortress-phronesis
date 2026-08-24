@@ -43,6 +43,7 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 | MOBILE-VOICE-001 | Mobile v1 scope includes auth, single-author chat, user voice-to-text, author text-to-voice, conversational mode, foldable layout, and Android TV layout | v1.4.1 / v1.5.0 planning | Planning docs published; mobile implementation committed locally, remote pending | [roadmap.md](roadmap.md#current-roadmap-control-state-2026-07-13) |
 | SEQ-001 | Lock PericopeAI web roadmap ordering to the matter -> counsel -> stack -> synthesis product model and treat reader flow as the next public commitment | Roadmap control state | Active 2026-07-13 | [roadmap.md](roadmap.md#front-of-queue-reader-anchored-counsel-flow) |
 | SEQ-002 | Keep pricing/subscriptions in a separate commercial lane instead of treating it as the default next product build | Roadmap control state | Active 2026-07-13 | [roadmap.md](roadmap.md#separate-commercial-lane-pricing-subscriptions-and-invite-only-access) |
+| RESP-001 | Replace monolithic author speeches with context-faithful staged counsel: work-grounded structural planning, historical understanding before application, mediator-only cross-time orientation, lexical/address fidelity, segment streaming, final synthesis, intent-aware follow-up, and pipelined cached TTS | v1.3.6S | Urgent planned 2026-07-14 | [context-faithful-staged-author-response-execution-plan.md](context-faithful-staged-author-response-execution-plan.md) |
 
 ## Immediate Execution Order
 
@@ -64,8 +65,9 @@ Purpose: capture recovered and high-priority requests in one append-only backlog
 16. [Blocked in side repo 2026-06-22; non-blocking for web stack as of 2026-07-13] Create or choose a remote for `pericopeai-mobile-app`, set upstream, and push `b357260`.
 17. [Completed 2026-07-13] Correct roadmap sequencing so the side-repo mobile upstream gap is no longer treated as the blocker for PericopeAI web-stack feature ordering.
 18. [Next 2026-07-13] Execute `v1.3.6R` / `v1.3.6` author-work reader and passage-anchored same-author chat as the next public product commitment.
-19. [After 18] Execute `v1.2.2` and `v1.2.3` continuity and graph-shaped memory work against the same matter/counsel/synthesis interaction model.
-20. [Parallel lane] Execute `v1.4.0` pricing/subscriptions and `v1.4.0-ops` reliability work without displacing the public product sequence above.
+19. [Start contracts/fixtures now; public integration after 18] Execute `v1.3.6S` context-faithful staged author responses on the July 14-28 fast timeline.
+20. [After 19] Execute `v1.2.2` and `v1.2.3` continuity and graph-shaped memory work against the same matter/counsel/synthesis interaction model.
+21. [Parallel lane] Execute `v1.4.0` pricing/subscriptions and `v1.4.0-ops` reliability work without displacing the public product sequence above.
 
 ## Update Rule
 
