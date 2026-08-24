@@ -1,6 +1,11 @@
 name: Deploy Fortress Personal
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy-fortress-personal.yml
   workflow_dispatch:
     inputs:
       source_ref:
