@@ -1,0 +1,182 @@
+name: Deploy Jester Chat
+
+on:
+  push:
+    branches:
+      - codex/jester-chat-deploy
+  workflow_dispatch:
+    inputs:
+      app_ref:
+        description: my-strudel-flutes ref to deploy
+        required: true
+        default: codex/jester-contabo-deploy-20260328
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jester-chat-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      PRIMARY_DOMAIN: jester.chat
+      ACME_EMAIL: benjaminlagrone@gmail.com
+      APP_PORT: 18110
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Clone Jester App
+        shell: bash
+        env:
+          APP_REF: ${{ github.event.inputs.app_ref }}
+          APP_REPO_TOKEN: ${{ secrets.JESTER_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          APP_REF="${APP_REF:-codex/jester-contabo-deploy-20260328}"
+          git clone --depth 1 --branch "${APP_REF}" "https://x-access-token:${APP_REPO_TOKEN}@github.com/benlagrone/my-strudel-flutes.git" jester-src
+
+      - name: Verify Docs Snapshot
+        shell: bash
+        working-directory: jester-src
+        run: |
+          set -euo pipefail
+          test -d .deploy-docs
+          test -d .deploy-docs/website/src/pages
+          test -d .deploy-docs/docs
+
+      - name: Write Production Env
+        shell: bash
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.JESTER_DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.JESTER_OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          cat > jester-src/deploy/production/.env <<EOF
+          PRIMARY_DOMAIN=${PRIMARY_DOMAIN}
+          ACME_EMAIL=${ACME_EMAIL}
+          APP_BIND_HOST=127.0.0.1
+          APP_PORT=${APP_PORT}
+
+          STRUDEL_CHAT_PROVIDER=deepseek
+          STRUDEL_CHAT_MODEL=deepseek-chat
+          STRUDEL_CHAT_BASE_URL=
+          STRUDEL_CHAT_API_KEY=
+          DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+          OPENAI_API_KEY=${OPENAI_API_KEY}
+          EOF
+          chmod 600 jester-src/deploy/production/.env
+
+      - name: Render Nginx Site
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          template = Path('jester-src/deploy/production/nginx/jester.chat.conf.template').read_text()
+          rendered = template.replace('{{PRIMARY_DOMAIN}}', 'jester.chat').replace('{{APP_PORT}}', '18110')
+          Path('jester-src/deploy/production/nginx/jester.chat.conf').write_text(rendered)
+          PY
+
+      - name: Sync App To Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+        run: |
+          set -euo pipefail
+          JESTER_ROOT="$(dirname "${DEPLOY_ROOT}")/jester-chat"
+          echo "JESTER_ROOT=${JESTER_ROOT}" >> "${GITHUB_ENV}"
+          rsync -az --delete --exclude '.git' --exclude 'node_modules' jester-src/ "${DEPLOY_USER}@${DEPLOY_HOST}:${JESTER_ROOT}/"
+
+      - name: Deploy On Server
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "JESTER_ROOT='${JESTER_ROOT}' PRIMARY_DOMAIN='${PRIMARY_DOMAIN}' APP_PORT='${APP_PORT}' ACME_EMAIL='${ACME_EMAIL}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+            bash "${JESTER_ROOT}/deploy/production/bootstrap-server.sh"
+          fi
+
+          if ! command -v nginx >/dev/null 2>&1; then
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+          fi
+
+          cp "${JESTER_ROOT}/deploy/production/nginx/jester.chat.conf" "/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
+          ln -sfn "/etc/nginx/sites-available/${PRIMARY_DOMAIN}" "/etc/nginx/sites-enabled/${PRIMARY_DOMAIN}"
+          nginx -t
+
+          docker compose -f "${JESTER_ROOT}/deploy/production/compose.yaml" up -d --build
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS "http://127.0.0.1:${APP_PORT}/healthz" >/dev/null
+
+          if ! command -v certbot >/dev/null 2>&1; then
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-nginx
+          fi
+
+          certbot --nginx --non-interactive --agree-tos --redirect -m "${ACME_EMAIL}" -d "${PRIMARY_DOMAIN}"
+          nginx -t && nginx -s reload
+
+          docker compose -f "${JESTER_ROOT}/deploy/production/compose.yaml" ps
+          REMOTE
+
+      - name: Public Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            "https://${PRIMARY_DOMAIN}/" \
+            "https://${PRIMARY_DOMAIN}/api/chat/status"; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS "$url" >/dev/null 2>&1; then
+                break
+              fi
+              sleep 5
+            done
+            curl -fsS "$url" >/dev/null
+          done
+
+      - name: Deployment Summary
+        shell: bash
+        env:
+          APP_REF: ${{ github.event.inputs.app_ref }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Jester Chat Deploy"
+            echo ""
+            echo "- Domain: \`${PRIMARY_DOMAIN}\`"
+            echo "- App ref: \`${APP_REF}\`"
+            echo "- Port: \`${APP_PORT}\`"
+            echo "- Public URL: https://${PRIMARY_DOMAIN}/"
+          } >> "$GITHUB_STEP_SUMMARY"
