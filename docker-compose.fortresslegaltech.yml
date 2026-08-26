@@ -1,0 +1,13 @@
+services:
+  fortresslegaltech:
+    image: ${FORTRESSLEGALTECH_IMAGE:-ghcr.io/benlagrone/fortresslegaltech:latest}
+    container_name: fortresslegaltech
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_PORT: "8080"
+      FORTRESS_LEGAL_API_BASE_URL: ${FORTRESSLEGALTECH_LEGAL_API_BASE_URL:-}
+      FORTRESS_LEGAL_API_TIMEOUT_SECONDS: ${FORTRESSLEGALTECH_LEGAL_API_TIMEOUT_SECONDS:-2.0}
+    ports:
+      - "127.0.0.1:18042:8080"
+

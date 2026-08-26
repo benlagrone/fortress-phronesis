@@ -1,0 +1,27 @@
+schema_version: 1
+app_id: fortresslegaltech
+display_name: Fortress Legal Technologies
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/fortresslegaltech.com
+artifacts:
+  image: ghcr.io/benlagrone/fortresslegaltech
+runtime:
+  compose_file: docker-compose.fortresslegaltech.yml
+  project_name: fortresslegaltech
+  service: fortresslegaltech
+  host_bind: 127.0.0.1:18042
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18042/healthz
+  - type: http
+    url: http://127.0.0.1:18042/expunction
+  - type: http
+    url: http://127.0.0.1:18042/api/v1/workflows/expunction
+public_urls:
+  - https://fortresslegaltech.com/
+  - https://www.fortresslegaltech.com/
+
