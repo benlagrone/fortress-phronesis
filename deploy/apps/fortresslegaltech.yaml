@@ -7,6 +7,7 @@ repo:
 artifacts:
   image: ghcr.io/benlagrone/fortresslegaltech
 runtime:
+  stack_root: /srv/fortresslegaltech
   compose_file: docker-compose.fortresslegaltech.yml
   project_name: fortresslegaltech
   service: fortresslegaltech
@@ -24,4 +25,3 @@ healthchecks:
 public_urls:
   - https://fortresslegaltech.com/
   - https://www.fortresslegaltech.com/
-

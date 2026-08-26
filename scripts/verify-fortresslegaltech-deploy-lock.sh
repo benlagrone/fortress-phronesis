@@ -15,11 +15,13 @@ done
 grep -Fq 'ghcr.io/benlagrone/fortresslegaltech' "$compose_file"
 grep -Fq '"127.0.0.1:18042:8080"' "$compose_file"
 grep -Fq 'project_name: fortresslegaltech' "$app_manifest"
+grep -Fq 'stack_root: /srv/fortresslegaltech' "$app_manifest"
 grep -Fq 'host_bind: 127.0.0.1:18042' "$app_manifest"
 grep -Fq 'server_name fortresslegaltech.com www.fortresslegaltech.com;' "$nginx_bootstrap"
 grep -Fq 'proxy_pass http://127.0.0.1:18042;' "$nginx_bootstrap"
 grep -Fq '/etc/letsencrypt/live/fortresslegaltech.com/fullchain.pem' "$nginx_tls"
 grep -Fq 'Compose project: `fortresslegaltech`' "$runbook"
+grep -Fq 'Stack root: `/srv/fortresslegaltech`' "$runbook"
 
 if grep -Eq '(^|[[:space:]])18042:8080' "$compose_file"; then
   echo "FAIL: public host binding detected; port 18042 must be loopback-only" >&2
@@ -27,4 +29,3 @@ if grep -Eq '(^|[[:space:]])18042:8080' "$compose_file"; then
 fi
 
 echo "PASS: Fortress Legal Technologies deployment lock"
-
