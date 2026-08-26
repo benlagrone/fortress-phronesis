@@ -5,7 +5,7 @@ This document is the production implementation contract for `fortresslegaltech.c
 ## Locked Runtime
 
 - Deployment target: Contabo `vmi2669159`
-- Stack root: `/root/workspace/fortress-phronesis`
+- Stack root: `/srv/fortresslegaltech`
 - Compose file: `docker-compose.fortresslegaltech.yml`
 - Compose project: `fortresslegaltech`
 - Service: `fortresslegaltech`
@@ -27,7 +27,9 @@ The runtime contract is prepared but must not be represented as deployed until a
 
 ## Deploy
 
-Run from the synchronized Phronesis stack root:
+Run from the isolated application stack root. The deployment artifact is copied
+from the synchronized Phronesis deployment repository; the production checkout
+is not used as mutable application storage.
 
 ```bash
 FORTRESSLEGALTECH_IMAGE=ghcr.io/benlagrone/fortresslegaltech:sha-<commit> \
@@ -66,4 +68,3 @@ Browser acceptance must verify desktop and mobile layouts, the Civil/Expunction 
 ## Rollback
 
 Set `FORTRESSLEGALTECH_IMAGE` to the prior immutable `sha-<commit>` image and rerun the same Compose `up -d` command. Verify loopback health before leaving nginx enabled.
-
