@@ -1,0 +1,161 @@
+name: Deploy Rental Finder Edge
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: rental-finder-edge-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout Deployment Authority
+        uses: actions/checkout@v4
+
+      - name: Resolve Deployment Configuration
+        shell: bash
+        env:
+          DEDICATED_DEPLOY_HOST: ${{ secrets.RENTAL_FINDER_DEPLOY_HOST }}
+          DEDICATED_DEPLOY_USER: ${{ secrets.RENTAL_FINDER_DEPLOY_USER }}
+          DEDICATED_DEPLOY_SSH_KEY: ${{ secrets.RENTAL_FINDER_DEPLOY_SSH_KEY }}
+          DEDICATED_DEPLOY_KNOWN_HOSTS: ${{ secrets.RENTAL_FINDER_DEPLOY_KNOWN_HOSTS }}
+          SHARED_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          SHARED_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          SHARED_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          SHARED_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+          GOOGLE_CLIENT_ID: ${{ secrets.RENTAL_FINDER_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.RENTAL_FINDER_GOOGLE_CLIENT_SECRET }}
+          OAUTH_COOKIE_SECRET: ${{ secrets.RENTAL_FINDER_OAUTH_COOKIE_SECRET }}
+        run: |
+          set -euo pipefail
+
+          DEPLOY_HOST="${DEDICATED_DEPLOY_HOST:-${SHARED_DEPLOY_HOST:-89.117.151.145}}"
+          DEPLOY_USER="${DEDICATED_DEPLOY_USER:-${SHARED_DEPLOY_USER:-root}}"
+          DEPLOY_SSH_KEY="${DEDICATED_DEPLOY_SSH_KEY:-${SHARED_DEPLOY_SSH_KEY:-}}"
+          DEPLOY_KNOWN_HOSTS="${DEDICATED_DEPLOY_KNOWN_HOSTS:-${SHARED_DEPLOY_KNOWN_HOSTS:-}}"
+          REMOTE_STAGE="/tmp/rental-finder-edge-${GITHUB_RUN_ID}"
+          REMOTE_OAUTH_ENV="/tmp/rental-finder-oauth-${GITHUB_RUN_ID}.env"
+
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET OAUTH_COOKIE_SECRET)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Rental Finder deployment configuration: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          {
+            echo "DEPLOY_HOST=${DEPLOY_HOST}"
+            echo "DEPLOY_USER=${DEPLOY_USER}"
+            echo "REMOTE_STAGE=${REMOTE_STAGE}"
+            echo "REMOTE_OAUTH_ENV=${REMOTE_OAUTH_ENV}"
+            echo "DEPLOY_SSH_KEY<<EOF"
+            echo "${DEPLOY_SSH_KEY}"
+            echo "EOF"
+            echo "DEPLOY_KNOWN_HOSTS<<EOF"
+            echo "${DEPLOY_KNOWN_HOSTS}"
+            echo "EOF"
+          } >> "${GITHUB_ENV}"
+
+          local_env="$(mktemp)"
+          {
+            printf 'RENTAL_FINDER_GOOGLE_CLIENT_ID=%s\n' "${GOOGLE_CLIENT_ID}"
+            printf 'RENTAL_FINDER_GOOGLE_CLIENT_SECRET=%s\n' "${GOOGLE_CLIENT_SECRET}"
+            printf 'RENTAL_FINDER_OAUTH_COOKIE_SECRET=%s\n' "${OAUTH_COOKIE_SECRET}"
+          } > "${local_env}"
+          chmod 600 "${local_env}"
+          echo "LOCAL_OAUTH_ENV=${local_env}" >> "${GITHUB_ENV}"
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Stage Locked Deployment Files
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "install -d -m 700 '${REMOTE_STAGE}' '${REMOTE_STAGE}/scripts'"
+          scp -i ~/.ssh/id_ed25519 \
+            docker-compose.rental-finder.yml \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_STAGE}/docker-compose.rental-finder.yml"
+          scp -i ~/.ssh/id_ed25519 \
+            scripts/deploy-rental-finder-remote.sh \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_STAGE}/scripts/deploy-rental-finder-remote.sh"
+          scp -i ~/.ssh/id_ed25519 \
+            "${LOCAL_OAUTH_ENV}" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_OAUTH_ENV}"
+          rm -f "${LOCAL_OAUTH_ENV}"
+
+      - name: Deploy Authenticated Rental Finder Edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "chmod 700 '${REMOTE_STAGE}/scripts/deploy-rental-finder-remote.sh' && \
+             RENTAL_FINDER_DEPLOY_ROOT='/opt/rental-finder/deploy' \
+             RENTAL_FINDER_OAUTH_ENV_SOURCE='${REMOTE_OAUTH_ENV}' \
+             bash '${REMOTE_STAGE}/scripts/deploy-rental-finder-remote.sh'"
+
+      - name: Public Fail-Closed Smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in / /rental-finder/api/listings/search; do
+            headers="$(mktemp)"
+            status="$(curl -sS -D "${headers}" -o /dev/null -w '%{http_code}' "https://rentalfinder.lecrownproperties.com${path}")"
+            if [ "${status}" != "302" ]; then
+              printf 'Expected unauthenticated %s to return 302, got %s\n' "${path}" "${status}" >&2
+              exit 1
+            fi
+            grep -qi '^location: /oauth2/start?' "${headers}"
+            rm -f "${headers}"
+          done
+
+      - name: Cleanup Remote Staging
+        if: always()
+        shell: bash
+        run: |
+          rm -f "${LOCAL_OAUTH_ENV:-}"
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "rm -rf '${REMOTE_STAGE}' '${REMOTE_OAUTH_ENV}'" || true
+
+      - name: Deployment Summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "## Rental Finder edge deployed"
+            echo
+            echo "- URL: https://rentalfinder.lecrownproperties.com/"
+            echo "- Authentication: Google Workspace"
+            echo "- Allowed domain: lecrownproperties.com"
+            echo "- Unauthenticated UI and API requests: OAuth redirect verified"
+          } >> "${GITHUB_STEP_SUMMARY}"
