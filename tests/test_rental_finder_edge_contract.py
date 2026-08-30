@@ -33,6 +33,15 @@ class RentalFinderEdgeContractTests(unittest.TestCase):
         self.assertIn("Expected unauthenticated UI request to return 302", script)
         self.assertIn("Expected unauthenticated API request to return 302", script)
 
+    def test_bootstrap_mode_is_tls_enabled_and_fail_closed(self) -> None:
+        script = (ROOT / "scripts" / "deploy-rental-finder-remote.sh").read_text(encoding="utf-8")
+
+        self.assertIn('BOOTSTRAP_ONLY="${RENTAL_FINDER_BOOTSTRAP_ONLY:-false}"', script)
+        self.assertIn("write_https_unavailable_site", script)
+        self.assertIn('return 503 "Rental Finder is temporarily unavailable', script)
+        self.assertIn('Expected fail-closed site to return 503', script)
+        self.assertIn('ssl_certificate /etc/letsencrypt/live/${PUBLIC_HOST}/fullchain.pem;', script)
+
     def test_workflow_does_not_embed_oauth_secrets(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "deploy-rental-finder.yml").read_text(
             encoding="utf-8"
