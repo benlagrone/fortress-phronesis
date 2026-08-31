@@ -8,6 +8,21 @@ services:
       APP_PORT: "8080"
       FORTRESS_LEGAL_API_BASE_URL: ${FORTRESSLEGALTECH_LEGAL_API_BASE_URL:-}
       FORTRESS_LEGAL_API_TIMEOUT_SECONDS: ${FORTRESSLEGALTECH_LEGAL_API_TIMEOUT_SECONDS:-2.0}
+      TYLER_STAGE_BASE_URL: https://texas-stage.tylertech.cloud
+      TYLER_STAGE_CERTIFICATE_PATH: /run/secrets/tyler-stage-certificate
+      TYLER_STAGE_PRIVATE_KEY_PATH: /run/secrets/tyler-stage-private-key
+      TYLER_STAGE_PRIVATE_KEY_PASSWORD_FILE: /run/secrets/tyler-stage-key-password
     ports:
       - "127.0.0.1:18042:8080"
+    secrets:
+      - tyler-stage-certificate
+      - tyler-stage-private-key
+      - tyler-stage-key-password
 
+secrets:
+  tyler-stage-certificate:
+    file: ./secrets/tyler-stage/FortressLegalTechnologies.crt
+  tyler-stage-private-key:
+    file: ./secrets/tyler-stage/fortress-legal-technologies-stage.key.pem
+  tyler-stage-key-password:
+    file: ./secrets/tyler-stage/FortressLegalTechnologies-password.txt
