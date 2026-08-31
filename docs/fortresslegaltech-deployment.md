@@ -45,6 +45,19 @@ curl -fsS http://127.0.0.1:18042/expunction >/dev/null
 
 Do not set `FORTRESSLEGALTECH_LEGAL_API_BASE_URL` until an authenticated server-to-server route is approved. The public app remains useful with that optional capability unconfigured and does not expose personal Fortress data.
 
+## Tyler Texas STAGE
+
+The Tyler EFSP adapter is server-side only. Its issued certificate, encrypted private key, and password file live under `/srv/fortresslegaltech/secrets/tyler-stage` on the deployment host. Keep the directory root-owned with mode `0700` and each file mode `0600`; Compose exposes them read-only inside the application container through `/run/secrets`.
+
+The approved STAGE host is `https://texas-stage.tylertech.cloud`. Validate certificate authentication and the CodeService response from the deployed image without exposing a public route:
+
+```bash
+docker compose -p fortresslegaltech -f docker-compose.fortresslegaltech.yml \
+  exec -T fortresslegaltech fortress-tyler-stage-probe
+```
+
+A successful probe reports HTTP 200 and a validated archive containing only `locations.xml`. Never print, commit, copy into the image, or return the private key, password, CMS header, or provider payload through a browser endpoint.
+
 ## DNS And TLS
 
 1. Install `deploy/nginx/fortresslegaltech.com.bootstrap.conf` only after the container health checks pass.
