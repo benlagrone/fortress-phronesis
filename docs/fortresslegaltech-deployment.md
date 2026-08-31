@@ -47,7 +47,7 @@ Do not set `FORTRESSLEGALTECH_LEGAL_API_BASE_URL` until an authenticated server-
 
 ## Tyler Texas STAGE
 
-The Tyler EFSP adapter is server-side only. Its issued certificate, encrypted private key, and password file live under `/srv/fortresslegaltech/secrets/tyler-stage` on the deployment host. Keep the directory root-owned with mode `0700` and each file mode `0600`; Compose exposes them read-only inside the application container through `/run/secrets`.
+The Tyler EFSP adapter is server-side only. Its issued certificate, encrypted private key, and password file live under `/srv/fortresslegaltech/secrets/tyler-stage` on the deployment host. Keep the directory root-owned with mode `0700`. Keep each file owned by `root`, grouped to the container's fixed app GID `10001`, and mode `0640`; the root-only parent directory prevents host users from traversing to the files while Compose exposes them read-only to the non-root application process through `/run/secrets`.
 
 The approved STAGE host is `https://texas-stage.tylertech.cloud`. Validate certificate authentication and the CodeService response from the deployed image without exposing a public route:
 
