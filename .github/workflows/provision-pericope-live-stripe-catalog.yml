@@ -102,9 +102,15 @@ jobs:
                   "line_items[0][quantity]": "1",
                   "success_url": "https://pericopeai.com/billing/success?session_id={CHECKOUT_SESSION_ID}",
                   "cancel_url": "https://pericopeai.com/pricing",
+                  "customer_email": "live-billing-e2e@pericopeai.invalid",
+                  "client_reference_id": "pericope-live-billing-probe",
+                  "integration_identifier": "pericopeai_reader_liveprobe",
                   "metadata[project]": "pericopeai",
                   "metadata[environment]": "live",
                   "metadata[plan]": "reader",
+                  "subscription_data[metadata][project]": "pericopeai",
+                  "subscription_data[metadata][environment]": "live",
+                  "subscription_data[metadata][plan]": "reader",
               })
               print(f"Live Reader Checkout verified: {session['id']}")
           PY
