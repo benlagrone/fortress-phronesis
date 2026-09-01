@@ -164,6 +164,13 @@ commercial lane:
   `checkout.session.completed` or `customer.subscription.updated` event and
   returns explicit simulated Keycloak claims / role-sync output. Production
   identity mutation must remain a separate, audited Keycloak operation.
+- The Fortress `Provision Pericope Live Stripe Catalog` workflow is the
+  additive, production-controlled catalog runway. It verifies or creates the
+  three public monthly Prices from the frontend contract: Reader at $9,
+  Scholar at $19, and Family / Group at $39. It uses the stable live lookup
+  keys `pericopeai_starter_monthly`, `pericopeai_pro_monthly`, and
+  `pericopeai_family_group_monthly`; the Institution tier remains a sales-led
+  contact path and must not be provisioned as a self-serve Price.
 
 The frontend `/pricing` and `/billing/success` routes consume the billing
 endpoints. Billing state persists in MySQL `billing_accounts` independently of
