@@ -65,6 +65,14 @@ class Settings:
     db_path: str
     port: int
 
+    @property
+    def stripe_mode(self) -> str:
+        if self.stripe_secret_key.startswith(("sk_live_", "rk_live_", "rkcs_live_")):
+            return "live"
+        if self.stripe_secret_key.startswith(("sk_test_", "rk_test_", "rkcs_test_")):
+            return "test"
+        return "unknown"
+
     @classmethod
     def from_env(cls) -> "Settings":
         stripe_key = _required_env("STRIPE_SECRET_KEY")
@@ -192,7 +200,7 @@ class BillingService:
         customer = self.client.v1.customers.create(
             {
                 "email": email,
-                "metadata": {"project": PROJECT, "environment": "test", "truevineos_user_id": user_id},
+                "metadata": {"project": PROJECT, "environment": self.settings.stripe_mode, "truevineos_user_id": user_id},
             },
             {"idempotency_key": f"{PROJECT}:customer:{hashlib.sha256(user_id.encode()).hexdigest()}"},
         )
@@ -227,7 +235,7 @@ class BillingService:
                     "product_name": product.get("name") or "TrueVine OS",
                 }
             )
-        return {"project": PROJECT, "environment": "test", "plans": plans}
+        return {"project": PROJECT, "environment": self.settings.stripe_mode, "plans": plans}
 
     def create_checkout(self, payload: dict[str, Any]) -> dict[str, Any]:
         user_id, email = self._require_identity(payload)
@@ -243,7 +251,7 @@ class BillingService:
             raise FileExistsError("This account already has a subscription; use Manage billing.")
         metadata = {
             "project": PROJECT,
-            "environment": "test",
+            "environment": self.settings.stripe_mode,
             "plan": plan,
             "user_id": user_id,
             "price_lookup_key": lookup_key,
@@ -419,7 +427,7 @@ class BillingRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path.rstrip("/") or "/"
         if path in {"/health", "/v1/health"}:
-            self._send_json({"status": "ok", "service": "lecrown-billing", "stripe_mode": "test"})
+            self._send_json({"status": "ok", "service": "lecrown-billing", "stripe_mode": self.service.settings.stripe_mode})
             return
         if not self._authorized():
             self._send_json({"error": "Unauthorized."}, HTTPStatus.UNAUTHORIZED)
