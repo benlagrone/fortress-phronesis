@@ -7,6 +7,11 @@ on:
         description: Type PROVISION_PERICOPE_LIVE_CATALOG to create missing live Prices.
         required: true
         type: string
+      verify_checkout:
+        description: Create an uncompleted Reader Checkout Session to verify live permissions and redirects.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -18,6 +23,7 @@ jobs:
     env:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       CONFIRM: ${{ inputs.confirm }}
+      VERIFY_CHECKOUT: ${{ inputs.verify_checkout }}
     steps:
       - name: Validate live catalog request
         run: |
@@ -57,6 +63,7 @@ jobs:
               with urlopen(request, timeout=30) as response:
                   return json.load(response)
 
+          resolved_prices = {}
           for plan, product_name, amount, lookup_key in catalog:
               existing = stripe("GET", f"/prices?{urlencode({'lookup_keys[]': lookup_key, 'active': 'true', 'limit': 1})}")
               matches = existing.get("data") or []
@@ -65,6 +72,7 @@ jobs:
                   recurring = price.get("recurring") or {}
                   if price.get("currency") != "usd" or price.get("unit_amount") != amount or recurring.get("interval") != "month":
                       raise SystemExit(f"Existing {lookup_key} has incompatible live price settings.")
+                  resolved_prices[plan] = price["id"]
                   print(f"Verified {plan}: {lookup_key} ({amount} usd/month)")
                   continue
 
@@ -84,5 +92,19 @@ jobs:
                   "metadata[environment]": "live",
                   "metadata[plan]": plan,
               })
+              resolved_prices[plan] = price["id"]
               print(f"Created {plan}: {lookup_key} ({amount} usd/month), price {price['id']}")
+
+          if os.getenv("VERIFY_CHECKOUT", "").lower() == "true":
+              session = stripe("POST", "/checkout/sessions", {
+                  "mode": "subscription",
+                  "line_items[0][price]": resolved_prices["reader"],
+                  "line_items[0][quantity]": "1",
+                  "success_url": "https://pericopeai.com/billing/success?session_id={CHECKOUT_SESSION_ID}",
+                  "cancel_url": "https://pericopeai.com/pricing",
+                  "metadata[project]": "pericopeai",
+                  "metadata[environment]": "live",
+                  "metadata[plan]": "reader",
+              })
+              print(f"Live Reader Checkout verified: {session['id']}")
           PY
