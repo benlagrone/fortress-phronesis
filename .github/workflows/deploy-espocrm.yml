@@ -11,7 +11,7 @@ on:
         options:
           - prod
       issue_certificate:
-        description: Run certbot for crm.lecrowndevelopment.com
+        description: Run certbot for both public CRM hostnames
         required: true
         default: true
         type: boolean
@@ -137,13 +137,17 @@ jobs:
               --non-interactive \
               --agree-tos \
               --keep-until-expiring \
+              --expand \
+              --cert-name crm.lecrowndevelopment.com \
               -m "${CERTBOT_EMAIL}" \
-              -d crm.lecrowndevelopment.com
+              -d crm.lecrowndevelopment.com \
+              -d crm.lecrownproperties.com
             sudo nginx -t
             sudo systemctl reload nginx || sudo nginx -s reload
           fi
 
           curl -fsSI https://crm.lecrowndevelopment.com/ >/dev/null || true
+          curl -fsSI https://crm.lecrownproperties.com/ >/dev/null || true
           REMOTE
 
       - name: Public Smoke
@@ -152,6 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSI https://crm.lecrowndevelopment.com/ >/dev/null
+          curl -fsSI https://crm.lecrownproperties.com/ >/dev/null
 
       - name: Deployment Summary
         shell: bash
@@ -160,7 +165,7 @@ jobs:
             echo "## EspoCRM Deploy"
             echo ""
             echo "- Environment: \`${{ inputs.environment }}\`"
-            echo "- Public URL: https://crm.lecrowndevelopment.com/"
+            echo "- Public URLs: https://crm.lecrowndevelopment.com/ and https://crm.lecrownproperties.com/"
             echo "- Remote dir: \`~/workspace/espocrm\`"
             echo "- Upstreams: \`127.0.0.1:18036\` and \`127.0.0.1:18037\`"
             echo "- Certbot: \`${{ inputs.issue_certificate }}\`"
