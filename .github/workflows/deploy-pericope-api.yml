@@ -336,17 +336,18 @@ jobs:
           fi
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api pericopeai-frontend
 
-          if [ "${PERICOPE_BILLING_PROVIDER}" = "stripe" ]; then
-            docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python - <<'PY'
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python - <<'PY'
           from billing import PUBLIC_SUBSCRIPTION_TIERS, get_billing_provider
 
           provider = get_billing_provider()
+          print(f"Billing provider: {provider.name}")
+          if provider.name != "stripe":
+              raise SystemExit(0)
           for tier in PUBLIC_SUBSCRIPTION_TIERS:
               if tier == "institution":
                   continue
               print(f"Stripe price ready: {tier} -> {provider._resolve_price_id(tier)}")
           PY
-          fi
 
           for url in \
             http://127.0.0.1:18000/api/healthz \
