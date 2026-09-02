@@ -24,6 +24,10 @@ class RentalFinderEdgeContractTests(unittest.TestCase):
     def test_remote_script_protects_ui_and_api_paths(self) -> None:
         script = (ROOT / "scripts" / "deploy-rental-finder-remote.sh").read_text(encoding="utf-8")
 
+        self.assertIn(
+            'BACKEND_ORIGIN="${RENTAL_FINDER_BACKEND_ORIGIN:-http://100.121.75.0:8134}"',
+            script,
+        )
         self.assertIn("auth_request /_oauth2_auth;", script)
         self.assertIn("location ^~ /rental-finder/api/", script)
         self.assertIn("location / {", script)

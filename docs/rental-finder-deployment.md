@@ -18,8 +18,8 @@ The public hostname is an authenticated edge, not a public copy of the Fortress 
 - Compose project: `rental-finder-edge`
 - Compose file: `docker-compose.rental-finder.yml`
 - OAuth gateway bind: `127.0.0.1:18044`
-- Private upstream: `http://100.100.97.30:8133/rental-finder/`
-- API upstream prefix: `http://100.100.97.30:8133/rental-finder/api/`
+- Private upstream: `http://100.121.75.0:8134/rental-finder/`
+- API upstream prefix: `http://100.121.75.0:8134/rental-finder/api/`
 
 The Nginx edge maps public `/` requests to the private `/rental-finder/` application path. Browser requests under `/rental-finder/api/` preserve that path when sent to Fortress. Both paths require a valid OAuth session.
 
