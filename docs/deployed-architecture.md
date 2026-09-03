@@ -160,10 +160,14 @@ commercial lane:
 - `POST /api/v1/billing/test/complete-checkout` completes the fixture checkout
   locally for the authenticated dummy user and records the active subscription
   state without requiring a real Stripe callback.
-- `POST /api/v1/billing/webhooks/stripe` processes a Stripe-shaped
-  `checkout.session.completed` or `customer.subscription.updated` event and
-  returns explicit simulated Keycloak claims / role-sync output. Production
-  identity mutation must remain a separate, audited Keycloak operation.
+- `POST /api/v1/billing/webhooks/stripe` verifies the raw Stripe signature,
+  persists the subscription state, and returns the resulting role-sync state.
+  When `PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true`, it uses the confidential
+  `PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID` and
+  `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET` to synchronize only the managed paid
+  realm roles (`reader`, `scholar`, `family_group`, `institution`) through the
+  Keycloak Admin API. It is disabled by default and fails closed with `503` so
+  Stripe retries rather than recording a false fulfillment.
 - The Fortress `Provision Pericope Live Stripe Catalog` workflow is the
   additive, production-controlled catalog runway. It verifies or creates the
   three public monthly Prices from the frontend contract: Reader at $9,
@@ -176,8 +180,8 @@ The frontend `/pricing` and `/billing/success` routes consume the billing
 endpoints. Billing state persists in MySQL `billing_accounts` independently of
 the Keycloak role claims so the commercial state and the runtime access state
 can be observed separately. The automated test path covers dummy account ->
-checkout -> completion -> role sync simulation -> portal session. Sacred /
-Restricted access remains separate from public paid subscription roles.
+checkout -> completion -> role sync -> portal session. Sacred / Restricted
+access remains separate from public paid subscription roles.
 
 The separately packaged Expo/React Native client consumes the same billing
 status, checkout, and portal endpoints without embedding Stripe or OIDC client
