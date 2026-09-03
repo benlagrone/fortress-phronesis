@@ -161,7 +161,8 @@ commercial lane:
   locally for the authenticated dummy user and records the active subscription
   state without requiring a real Stripe callback.
 - `POST /api/v1/billing/webhooks/stripe` verifies the raw Stripe signature,
-  persists the subscription state, and returns the resulting role-sync state.
+  normalizes Checkout and invoice subscription metadata, persists the
+  subscription state, and returns the resulting role-sync state.
   When `PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true`, it uses the confidential
   `PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID` and
   `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET` to synchronize only the managed paid
