@@ -150,6 +150,12 @@ jobs:
           fi
           nginx -t
           systemctl reload nginx
+          for attempt in $(seq 1 15); do
+            if curl -kfsS -o /dev/null --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/; then
+              break
+            fi
+            sleep 1
+          done
           curl -kfsS -o /dev/null -w 'edge_http=%{http_code}\n' --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/
           trap - ERR
           REMOTE
