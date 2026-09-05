@@ -150,9 +150,15 @@ jobs:
           if ! test "${nginx_config}" -ef "${nginx_enabled}"; then cp "${nginx_config}" "${nginx_enabled}"; fi
           nginx -t
           systemctl reload nginx
-          curl -fsS http://127.0.0.1:18035/auth/config | grep -q 'lecrownproperties.com'
-          curl -kfsS --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/ >/dev/null
-          test "$(curl -ksS -o /dev/null -w '%{http_code}' -X POST --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/api/listings/search)" = "401"
+          auth_config_status="$(curl -sS -o /tmp/rental-auth-config.json -w '%{http_code}' http://127.0.0.1:18035/auth/config)"
+          app_status="$(curl -ksS -o /dev/null -w '%{http_code}' --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/)"
+          anonymous_status="$(curl -ksS -o /dev/null -w '%{http_code}' -X POST --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/api/listings/search)"
+          echo "auth_config_http=${auth_config_status} app_http=${app_status} anonymous_api_http=${anonymous_status}"
+          test "${auth_config_status}" = "200"
+          grep -q 'lecrownproperties.com' /tmp/rental-auth-config.json
+          rm -f /tmp/rental-auth-config.json
+          test "${app_status}" = "200"
+          test "${anonymous_status}" = "401"
           trap - ERR
           find /var/www/rental-finder-releases -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | tail -n +4 | cut -d' ' -f2- | xargs -r rm -rf
           REMOTE
