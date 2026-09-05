@@ -493,6 +493,28 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+          python3 - <<'PY'
+          import json
+          from urllib.request import urlopen
+
+          with urlopen("https://pericopeai.com/api/v1/billing/config/public", timeout=20) as response:
+              config = json.load(response)
+          expected = {
+              "provider": "stripe",
+              "test_mode": False,
+              "provider_ready": True,
+              "role_sync_enabled": True,
+              "role_sync_configured": True,
+          }
+          mismatches = {
+              name: {"expected": value, "actual": config.get(name)}
+              for name, value in expected.items()
+              if config.get(name) != value
+          }
+          if mismatches:
+              raise SystemExit(f"Public live billing fulfillment check failed: {mismatches}")
+          print("Public live billing and Keycloak role-sync readiness verified.")
+          PY
           for _ in $(seq 1 12); do
             if python3 scripts/verify-pericope-author-profiles.py \
               --base-url https://pericopeai.com \
