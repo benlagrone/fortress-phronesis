@@ -86,11 +86,13 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
   - DB defaults (if not overridden): `MYSQL_HOST=mysql`, `MYSQL_DB=augustine_chat`, `MYSQL_USER=augustine`, `MYSQL_PASS=password`, `MYSQL_ROOT_PASSWORD=rootpass`
   - Stripe billing role fulfillment is disabled unless
     `PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true`. Enabling it requires the
-    least-privilege Keycloak service-account values
+    Keycloak service-account values
     `PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID` and
     `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET`, delivered only through the
-    Fortress `prod` GitHub environment. The service account may manage only
-    the four public paid realm roles.
+    Fortress `prod` GitHub environment by the `Provision Pericope Billing Role
+    Sync` workflow. The service code may change only the four public paid realm
+    roles. Keycloak grants that client `view-users`, `manage-users`, and
+    `view-realm` because its Admin API has no narrower per-role mapping scope.
 - Key corpus performance envs:
   - `MODEL_PROVIDER=ollama`
   - `OLLAMA_BASE_URL=http://192.168.0.126:11434` in production.

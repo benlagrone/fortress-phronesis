@@ -355,6 +355,31 @@ jobs:
               print(f"Stripe price ready: {tier} -> {provider._resolve_price_id(tier)}")
           PY
 
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python - <<'PY'
+          import httpx
+
+          from keycloak_billing_roles import KeycloakBillingRoleSyncConfig
+
+          config = KeycloakBillingRoleSyncConfig.from_environment()
+          if not config.enabled:
+              print("Keycloak billing role synchronization is disabled.")
+              raise SystemExit(0)
+          config.validate()
+          with httpx.Client(timeout=config.timeout_seconds) as client:
+              response = client.post(
+                  f"{config.base_url}/realms/{config.realm}/protocol/openid-connect/token",
+                  data={
+                      "grant_type": "client_credentials",
+                      "client_id": config.client_id,
+                      "client_secret": config.client_secret,
+                  },
+              )
+              response.raise_for_status()
+              if not response.json().get("access_token"):
+                  raise SystemExit("Keycloak billing role-sync client returned no access token.")
+          print("Keycloak billing role-sync client authenticated.")
+          PY
+
           for url in \
             http://127.0.0.1:18000/api/healthz \
             http://127.0.0.1:18000/api/v1/services/augustine.en/version \
@@ -483,6 +508,7 @@ jobs:
             echo "- Public API: https://pericopeai.com/api/v1/services/augustine.en/version"
             echo "- Public History: https://pericopeai.com/api/v1/services/augustine.en/versions"
             echo "- Billing dummy-account route: https://pericopeai.com/api/v1/billing/test/dummy-account"
+            echo "- Keycloak billing role-sync client credential is verified during the server deployment gate when enabled"
             echo "- Public Augustine profile: https://pericopeai.com/api/v1/authors/augustine/profile"
             echo "- Public Cyprian profile: https://pericopeai.com/api/v1/authors/cyprian_of_carthage/profile"
             echo "- Public Boethius profile: https://pericopeai.com/api/v1/authors/boethius/profile"

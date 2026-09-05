@@ -167,8 +167,14 @@ commercial lane:
   `PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID` and
   `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET` to synchronize only the managed paid
   realm roles (`reader`, `scholar`, `family_group`, `institution`) through the
-  Keycloak Admin API. It is disabled by default and fails closed with `503` so
-  Stripe retries rather than recording a false fulfillment.
+  Keycloak Admin API. Fortress provisions the confidential
+  `pericope-billing-role-sync` client through the `Provision Pericope Billing
+  Role Sync` GitHub `prod` workflow and stores its secret only in that
+  environment. Its service account has Keycloak's required `view-users`,
+  `manage-users`, and `view-realm` roles in `realm-management`; the service
+  code limits its writes to the four managed paid roles. It is disabled by
+  default and fails closed with `503` so Stripe retries rather than recording a
+  false fulfillment.
 - The Fortress `Provision Pericope Live Stripe Catalog` workflow is the
   additive, production-controlled catalog runway. It verifies or creates the
   three public monthly Prices from the frontend contract: Reader at $9,

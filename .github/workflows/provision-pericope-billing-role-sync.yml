@@ -1,0 +1,137 @@
+name: Provision Pericope Billing Role Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type PROVISION_PERICOPE_BILLING_ROLE_SYNC to create or repair the Keycloak service client.
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: pericope-billing-role-sync
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      CONFIRM: ${{ inputs.confirm }}
+      DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate provisioning request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${CONFIRM}" = "PROVISION_PERICOPE_BILLING_ROLE_SYNC"
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Provision Keycloak service client
+        id: keycloak
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Capture stdout so the client secret never becomes an Actions log line.
+          CLIENT_SECRET="$(ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+
+          KC_CONTAINER="${KC_CONTAINER:-auth-keycloak-1}"
+          if ! docker ps --format '{{.Names}}' | grep -qx "${KC_CONTAINER}"; then
+            KC_CONTAINER="$(docker ps --format '{{.Names}}' | awk '/keycloak/ {print; exit}')"
+          fi
+          [ -n "${KC_CONTAINER:-}" ] || { echo "No running Keycloak container found." >&2; exit 1; }
+
+          KC_ENV_JSON="$(docker inspect "${KC_CONTAINER}" --format '{{json .Config.Env}}')"
+          KC_ADMIN_USER="$(printf '%s' "${KC_ENV_JSON}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or env.get("KEYCLOAK_ADMIN") or "")')"
+          KC_ADMIN_PASSWORD="$(printf '%s' "${KC_ENV_JSON}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_PASSWORD") or env.get("KEYCLOAK_ADMIN_PASSWORD") or "")')"
+          [ -n "${KC_ADMIN_USER}" ] && [ -n "${KC_ADMIN_PASSWORD}" ] || { echo "Could not determine Keycloak bootstrap credentials." >&2; exit 1; }
+
+          kcadm() {
+            docker exec "${KC_CONTAINER}" /opt/keycloak/bin/kcadm.sh "$@"
+          }
+          kcadm config credentials --server http://127.0.0.1:8080 --realm master --user "${KC_ADMIN_USER}" --password "${KC_ADMIN_PASSWORD}" >&2
+
+          CLIENT_ID="pericope-billing-role-sync"
+          CLIENT_UUID="$(kcadm get clients -r pericope --fields id,clientId | python3 -c 'import json,sys; clients=json.load(sys.stdin); print(next((item.get("id", "") for item in clients if item.get("clientId") == "pericope-billing-role-sync"), ""))')"
+          if [ -z "${CLIENT_UUID}" ]; then
+            kcadm create clients -r pericope \
+              -s "clientId=${CLIENT_ID}" \
+              -s 'enabled=true' \
+              -s 'protocol=openid-connect' \
+              -s 'publicClient=false' \
+              -s 'serviceAccountsEnabled=true' \
+              -s 'standardFlowEnabled=false' \
+              -s 'directAccessGrantsEnabled=false' \
+              -s 'implicitFlowEnabled=false' \
+              -s 'clientAuthenticatorType=client-secret' >&2
+            CLIENT_UUID="$(kcadm get clients -r pericope --fields id,clientId | python3 -c 'import json,sys; clients=json.load(sys.stdin); print(next((item.get("id", "") for item in clients if item.get("clientId") == "pericope-billing-role-sync"), ""))')"
+          fi
+          [ -n "${CLIENT_UUID}" ] || { echo "Could not resolve the billing role-sync client." >&2; exit 1; }
+
+          kcadm update "clients/${CLIENT_UUID}" -r pericope \
+            -s 'enabled=true' \
+            -s 'publicClient=false' \
+            -s 'serviceAccountsEnabled=true' \
+            -s 'standardFlowEnabled=false' \
+            -s 'directAccessGrantsEnabled=false' \
+            -s 'implicitFlowEnabled=false' \
+            -s 'clientAuthenticatorType=client-secret' >&2
+          SERVICE_ACCOUNT_ID="$(kcadm get "clients/${CLIENT_UUID}/service-account-user" -r pericope | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id", ""))')"
+          [ -n "${SERVICE_ACCOUNT_ID}" ] || { echo "Could not resolve the billing role-sync service account." >&2; exit 1; }
+          kcadm add-roles -r pericope --uid "${SERVICE_ACCOUNT_ID}" --cclientid realm-management \
+            --rolename view-users --rolename manage-users --rolename view-realm >&2
+
+          CLIENT_SECRET="$(kcadm get "clients/${CLIENT_UUID}/client-secret" -r pericope | python3 -c 'import json,sys; print(json.load(sys.stdin).get("value", ""))')"
+          [ -n "${CLIENT_SECRET}" ] || { echo "Keycloak did not return a client secret." >&2; exit 1; }
+          printf '%s' "${CLIENT_SECRET}"
+          REMOTE
+          )"
+          [ -n "${CLIENT_SECRET}" ] || { echo "Keycloak returned an empty billing role-sync secret." >&2; exit 1; }
+          printf '%s' "${CLIENT_SECRET}" | gh secret set PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET --repo "${GITHUB_REPOSITORY}" --env prod
+          printf '%s' 'pericope-billing-role-sync' | gh secret set PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID --repo "${GITHUB_REPOSITORY}" --env prod
+          printf '%s' 'true' | gh secret set PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED --repo "${GITHUB_REPOSITORY}" --env prod
+          unset CLIENT_SECRET
+
+      - name: Verify stored secret names
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(
+            PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID
+            PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET
+            PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED
+          )
+          available="$(gh secret list --repo "${GITHUB_REPOSITORY}" --env prod --json name --jq '.[].name')"
+          for name in "${expected[@]}"; do
+            grep -qx "${name}" <<<"${available}" || { echo "Missing prod secret: ${name}" >&2; exit 1; }
+          done
+          echo "Stored three Pericope Keycloak billing role-sync secret names."
+
+      - name: Provisioning summary
+        shell: bash
+        run: |
+          {
+            echo "## Pericope Billing Role Sync"
+            echo ""
+            echo "- Keycloak client: \`pericope-billing-role-sync\`"
+            echo "- Service account roles: \`view-users\`, \`manage-users\`, \`view-realm\` in \`pericope/realm-management\`"
+            echo "- Client secret stored only as a \`prod\` environment secret"
+            echo "- No end-user realm roles or subscriptions were created"
+          } >> "$GITHUB_STEP_SUMMARY"
