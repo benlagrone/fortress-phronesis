@@ -1,0 +1,34 @@
+cameras:
+  - name: left
+    device: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:2:1.0-video-index0
+    width: 1920
+    height: 1080
+    fps: 15
+  - name: right
+    device: /dev/v4l/by-path/pci-0000:00:14.0-usb-0:3:1.0-video-index0
+    width: 1920
+    height: 1080
+    fps: 15
+# Add a third entry when the low side camera is connected. Measurements use all
+# views that detect the marker and reject results with excessive reprojection.
+#  - name: nozzle-side
+#    device: /dev/v4l/by-path/<third-camera>-video-index0
+#    width: 1920
+#    height: 1080
+#    fps: 15
+state_dir: /var/lib/forge-calibration
+octoprint_url: http://127.0.0.1:5000
+octoprint_api_key_file: /home/benlagrone/.octoprint/config.yaml
+safety:
+  max_step_mm: 1.0
+  minimum_z_mm: -2.0
+  maximum_z_mm: 400.0
+  maximum_hotend_c: 50.0
+  maximum_bed_c: 50.0
+quality:
+  minimum_focus_score: 75.0
+  minimum_mean_luma: 35.0
+  maximum_mean_luma: 220.0
+  maximum_intrinsic_rms_px: 0.45
+  maximum_stereo_rms_px: 0.55
+  maximum_reprojection_error_px: 0.75

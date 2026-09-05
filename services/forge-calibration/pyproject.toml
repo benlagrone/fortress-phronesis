@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forge-calibration"
+version = "0.1.0"
+description = "Precision camera-supervised calibration for Fortress Forge"
+requires-python = ">=3.12"
+dependencies = [
+  "Flask>=3.0,<4",
+  "numpy>=1.26,<3",
+  "opencv-contrib-python-headless>=4.10,<5",
+  "PyYAML>=6.0,<7",
+  "requests>=2.31,<3",
+]
+
+[project.scripts]
+forge-calibration = "forge_calibration.cli:main"
+forge-calibration-service = "forge_calibration.app:main"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["forge_calibration*"]

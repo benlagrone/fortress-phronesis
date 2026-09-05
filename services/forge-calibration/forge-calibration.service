@@ -1,0 +1,21 @@
+[Unit]
+Description=Fortress Forge precision calibration service
+After=network-online.target octoprint.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=benlagrone
+Group=benlagrone
+SupplementaryGroups=video
+ExecStart=/opt/forge-calibration/venv/bin/forge-calibration-service --config /etc/forge-calibration/config.yaml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/forge-calibration
+
+[Install]
+WantedBy=multi-user.target
