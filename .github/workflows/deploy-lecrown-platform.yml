@@ -28,7 +28,140 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  repair-rental-finder-public:
+    if: ${{ inputs.source_sha == 'repair-rental-finder-public' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          LECROWN_KEY: ${{ secrets.LECROWNPLATFORM_DEPLOY_SSH_KEY }}
+          FORTRESS_KEY: ${{ secrets.FORTRESS_PERSONAL_DEPLOY_SSH_KEY }}
+          SHARED_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          DEPLOY_KEY="${LECROWN_KEY:-${FORTRESS_KEY:-${SHARED_KEY:-}}}"
+          test -n "${DEPLOY_KEY}"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Repair Rental Finder route
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.LECROWNPLATFORM_DEPLOY_HOST != '' && secrets.LECROWNPLATFORM_DEPLOY_HOST || secrets.FORTRESS_PERSONAL_DEPLOY_HOST != '' && secrets.FORTRESS_PERSONAL_DEPLOY_HOST || secrets.SOLOMONIC_CLOCK_DEPLOY_HOST != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_HOST || '89.117.151.145' }}
+          DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER != '' && secrets.LECROWNPLATFORM_DEPLOY_USER || secrets.FORTRESS_PERSONAL_DEPLOY_USER != '' && secrets.FORTRESS_PERSONAL_DEPLOY_USER || secrets.SOLOMONIC_CLOCK_DEPLOY_USER != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_USER || 'root' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          hostname
+          ip -br addr show ipsec0 || true
+          ip route replace 192.168.0.36/32 dev ipsec0 src 10.88.0.1
+          iptables -t nat -C POSTROUTING -d 192.168.0.36/32 -o ipsec0 -j SNAT --to-source 10.88.0.1 2>/dev/null || \
+            iptables -t nat -A POSTROUTING -d 192.168.0.36/32 -o ipsec0 -j SNAT --to-source 10.88.0.1
+          install -m 0755 /dev/stdin /usr/local/sbin/rental-finder-sextant-route <<'ROUTE_SCRIPT'
+          #!/bin/sh
+          set -eu
+          ip route replace 192.168.0.36/32 dev ipsec0 src 10.88.0.1
+          iptables -t nat -C POSTROUTING -d 192.168.0.36/32 -o ipsec0 -j SNAT --to-source 10.88.0.1 2>/dev/null || \
+            iptables -t nat -A POSTROUTING -d 192.168.0.36/32 -o ipsec0 -j SNAT --to-source 10.88.0.1
+          ROUTE_SCRIPT
+          install -m 0644 /dev/stdin /etc/systemd/system/rental-finder-sextant-route.service <<'ROUTE_UNIT'
+          [Unit]
+          Description=Route Rental Finder traffic to Fortress Sextant over IPsec
+          Requires=fortress-unifi-xfrm.service
+          After=fortress-unifi-xfrm.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/rental-finder-sextant-route
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+          ROUTE_UNIT
+          systemctl daemon-reload
+          systemctl enable --now rental-finder-sextant-route.service
+          ip route get 192.168.0.36
+          curl -fsS -o /dev/null -w 'sextant_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.36:8134/rental-finder/
+
+          nginx_config=/etc/nginx/sites-available/rentalfinder.lecrownproperties.com
+          nginx_enabled=/etc/nginx/sites-enabled/rentalfinder.lecrownproperties.com
+          nginx_backup="${nginx_config}.bak.$(date -u +%Y%m%d%H%M%S)"
+          find /etc/nginx/sites-enabled -maxdepth 1 -type f -name 'rentalfinder.lecrownproperties.com.bak.20260905*' -delete
+          cp "${nginx_config}" "${nginx_backup}"
+          restore_nginx() {
+            cp "${nginx_backup}" "${nginx_config}"
+            if ! test "${nginx_config}" -ef "${nginx_enabled}"; then
+              cp "${nginx_config}" "${nginx_enabled}"
+            fi
+            nginx -t
+            systemctl reload nginx
+          }
+          trap restore_nginx ERR
+          install -m 0644 /dev/stdin "${nginx_config}" <<'NGINX_CONFIG'
+          server {
+              listen 80;
+              server_name rentalfinder.lecrownproperties.com;
+
+              location ^~ /.well-known/acme-challenge/ {
+                  root /var/www/letsencrypt;
+                  default_type "text/plain";
+              }
+
+              location / {
+                  return 301 https://$host$request_uri;
+              }
+          }
+
+          server {
+              listen 443 ssl http2;
+              server_name rentalfinder.lecrownproperties.com;
+
+              ssl_certificate /etc/letsencrypt/live/rentalfinder.lecrownproperties.com/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/rentalfinder.lecrownproperties.com/privkey.pem;
+
+              add_header Cache-Control "no-store" always;
+              add_header Referrer-Policy "same-origin" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              add_header X-Frame-Options "DENY" always;
+
+              location = / {
+                  return 302 /rental-finder/;
+              }
+
+              location /rental-finder/ {
+                  proxy_pass http://192.168.0.36:8134;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_connect_timeout 10s;
+                  proxy_read_timeout 300s;
+                  proxy_send_timeout 300s;
+              }
+          }
+          NGINX_CONFIG
+          if ! test "${nginx_config}" -ef "${nginx_enabled}"; then
+            cp "${nginx_config}" "${nginx_enabled}"
+          fi
+          nginx -t
+          systemctl reload nginx
+          for attempt in $(seq 1 15); do
+            if curl -kfsS -o /dev/null --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/; then
+              break
+            fi
+            sleep 1
+          done
+          curl -kfsS -o /dev/null -w 'edge_http=%{http_code}\n' --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/
+          trap - ERR
+          REMOTE
+
   deploy:
+    if: ${{ inputs.source_sha != 'repair-rental-finder-public' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
