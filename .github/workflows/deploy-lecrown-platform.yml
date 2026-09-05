@@ -88,10 +88,14 @@ jobs:
           curl -fsS -o /dev/null -w 'sextant_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.36:8134/rental-finder/
 
           nginx_config=/etc/nginx/sites-available/rentalfinder.lecrownproperties.com
+          nginx_enabled=/etc/nginx/sites-enabled/rentalfinder.lecrownproperties.com
           nginx_backup="${nginx_config}.bak.$(date -u +%Y%m%d%H%M%S)"
+          nginx_enabled_backup="${nginx_enabled}.bak.$(date -u +%Y%m%d%H%M%S)"
           cp "${nginx_config}" "${nginx_backup}"
+          cp "${nginx_enabled}" "${nginx_enabled_backup}"
           restore_nginx() {
             cp "${nginx_backup}" "${nginx_config}"
+            cp "${nginx_enabled_backup}" "${nginx_enabled}"
             nginx -t
             systemctl reload nginx
           }
@@ -140,6 +144,7 @@ jobs:
               }
           }
           NGINX_CONFIG
+          cp "${nginx_config}" "${nginx_enabled}"
           nginx -t
           systemctl reload nginx
           curl -kfsS -o /dev/null -w 'edge_http=%{http_code}\n' -H 'Host: rentalfinder.lecrownproperties.com' https://127.0.0.1/rental-finder/
