@@ -150,7 +150,7 @@ jobs:
           fi
           nginx -t
           systemctl reload nginx
-          curl -kfsS -o /dev/null -w 'edge_http=%{http_code}\n' -H 'Host: rentalfinder.lecrownproperties.com' https://127.0.0.1/rental-finder/
+          curl -kfsS -o /dev/null -w 'edge_http=%{http_code}\n' --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/
           trap - ERR
           REMOTE
 
