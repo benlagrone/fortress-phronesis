@@ -28,7 +28,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  repair-rental-finder-public:
+    if: ${{ inputs.source_sha == 'repair-rental-finder-public' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.LECROWNPLATFORM_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.LECROWNPLATFORM_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Inspect Rental Finder route
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.LECROWNPLATFORM_DEPLOY_HOST != '' && secrets.LECROWNPLATFORM_DEPLOY_HOST || '89.117.151.145' }}
+          DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER != '' && secrets.LECROWNPLATFORM_DEPLOY_USER || 'root' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          hostname
+          ip route get 192.168.0.36 || true
+          curl -sS -o /dev/null -w 'sextant_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.36:8134/rental-finder/ || true
+          curl -sS -o /dev/null -w 'phronesis_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.126:8134/rental-finder/ || true
+          grep -R -n -E 'rentalfinder|8134' /etc/nginx 2>/dev/null || true
+          REMOTE
+
   deploy:
+    if: ${{ inputs.source_sha != 'repair-rental-finder-public' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
