@@ -44,7 +44,15 @@ def create_app(config_path: str | Path) -> Flask:
                     "quality": assess_image(frame.path, config.quality).as_dict(),
                 }
             )
-        return jsonify({"capture_skew_ms": capture_skew_ms(frames), "frames": results})
+        return jsonify(
+            {
+                "capture_skew_ms": capture_skew_ms(frames),
+                "frames": results,
+                "image_quality_ready": all(item["quality"]["passed"] for item in results),
+                "precision_ready": False,
+                "next_gate": "metric camera models, bed poses, and nozzle touch-off",
+            }
+        )
 
     @app.post("/api/v1/measure")
     def measure():

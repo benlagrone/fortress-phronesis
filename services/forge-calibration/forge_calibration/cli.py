@@ -62,7 +62,9 @@ def command_capture(args) -> None:
                 {"camera": frame.camera, "path": str(frame.path), "quality": result}
                 for frame, result in zip(frames, quality)
             ],
-            "precision_ready": all(item["passed"] for item in quality),
+            "image_quality_ready": all(item["passed"] for item in quality),
+            "precision_ready": False,
+            "next_gate": "metric camera models, bed poses, and nozzle touch-off",
         }
     )
 
