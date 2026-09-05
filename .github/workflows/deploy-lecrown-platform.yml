@@ -57,10 +57,15 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
           set -euo pipefail
           hostname
+          ip -br addr show ipsec0 || true
           ip route get 192.168.0.36 || true
+          ip route get 192.168.0.126 || true
           curl -sS -o /dev/null -w 'sextant_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.36:8134/rental-finder/ || true
           curl -sS -o /dev/null -w 'phronesis_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.126:8134/rental-finder/ || true
           grep -R -n -E 'rentalfinder|8134' /etc/nginx 2>/dev/null || true
+          sed -n '1,180p' /etc/nginx/sites-enabled/rentalfinder.lecrownproperties.com
+          systemctl list-unit-files --no-legend | grep -E 'xfrm|ipsec|strongswan' || true
+          systemctl cat contabo-xfrm.service 2>/dev/null || true
           REMOTE
 
   deploy:
