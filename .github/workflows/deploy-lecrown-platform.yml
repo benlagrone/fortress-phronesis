@@ -129,6 +129,7 @@ jobs:
               location = /rental-finder/api/auth/logout { return 204; }
 
               location /rental-finder/api/ {
+                  if ($http_authorization = "") { return 401; }
                   auth_request /_rental_finder_auth;
                   proxy_pass http://192.168.0.36:8134;
                   proxy_http_version 1.1;
