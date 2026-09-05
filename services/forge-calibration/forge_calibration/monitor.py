@@ -224,5 +224,17 @@ class PrintMonitor:
 
     def watch(self) -> None:
         while True:
-            print(json.dumps(self.observe_once()), flush=True)
+            printer = self.client.state()
+            if printer.printing:
+                event = self.observe_once()
+            else:
+                # Poll OctoPrint cheaply while idle; camera capture and inference
+                # start automatically with the next print.
+                event = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "printer": asdict(printer),
+                    "decision": {"severity": "idle", "pause_requested": False},
+                    "model_enabled": self.model is not None,
+                }
+            print(json.dumps(event), flush=True)
             time.sleep(self.config.monitor.interval_seconds)

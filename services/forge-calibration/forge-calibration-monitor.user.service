@@ -1,0 +1,18 @@
+[Unit]
+Description=Fortress Forge multi-camera print monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/forge-calibration --config %h/.config/forge-calibration/config.yaml watch
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/forge-calibration
+
+[Install]
+WantedBy=default.target

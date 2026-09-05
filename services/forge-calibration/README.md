@@ -62,6 +62,12 @@ three consecutive observations, plus a fresh OctoPrint confirmation that the
 printer is still printing. It never cancels or resumes a job. Record a new
 reference only after the mounts are fixed and before printing.
 
+For the user-local installation on Fortress Forge, install
+`forge-calibration-monitor.user.service` as
+`~/.config/systemd/user/forge-calibration-monitor.service`, enable it with
+`systemctl --user enable --now forge-calibration-monitor.service`, and enable
+user lingering so supervision starts at boot without an interactive login.
+
 The service binds to `127.0.0.1:5051` by default. `POST /api/v1/capture`
 returns image-quality evidence. `POST /api/v1/measure` returns a metric nozzle
 position only after all precision gates pass. It intentionally exposes no motor
