@@ -5,7 +5,9 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import sqlite3
+import string
 import threading
 import time
 from dataclasses import dataclass
@@ -27,6 +29,7 @@ ALLOWED_LOOKUP_KEYS = {
 }
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing", "past_due", "unpaid", "paused"}
 DB_LOCK = threading.Lock()
+INTEGRATION_IDENTIFIER_PREFIX = "truevineos"
 
 
 def _required_env(name: str) -> str:
@@ -52,6 +55,11 @@ def _stripe_dict(value: Any) -> dict[str, Any]:
     if hasattr(value, "to_dict"):
         return value.to_dict()
     return dict(value or {})
+
+
+def _checkout_integration_identifier() -> str:
+    suffix = "".join(secrets.choice(string.ascii_lowercase) for _ in range(8))
+    return f"{INTEGRATION_IDENTIFIER_PREFIX}_{suffix}"
 
 
 @dataclass(frozen=True)
@@ -255,7 +263,6 @@ class BillingService:
             "plan": plan,
             "user_id": user_id,
             "price_lookup_key": lookup_key,
-            "integration_identifier": "truevineos",
         }
         session = self.client.v1.checkout.sessions.create(
             {
@@ -265,6 +272,7 @@ class BillingService:
                 "line_items": [{"price": price["id"], "quantity": 1}],
                 "success_url": success_url,
                 "cancel_url": cancel_url,
+                "integration_identifier": _checkout_integration_identifier(),
                 "metadata": metadata,
                 "subscription_data": {"metadata": metadata},
             },
