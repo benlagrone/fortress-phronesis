@@ -58,9 +58,12 @@ jobs:
           set -euo pipefail
           hostname
           ip -br addr show ipsec0 || true
+          ip route replace 192.168.0.36/32 dev ipsec0 src 10.88.0.1
+          iptables -t nat -C POSTROUTING -d 192.168.0.36/32 -o ipsec0 -j SNAT --to-source 10.88.0.1 2>/dev/null || \
+            iptables -t nat -A POSTROUTING -d 192.168.0.36/32 -o ipsec0 -j SNAT --to-source 10.88.0.1
           ip route get 192.168.0.36 || true
           ip route get 192.168.0.126 || true
-          curl -sS -o /dev/null -w 'sextant_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.36:8134/rental-finder/ || true
+          curl -fsS -o /dev/null -w 'sextant_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.36:8134/rental-finder/
           curl -sS -o /dev/null -w 'phronesis_http=%{http_code} time=%{time_total}\n' --connect-timeout 5 --max-time 10 http://192.168.0.126:8134/rental-finder/ || true
           grep -R -n -E 'rentalfinder|8134' /etc/nginx 2>/dev/null || true
           sed -n '1,180p' /etc/nginx/sites-enabled/rentalfinder.lecrownproperties.com
