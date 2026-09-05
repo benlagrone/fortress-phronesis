@@ -28,6 +28,135 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  secure-rental-finder-public:
+    if: ${{ inputs.source_sha == 'secure-rental-finder-public' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout Fortress Repo
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        env:
+          LECROWN_KEY: ${{ secrets.LECROWNPLATFORM_DEPLOY_SSH_KEY }}
+          FORTRESS_KEY: ${{ secrets.FORTRESS_PERSONAL_DEPLOY_SSH_KEY }}
+          SHARED_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          DEPLOY_KEY="${LECROWN_KEY:-${FORTRESS_KEY:-${SHARED_KEY:-}}}"
+          test -n "${DEPLOY_KEY}"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Publish secured Rental Finder edge
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.LECROWNPLATFORM_DEPLOY_HOST != '' && secrets.LECROWNPLATFORM_DEPLOY_HOST || secrets.FORTRESS_PERSONAL_DEPLOY_HOST != '' && secrets.FORTRESS_PERSONAL_DEPLOY_HOST || secrets.SOLOMONIC_CLOCK_DEPLOY_HOST != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_HOST || '89.117.151.145' }}
+          DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER != '' && secrets.LECROWNPLATFORM_DEPLOY_USER || secrets.FORTRESS_PERSONAL_DEPLOY_USER != '' && secrets.FORTRESS_PERSONAL_DEPLOY_USER || secrets.SOLOMONIC_CLOCK_DEPLOY_USER != '' && secrets.SOLOMONIC_CLOCK_DEPLOY_USER || 'root' }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS=(-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          tar -C deploy/rental-finder-public -czf /tmp/rental-finder-public.tgz .
+          scp "${SSH_OPTS[@]}" /tmp/rental-finder-public.tgz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/rental-finder-public.tgz"
+          ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          static_root=/var/www/rental-finder
+          release_root="/var/www/rental-finder-releases/$(date -u +%Y%m%d%H%M%S)"
+          install -d -m 0755 "${release_root}"
+          tar -xzf /tmp/rental-finder-public.tgz -C "${release_root}"
+          rm -f /tmp/rental-finder-public.tgz
+          test -s "${release_root}/index.html"
+          ln -sfn "${release_root}" "${static_root}"
+
+          nginx_config=/etc/nginx/sites-available/rentalfinder.lecrownproperties.com
+          nginx_enabled=/etc/nginx/sites-enabled/rentalfinder.lecrownproperties.com
+          nginx_backup="${nginx_config}.bak.$(date -u +%Y%m%d%H%M%S)"
+          cp "${nginx_config}" "${nginx_backup}"
+          restore_nginx() {
+            cp "${nginx_backup}" "${nginx_config}"
+            if ! test "${nginx_config}" -ef "${nginx_enabled}"; then cp "${nginx_config}" "${nginx_enabled}"; fi
+            nginx -t && systemctl reload nginx
+          }
+          trap restore_nginx ERR
+          install -m 0644 /dev/stdin "${nginx_config}" <<'NGINX_CONFIG'
+          server {
+              listen 80;
+              server_name rentalfinder.lecrownproperties.com;
+              location ^~ /.well-known/acme-challenge/ { root /var/www/letsencrypt; default_type "text/plain"; }
+              location / { return 301 https://$host$request_uri; }
+          }
+
+          server {
+              listen 443 ssl http2;
+              server_name rentalfinder.lecrownproperties.com;
+              ssl_certificate /etc/letsencrypt/live/rentalfinder.lecrownproperties.com/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/rentalfinder.lecrownproperties.com/privkey.pem;
+
+              add_header Cache-Control "no-store" always;
+              add_header Referrer-Policy "same-origin" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              add_header X-Frame-Options "DENY" always;
+
+              location = / { return 302 /rental-finder/; }
+
+              location = /_rental_finder_auth {
+                  internal;
+                  proxy_pass http://127.0.0.1:18035/api/auth/me;
+                  proxy_pass_request_body off;
+                  proxy_set_header Content-Length "";
+                  proxy_set_header Authorization $http_authorization;
+                  proxy_set_header Host backoffice.lecrownproperties.com;
+              }
+
+              location = /rental-finder/api/auth/config {
+                  proxy_pass http://127.0.0.1:18035/api/auth/config;
+                  proxy_set_header Host backoffice.lecrownproperties.com;
+              }
+
+              location = /rental-finder/api/auth/google {
+                  proxy_pass http://127.0.0.1:18035/api/auth/google;
+                  proxy_set_header Host backoffice.lecrownproperties.com;
+              }
+
+              location = /rental-finder/api/auth/me {
+                  proxy_pass http://127.0.0.1:18035/api/auth/me;
+                  proxy_set_header Authorization $http_authorization;
+                  proxy_set_header Host backoffice.lecrownproperties.com;
+              }
+
+              location = /rental-finder/api/auth/logout { return 204; }
+
+              location /rental-finder/api/ {
+                  auth_request /_rental_finder_auth;
+                  proxy_pass http://192.168.0.36:8134;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto https;
+                  proxy_connect_timeout 10s;
+                  proxy_read_timeout 300s;
+                  proxy_send_timeout 300s;
+              }
+
+              location /rental-finder/ {
+                  root /var/www;
+                  try_files $uri $uri/ /rental-finder/index.html;
+              }
+          }
+          NGINX_CONFIG
+          if ! test "${nginx_config}" -ef "${nginx_enabled}"; then cp "${nginx_config}" "${nginx_enabled}"; fi
+          nginx -t
+          systemctl reload nginx
+          curl -fsS http://127.0.0.1:18035/api/auth/config | grep -q 'lecrownproperties.com'
+          curl -kfsS --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/ >/dev/null
+          test "$(curl -ksS -o /dev/null -w '%{http_code}' -X POST --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/api/listings/search)" = "401"
+          trap - ERR
+          find /var/www/rental-finder-releases -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | tail -n +4 | cut -d' ' -f2- | xargs -r rm -rf
+          REMOTE
+
   repair-rental-finder-public:
     if: ${{ inputs.source_sha == 'repair-rental-finder-public' }}
     runs-on: ubuntu-latest
@@ -161,7 +290,7 @@ jobs:
           REMOTE
 
   deploy:
-    if: ${{ inputs.source_sha != 'repair-rental-finder-public' }}
+    if: ${{ inputs.source_sha != 'repair-rental-finder-public' && inputs.source_sha != 'secure-rental-finder-public' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
