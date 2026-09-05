@@ -33,8 +33,8 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       COMPOSE_PROJECT: lecrown-platform
-      API_IMAGE_REF: ghcr.io/benlagrone/lecrown-platform-api:sha-${{ inputs.source_sha }}
-      ADMIN_IMAGE_REF: ghcr.io/benlagrone/lecrown-platform-admin:sha-${{ inputs.source_sha }}
+      API_IMAGE_REF: ghcr.io/benlagrone/lecrown-properties-platform-api:sha-${{ inputs.source_sha }}
+      ADMIN_IMAGE_REF: ghcr.io/benlagrone/lecrown-properties-platform-admin:sha-${{ inputs.source_sha }}
     steps:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4

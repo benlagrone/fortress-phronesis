@@ -1,6 +1,6 @@
 services:
   lecrown-platform-api:
-    image: ${LECROWNPLATFORM_API_IMAGE:-ghcr.io/benlagrone/lecrown-platform-api:latest}
+    image: ${LECROWNPLATFORM_API_IMAGE:-ghcr.io/benlagrone/lecrown-properties-platform-api:latest}
     container_name: lecrown-platform-api
     restart: unless-stopped
     environment:
@@ -54,7 +54,7 @@ services:
       - "127.0.0.1:18035:8000"
 
   lecrown-platform-admin:
-    image: ${LECROWNPLATFORM_ADMIN_IMAGE:-ghcr.io/benlagrone/lecrown-platform-admin:latest}
+    image: ${LECROWNPLATFORM_ADMIN_IMAGE:-ghcr.io/benlagrone/lecrown-properties-platform-admin:latest}
     container_name: lecrown-platform-admin
     restart: unless-stopped
     depends_on:
