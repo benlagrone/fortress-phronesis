@@ -18,6 +18,8 @@ from .geometry import (
 )
 from .quality import assess_image
 from .measurement import measure_marker
+from .monitor import PrintMonitor
+from .octoprint import OctoPrintClient
 from .state import TouchOff, load_touch_off, save_touch_off
 from .targets import write_aruco_marker, write_aruco_svg, write_checkerboard
 
@@ -149,6 +151,27 @@ def command_measure(args) -> None:
     )
 
 
+def _monitor(config):
+    client = OctoPrintClient.from_config_file(
+        config.octoprint_url, config.octoprint_api_key_file
+    )
+    return PrintMonitor(config, client)
+
+
+def command_monitor_reference(args) -> None:
+    config = load_config(args.config)
+    _json({"references": _monitor(config).record_reference()})
+
+
+def command_watch(args) -> None:
+    config = load_config(args.config)
+    monitor = _monitor(config)
+    if args.once:
+        _json(monitor.observe_once())
+    else:
+        monitor.watch()
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="forge-calibration")
     root.add_argument("--config", default="/etc/forge-calibration/config.yaml")
@@ -189,6 +212,13 @@ def parser() -> argparse.ArgumentParser:
     measure = commands.add_parser("measure")
     measure.add_argument("--images", required=True)
     measure.set_defaults(handler=command_measure)
+
+    reference = commands.add_parser("monitor-reference")
+    reference.set_defaults(handler=command_monitor_reference)
+
+    watch = commands.add_parser("watch")
+    watch.add_argument("--once", action="store_true")
+    watch.set_defaults(handler=command_watch)
     return root
 
 

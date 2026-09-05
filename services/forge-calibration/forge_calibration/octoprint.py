@@ -37,6 +37,12 @@ class OctoPrintClient:
         response.raise_for_status()
         return response.json()
 
+    def _post(self, route: str, payload: dict[str, Any]) -> None:
+        response = self.session.post(
+            self.base_url + route, json=payload, timeout=self.timeout
+        )
+        response.raise_for_status()
+
     def state(self) -> PrinterState:
         payload = self._get("/api/printer")
         flags = payload["state"]["flags"]
@@ -52,12 +58,13 @@ class OctoPrintClient:
         )
 
     def commands(self, commands: list[str]) -> None:
-        response = self.session.post(
-            self.base_url + "/api/printer/command",
-            json={"commands": commands},
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
+        self._post("/api/printer/command", {"commands": commands})
+
+    def job(self) -> dict[str, Any]:
+        return self._get("/api/job")
+
+    def pause(self) -> None:
+        self._post("/api/job", {"command": "pause", "action": "pause"})
 
 
 def validate_guarded_z_step(

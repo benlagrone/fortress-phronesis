@@ -36,6 +36,19 @@ class QualityConfig:
 
 
 @dataclass(frozen=True)
+class MonitorConfig:
+    interval_seconds: float = 8.0
+    model_path: Path | None = None
+    warning_score: float = 0.35
+    pause_score: float = 0.70
+    confirmations_required: int = 3
+    cameras_required: int = 2
+    maximum_camera_shift_px: float = 2.0
+    maximum_camera_rotation_deg: float = 0.10
+    auto_pause: bool = True
+
+
+@dataclass(frozen=True)
 class AppConfig:
     cameras: tuple[CameraConfig, ...]
     state_dir: Path
@@ -43,6 +56,7 @@ class AppConfig:
     octoprint_api_key_file: Path = Path("/home/benlagrone/.octoprint/config.yaml")
     safety: SafetyConfig = field(default_factory=SafetyConfig)
     quality: QualityConfig = field(default_factory=QualityConfig)
+    monitor: MonitorConfig = field(default_factory=MonitorConfig)
 
 
 def _values(cls: type, data: dict[str, Any] | None) -> Any:
@@ -55,13 +69,20 @@ def load_config(path: str | Path) -> AppConfig:
     cameras = tuple(CameraConfig(**item) for item in raw["cameras"])
     if len(cameras) < 2:
         raise ValueError("at least two cameras are required for 3D measurement")
+    state_dir = Path(raw.get("state_dir", "/var/lib/forge-calibration"))
+    monitor_raw = dict(raw.get("monitor") or {})
+    if monitor_raw.get("model_path"):
+        monitor_raw["model_path"] = Path(monitor_raw["model_path"])
+    elif (state_dir / "models" / "print-failure.onnx").exists():
+        monitor_raw["model_path"] = state_dir / "models" / "print-failure.onnx"
     return AppConfig(
         cameras=cameras,
-        state_dir=Path(raw.get("state_dir", "/var/lib/forge-calibration")),
+        state_dir=state_dir,
         octoprint_url=raw.get("octoprint_url", "http://127.0.0.1:5000"),
         octoprint_api_key_file=Path(
             raw.get("octoprint_api_key_file", "/home/benlagrone/.octoprint/config.yaml")
         ),
         safety=_values(SafetyConfig, raw.get("safety")),
         quality=_values(QualityConfig, raw.get("quality")),
+        monitor=_values(MonitorConfig, monitor_raw),
     )

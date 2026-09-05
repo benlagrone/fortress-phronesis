@@ -1,0 +1,21 @@
+[Unit]
+Description=Fortress Forge multi-camera print monitor
+After=network-online.target octoprint.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=benlagrone
+Group=benlagrone
+SupplementaryGroups=video
+ExecStart=/opt/forge-calibration/venv/bin/forge-calibration --config /etc/forge-calibration/config.yaml watch
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/forge-calibration
+
+[Install]
+WantedBy=multi-user.target

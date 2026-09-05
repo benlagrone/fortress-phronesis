@@ -13,6 +13,8 @@ from forge_calibration.octoprint import (
     validate_guarded_z_step,
 )
 from forge_calibration.state import TouchOff
+from forge_calibration.monitor import CameraObservation, Consensus
+from forge_calibration.config import MonitorConfig
 
 
 def idle_state(**overrides):
@@ -98,3 +100,35 @@ def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     write_aruco_marker(marker)
     center = detect_marker_center(cv2.imread(str(marker)))
     assert center == pytest.approx((499.5, 499.5), abs=1.0)
+
+
+def observation(camera, score, stable=True, quality=True):
+    return CameraObservation(camera, f"/{camera}.jpg", quality, score, 0.0, 0.0, stable)
+
+
+def test_monitor_requires_repeated_multi_camera_agreement_before_pause():
+    consensus = Consensus(MonitorConfig(confirmations_required=3, cameras_required=2))
+    frames = (observation("left", 0.9), observation("right", 0.8), observation("side", 0.1))
+    assert not consensus.decide(True, frames).pause_requested
+    assert not consensus.decide(True, frames).pause_requested
+    decision = consensus.decide(True, frames)
+    assert decision.pause_requested
+    assert decision.agreeing_cameras == ("left", "right")
+
+
+def test_monitor_never_pauses_idle_printer_or_on_one_camera():
+    consensus = Consensus(MonitorConfig(confirmations_required=2, cameras_required=2))
+    one_view = (observation("left", 0.9), observation("right", 0.1))
+    consensus.decide(True, one_view)
+    assert not consensus.decide(True, one_view).pause_requested
+    both = (observation("left", 0.9), observation("right", 0.9))
+    consensus.decide(False, both)
+    assert not consensus.decide(False, both).pause_requested
+
+
+def test_shifted_camera_is_excluded_from_failure_consensus():
+    consensus = Consensus(MonitorConfig(confirmations_required=1, cameras_required=2))
+    frames = (observation("left", 0.9, stable=False), observation("right", 0.9))
+    decision = consensus.decide(True, frames)
+    assert not decision.pause_requested
+    assert "camera mount moved: left" in decision.reasons

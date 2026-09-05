@@ -32,3 +32,15 @@ quality:
   maximum_intrinsic_rms_px: 0.45
   maximum_stereo_rms_px: 0.55
   maximum_reprojection_error_px: 0.75
+monitor:
+  interval_seconds: 8
+  # Local ONNX failure detector. When unset, camera stability and quality are
+  # still watched, but image-content failures cannot trigger an automatic pause.
+  model_path: /var/lib/forge-calibration/models/print-failure.onnx
+  warning_score: 0.35
+  pause_score: 0.70
+  confirmations_required: 3
+  cameras_required: 2
+  maximum_camera_shift_px: 2.0
+  maximum_camera_rotation_deg: 0.10
+  auto_pause: true

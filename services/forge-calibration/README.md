@@ -49,7 +49,18 @@ forge-calibration calibrate-intrinsics --camera right --images ./right-views
 forge-calibration calibrate-bed-pose --images ./bed-pose
 forge-calibration register-touch-off --images ./touch-off --nozzle-x 150 --nozzle-y 150 --gauge-mm 0.10
 forge-calibration measure --images ./current
+forge-calibration monitor-reference
+forge-calibration watch --once
+forge-calibration watch
 ```
+
+`watch` is a local, multi-camera print supervisor. It checks capture quality and
+fixed-camera drift on every cycle, runs the configured ONNX print-failure model,
+and stores the complete decision record in `monitor/events.jsonl`. An automatic
+pause requires the configured confidence from at least two stable cameras for
+three consecutive observations, plus a fresh OctoPrint confirmation that the
+printer is still printing. It never cancels or resumes a job. Record a new
+reference only after the mounts are fixed and before printing.
 
 The service binds to `127.0.0.1:5051` by default. `POST /api/v1/capture`
 returns image-quality evidence. `POST /api/v1/measure` returns a metric nozzle
