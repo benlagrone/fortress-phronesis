@@ -103,7 +103,7 @@ jobs:
 
               location = /_rental_finder_auth {
                   internal;
-                  proxy_pass http://127.0.0.1:18035/api/auth/me;
+                  proxy_pass http://127.0.0.1:18035/auth/me;
                   proxy_pass_request_body off;
                   proxy_set_header Content-Length "";
                   proxy_set_header Authorization $http_authorization;
@@ -111,17 +111,17 @@ jobs:
               }
 
               location = /rental-finder/api/auth/config {
-                  proxy_pass http://127.0.0.1:18035/api/auth/config;
+                  proxy_pass http://127.0.0.1:18035/auth/config;
                   proxy_set_header Host backoffice.lecrownproperties.com;
               }
 
               location = /rental-finder/api/auth/google {
-                  proxy_pass http://127.0.0.1:18035/api/auth/google;
+                  proxy_pass http://127.0.0.1:18035/auth/google;
                   proxy_set_header Host backoffice.lecrownproperties.com;
               }
 
               location = /rental-finder/api/auth/me {
-                  proxy_pass http://127.0.0.1:18035/api/auth/me;
+                  proxy_pass http://127.0.0.1:18035/auth/me;
                   proxy_set_header Authorization $http_authorization;
                   proxy_set_header Host backoffice.lecrownproperties.com;
               }
@@ -150,7 +150,7 @@ jobs:
           if ! test "${nginx_config}" -ef "${nginx_enabled}"; then cp "${nginx_config}" "${nginx_enabled}"; fi
           nginx -t
           systemctl reload nginx
-          curl -fsS http://127.0.0.1:18035/api/auth/config | grep -q 'lecrownproperties.com'
+          curl -fsS http://127.0.0.1:18035/auth/config | grep -q 'lecrownproperties.com'
           curl -kfsS --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/ >/dev/null
           test "$(curl -ksS -o /dev/null -w '%{http_code}' -X POST --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/api/listings/search)" = "401"
           trap - ERR
