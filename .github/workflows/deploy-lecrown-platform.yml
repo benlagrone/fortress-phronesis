@@ -153,7 +153,12 @@ jobs:
           systemctl reload nginx
           auth_config_status="$(curl -sS -o /tmp/rental-auth-config.json -w '%{http_code}' http://127.0.0.1:18035/auth/config)"
           app_status="$(curl -ksS -o /dev/null -w '%{http_code}' --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/)"
-          anonymous_status="$(curl -ksS -o /dev/null -w '%{http_code}' -X POST --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/api/listings/search)"
+          anonymous_status="000"
+          for attempt in $(seq 1 15); do
+            anonymous_status="$(curl -ksS -o /dev/null -w '%{http_code}' -X POST --resolve rentalfinder.lecrownproperties.com:443:127.0.0.1 https://rentalfinder.lecrownproperties.com/rental-finder/api/listings/search)"
+            if test "${anonymous_status}" = "401"; then break; fi
+            sleep 1
+          done
           echo "auth_config_http=${auth_config_status} app_http=${app_status} anonymous_api_http=${anonymous_status}"
           test "${auth_config_status}" = "200"
           grep -q 'lecrownproperties.com' /tmp/rental-auth-config.json
