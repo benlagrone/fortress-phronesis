@@ -169,8 +169,9 @@ commercial lane:
   realm roles (`reader`, `scholar`, `family_group`, `institution`) through the
   Keycloak Admin API. Fortress provisions the confidential
   `pericope-billing-role-sync` client through the `Provision Pericope Billing
-  Role Sync` GitHub `prod` workflow and stores its secret only in that
-  environment. Its service account has Keycloak's required `view-users`,
+  Role Sync` GitHub `prod` workflow. The deployment workflow resolves its
+  secret directly from Keycloak on the production host and writes it only to
+  the AugustineService runtime environment. Its service account has Keycloak's required `view-users`,
   `manage-users`, and `view-realm` roles in `realm-management`; the service
   code limits its writes to the four managed paid roles. It is disabled by
   default and fails closed with `503` so Stripe retries rather than recording a

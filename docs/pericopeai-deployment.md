@@ -88,10 +88,11 @@ This is the minimal, repeatable way to deploy the coupled PericopeAI + Solomonic
     `PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true`. Enabling it requires the
     Keycloak service-account values
     `PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID` and
-    `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET`, delivered only through the
-    Fortress `prod` GitHub environment by the `Provision Pericope Billing Role
-    Sync` workflow. The service code may change only the four public paid realm
-    roles. Keycloak grants that client `view-users`, `manage-users`, and
+    `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET`, resolved from Keycloak only on the
+    production host by the Fortress deployment workflow after the `Provision
+    Pericope Billing Role Sync` action has created the service client. The
+    service code may change only the four public paid realm roles. Keycloak
+    grants that client `view-users`, `manage-users`, and
     `view-realm` because its Admin API has no narrower per-role mapping scope.
 - Key corpus performance envs:
   - `MODEL_PROVIDER=ollama`

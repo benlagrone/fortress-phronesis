@@ -248,6 +248,35 @@ jobs:
           restore_env_file "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
           restore_env_file "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
 
+          configure_keycloak_billing_role_sync() {
+            local kc_container kc_env_json kc_admin_user kc_admin_password client_uuid client_secret
+            kc_container="${KC_CONTAINER:-auth-keycloak-1}"
+            if ! docker ps --format '{{.Names}}' | grep -qx "${kc_container}"; then
+              kc_container="$(docker ps --format '{{.Names}}' | awk '/keycloak/ {print; exit}')"
+            fi
+            [ -n "${kc_container:-}" ] || { echo "No Keycloak container found; leaving billing role synchronization disabled."; return 0; }
+
+            kc_env_json="$(docker inspect "${kc_container}" --format '{{json .Config.Env}}')"
+            kc_admin_user="$(printf '%s' "${kc_env_json}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or env.get("KEYCLOAK_ADMIN") or "")')"
+            kc_admin_password="$(printf '%s' "${kc_env_json}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_PASSWORD") or env.get("KEYCLOAK_ADMIN_PASSWORD") or "")')"
+            [ -n "${kc_admin_user}" ] && [ -n "${kc_admin_password}" ] || { echo "Keycloak bootstrap credentials are unavailable." >&2; exit 1; }
+
+            docker exec "${kc_container}" /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://127.0.0.1:8080 --realm master --user "${kc_admin_user}" --password "${kc_admin_password}" >/dev/null
+            client_uuid="$(docker exec "${kc_container}" /opt/keycloak/bin/kcadm.sh get clients -r pericope --fields id,clientId | python3 -c 'import json,sys; clients=json.load(sys.stdin); print(next((item.get("id", "") for item in clients if item.get("clientId") == "pericope-billing-role-sync"), ""))')"
+            if [ -z "${client_uuid}" ]; then
+              echo "Keycloak billing role-sync client is not provisioned; leaving synchronization disabled."
+              return 0
+            fi
+            client_secret="$(docker exec "${kc_container}" /opt/keycloak/bin/kcadm.sh get "clients/${client_uuid}/client-secret" -r pericope | python3 -c 'import json,sys; print(json.load(sys.stdin).get("value", ""))')"
+            [ -n "${client_secret}" ] || { echo "Keycloak billing role-sync client has no secret." >&2; exit 1; }
+            export PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true
+            export PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID=pericope-billing-role-sync
+            export PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET="${client_secret}"
+            echo "Resolved Keycloak billing role-sync credentials on the production host."
+          }
+          configure_keycloak_billing_role_sync
+
           SERVICE_ROOT="${SERVICE_ROOT}" python3 - <<'PY'
           import os
           from pathlib import Path
