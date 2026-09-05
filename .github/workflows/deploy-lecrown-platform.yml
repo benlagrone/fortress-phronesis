@@ -50,7 +50,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.LECROWNPLATFORM_DEPLOY_USER != '' && secrets.LECROWNPLATFORM_DEPLOY_USER || 'root' }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
           set -euo pipefail
           hostname
           ip route get 192.168.0.36 || true
