@@ -22,7 +22,11 @@ from .geometry import (
     solve_bed_pose,
 )
 from .quality import assess_image
-from .measurement import measure_marker, measure_projective_nozzle
+from .measurement import (
+    measure_bed_slinger_nozzle,
+    measure_marker,
+    measure_projective_nozzle,
+)
 from .monitor import PrintMonitor
 from .octoprint import OctoPrintClient
 from .projective import calibrate_observations, collect_observations
@@ -184,13 +188,40 @@ def command_touch_off(args) -> None:
 
 def command_measure(args) -> None:
     config = load_config(args.config)
+    images = _images(config, Path(args.images))
+    bed_slinger_models = [
+        config.state_dir / "models" / f"{camera.name}-bed-slinger.npz"
+        for camera in config.cameras
+    ]
+    verifier_models = [
+        config.state_dir / "models" / f"{camera.name}-toolhead-plane.npz"
+        for camera in config.cameras
+    ]
+    if any(path.exists() for path in bed_slinger_models) and any(
+        path.exists() for path in verifier_models
+    ):
+        nozzle, agreement, primary, verifiers = measure_bed_slinger_nozzle(
+            config, images
+        )
+        _json(
+            {
+                "precision_ready": True,
+                "method": "paired-marker bed-slinger calibration",
+                "nozzle_xyz_mm": nozzle,
+                "nozzle_gap_mm": nozzle[2],
+                "primary_cameras": primary,
+                "verifier_cameras": verifiers,
+                "cross_camera_agreement_mm": agreement,
+            }
+        )
+        return
     projective_models = [
         config.state_dir / "models" / f"{camera.name}-projective.npz"
         for camera in config.cameras
     ]
     if sum(path.exists() for path in projective_models) >= 2:
         nozzle, error, visible = measure_projective_nozzle(
-            config, _images(config, Path(args.images))
+            config, images
         )
         _json(
             {
