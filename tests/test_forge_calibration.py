@@ -156,6 +156,24 @@ def test_toolhead_plane_model_recovers_xz():
     assert predicted == pytest.approx(expected, abs=0.05)
 
 
+def test_bed_slinger_fusion_requires_independent_camera_agreement():
+    np = pytest.importorskip("numpy")
+    from forge_calibration.bed_slinger import fuse_bed_slinger_predictions
+
+    measured, agreement = fuse_bed_slinger_predictions(
+        [np.asarray((150.10, 151.0, 10.10))],
+        [np.asarray((150.20, 10.20))],
+    )
+    assert measured == pytest.approx((150.10, 151.0, 10.10))
+    assert agreement == pytest.approx(0.1414, abs=0.001)
+
+    with pytest.raises(ValueError, match="independent cameras disagree"):
+        fuse_bed_slinger_predictions(
+            [np.asarray((150.0, 151.0, 10.0))],
+            [np.asarray((151.0, 11.0))],
+        )
+
+
 def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     pytest.importorskip("numpy")
     cv2 = pytest.importorskip("cv2")

@@ -6,6 +6,29 @@ from pathlib import Path
 import numpy as np
 
 
+MAXIMUM_BED_SLINGER_AGREEMENT_MM = 0.50
+
+
+def fuse_bed_slinger_predictions(
+    primary_predictions: list[np.ndarray],
+    verifier_predictions: list[np.ndarray],
+    maximum_agreement_mm: float = MAXIMUM_BED_SLINGER_AGREEMENT_MM,
+) -> tuple[np.ndarray, float]:
+    if not primary_predictions:
+        raise ValueError("precision refused: no paired-marker bed-slinger view")
+    if not verifier_predictions:
+        raise ValueError("precision refused: no independent toolhead verification view")
+    nozzle = np.mean(np.asarray(primary_predictions), axis=0)
+    verifier_xz = np.mean(np.asarray(verifier_predictions), axis=0)
+    agreement = float(np.linalg.norm(nozzle[[0, 2]] - verifier_xz))
+    if agreement > maximum_agreement_mm:
+        raise ValueError(
+            f"precision refused: independent cameras disagree by {agreement:.3f}mm; "
+            f"limit is {maximum_agreement_mm:.3f}mm"
+        )
+    return nozzle, agreement
+
+
 @dataclass
 class BedSlingerCamera:
     feature_mean: np.ndarray

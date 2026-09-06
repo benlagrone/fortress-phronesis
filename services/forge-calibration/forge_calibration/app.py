@@ -6,7 +6,11 @@ from flask import Flask, jsonify
 
 from .capture import capture_set, capture_skew_ms
 from .config import load_config
-from .measurement import measure_marker, measure_projective_nozzle
+from .measurement import (
+    measure_bed_slinger_nozzle,
+    measure_marker,
+    measure_projective_nozzle,
+)
 from .quality import assess_image
 from .state import load_touch_off
 
@@ -22,12 +26,25 @@ def create_app(config_path: str | Path) -> Flask:
     @app.get("/healthz")
     def health():
         models = config.state_dir / "models"
+        bed_slinger_cameras = [
+            camera.name
+            for camera in config.cameras
+            if (models / f"{camera.name}-bed-slinger.npz").exists()
+        ]
+        verifier_cameras = [
+            camera.name
+            for camera in config.cameras
+            if (models / f"{camera.name}-toolhead-plane.npz").exists()
+        ]
         return jsonify(
             {
                 "status": "ok",
                 "camera_count": len(config.cameras),
                 "camera_names": [camera.name for camera in config.cameras],
                 "touch_off_registered": (models / "touch-off.json").exists(),
+                "bed_slinger_ready": bool(bed_slinger_cameras and verifier_cameras),
+                "bed_slinger_cameras": bed_slinger_cameras,
+                "bed_slinger_verifier_cameras": verifier_cameras,
                 "mode": "measurement-only",
             }
         )
@@ -58,6 +75,32 @@ def create_app(config_path: str | Path) -> Flask:
     def measure():
         frames = capture_set(config.cameras, config.state_dir / "captures")
         images = {frame.camera: frame.path for frame in frames}
+        bed_slinger_models = [
+            config.state_dir / "models" / f"{camera.name}-bed-slinger.npz"
+            for camera in config.cameras
+        ]
+        verifier_models = [
+            config.state_dir / "models" / f"{camera.name}-toolhead-plane.npz"
+            for camera in config.cameras
+        ]
+        if any(path.exists() for path in bed_slinger_models) and any(
+            path.exists() for path in verifier_models
+        ):
+            nozzle, agreement, primary, verifiers = measure_bed_slinger_nozzle(
+                config, images
+            )
+            return jsonify(
+                {
+                    "precision_ready": True,
+                    "method": "paired-marker bed-slinger calibration",
+                    "nozzle_xyz_mm": nozzle,
+                    "nozzle_gap_mm": nozzle[2],
+                    "primary_cameras": primary,
+                    "verifier_cameras": verifiers,
+                    "cross_camera_agreement_mm": agreement,
+                    "capture_skew_ms": capture_skew_ms(frames),
+                }
+            )
         projective_models = [
             config.state_dir / "models" / f"{camera.name}-projective.npz"
             for camera in config.cameras
