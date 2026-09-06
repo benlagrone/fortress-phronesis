@@ -64,6 +64,7 @@ jobs:
           PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_SSH_KEY }}
           PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLARPOTENTIAL_BACKEND_DEPLOY_KNOWN_HOSTS }}
           PRIMARY_GHCR_READ_TOKEN: ${{ secrets.SOLARPOTENTIAL_BACKEND_GHCR_READ_TOKEN }}
+          HOME_ASSISTANT_API_KEY: ${{ secrets.SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY }}
           FALLBACK_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
           FALLBACK_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
           FALLBACK_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
@@ -88,7 +89,7 @@ jobs:
           DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${FALLBACK_DEPLOY_KNOWN_HOSTS:-}")"
           GHCR_READ_TOKEN="$(pick "${PRIMARY_GHCR_READ_TOKEN:-}" "${FALLBACK_GHCR_READ_TOKEN:-}")"
 
-          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN HOME_ASSISTANT_API_KEY)
           missing=()
           for name in "${required[@]}"; do
             if [ -z "${!name:-}" ]; then
@@ -156,6 +157,9 @@ jobs:
             echo "GHCR_READ_TOKEN<<EOF"
             echo "${GHCR_READ_TOKEN}"
             echo "EOF"
+            echo "HOME_ASSISTANT_API_KEY<<EOF"
+            echo "${HOME_ASSISTANT_API_KEY}"
+            echo "EOF"
           } >> "$GITHUB_ENV"
 
           echo "credential_source=${CREDENTIAL_SOURCE}" >> "$GITHUB_OUTPUT"
@@ -179,7 +183,7 @@ jobs:
           scp -i ~/.ssh/id_ed25519 scripts/sync-prod-repo.sh "${DEPLOY_USER}@${DEPLOY_HOST}:${REMOTE_SYNC_SCRIPT}"
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOLARPOTENTIAL_BACKEND_IMAGE='${IMAGE_REF}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' SYNC_PROD_ALLOWED_DIRTY_PATHS='runtime/solar-potential-backend' bash -s" <<'REMOTE'
+            "SOLARPOTENTIAL_BACKEND_IMAGE='${IMAGE_REF}' SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY='${HOME_ASSISTANT_API_KEY}' DEPLOY_ROOT='${DEPLOY_ROOT}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' SYNC_SCRIPT='${REMOTE_SYNC_SCRIPT}' SYNC_PROD_ALLOWED_DIRTY_PATHS='runtime/solar-potential-backend' bash -s" <<'REMOTE'
           set -euo pipefail
 
           chmod 700 "${SYNC_SCRIPT}"
@@ -214,6 +218,13 @@ jobs:
             curl -fsS "$url" >/dev/null
           done
 
+          HOME_ASSISTANT_SNAPSHOT_URL="http://127.0.0.1:18031/api/home-assistant/snapshot?latitude=30.2672&longitude=-97.7431"
+          unauthorized_status="$(curl -sS -o /dev/null -w '%{http_code}' "${HOME_ASSISTANT_SNAPSHOT_URL}")"
+          test "${unauthorized_status}" = "401"
+          curl -fsS \
+            -H "X-API-Key: ${SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY}" \
+            "${HOME_ASSISTANT_SNAPSHOT_URL}" >/dev/null
+
           bash "${SYNC_SCRIPT}" --check-clean "${DEPLOY_ROOT}" "fortress-phronesis"
           REMOTE
 
@@ -229,4 +240,5 @@ jobs:
             echo "- Credential source: \`${{ steps.resolve_deploy.outputs.credential_source }}\`"
             echo "- Image: \`${IMAGE_REF}\`"
             echo "- Local health targets: \`http://127.0.0.1:18031/health\`, \`/openapi.json\`"
+            echo "- Home Assistant snapshot: API-key rejection and authenticated response verified on loopback"
           } >> "$GITHUB_STEP_SUMMARY"
