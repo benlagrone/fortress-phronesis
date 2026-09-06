@@ -137,6 +137,25 @@ def test_bed_slinger_model_uses_both_marker_tracks():
     assert predicted == pytest.approx(test, abs=0.05)
 
 
+def test_toolhead_plane_model_recovers_xz():
+    np = pytest.importorskip("numpy")
+    from forge_calibration.bed_slinger import calibrate_toolhead_plane_camera
+
+    points = np.asarray(
+        [(x, z) for z in (5.0, 15.0, 30.0) for x in (110.0, 140.0, 170.0, 200.0)]
+    )
+    pixels = np.asarray(
+        [(2.0 * x + 0.3 * z + 0.0005 * x**2, -0.2 * x + 3.0 * z) for x, z in points]
+    )
+    model = calibrate_toolhead_plane_camera(pixels, points)
+    expected = np.asarray((155.0, 12.0))
+    x, z = expected
+    predicted = model.predict_xz(
+        (2.0 * x + 0.3 * z + 0.0005 * x**2, -0.2 * x + 3.0 * z)
+    )
+    assert predicted == pytest.approx(expected, abs=0.05)
+
+
 def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     pytest.importorskip("numpy")
     cv2 = pytest.importorskip("cv2")
