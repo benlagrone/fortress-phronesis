@@ -45,6 +45,8 @@ venv/bin/pip install .
 forge-calibration generate-targets --output ./targets
 forge-calibration capture
 forge-calibration inspect-board --images ./current
+forge-calibration collect-projective-observations --output ./grid.json --execute-motion
+forge-calibration calibrate-projective --observations ./grid.json
 forge-calibration calibrate-intrinsics --camera left --images ./left-views
 forge-calibration calibrate-intrinsics --camera right --images ./right-views
 forge-calibration calibrate-bed-pose --images ./bed-pose
@@ -59,6 +61,15 @@ forge-calibration watch
 camera. It never assigns an absolute board origin to a partial, repeating
 pattern; uniquely coded toolhead observations at known printer positions are
 required to resolve that ambiguity.
+
+The projective workflow uses cold, homed XYZ motion as its metric reference. It
+is valid only when all three requested axes physically move the marker. On a
+bed-slinger such as the CR-10S Pro V2, Y moves the bed rather than the toolhead,
+so a marker-only XYZ fit must fail its pixel and held-out millimeter gates. A
+bed-fixed target observation must supply Y. Motion collection is opt-in and
+refuses a printing, heated, or non-operational printer. Models are written only
+after fit error is at most 0.75 px, held-out RMS is at most 0.25 mm, and the
+maximum held-out error is at most 0.50 mm.
 
 `watch` is a local, multi-camera print supervisor. It checks capture quality and
 fixed-camera drift on every cycle, runs the configured ONNX print-failure model,

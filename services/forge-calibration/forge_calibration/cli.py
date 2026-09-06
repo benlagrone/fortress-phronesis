@@ -18,9 +18,10 @@ from .geometry import (
     solve_bed_pose,
 )
 from .quality import assess_image
-from .measurement import measure_marker
+from .measurement import measure_marker, measure_projective_nozzle
 from .monitor import PrintMonitor
 from .octoprint import OctoPrintClient
+from .projective import calibrate_observations, collect_observations
 from .state import TouchOff, load_touch_off, save_touch_off
 from .targets import write_aruco_marker, write_aruco_svg, write_checkerboard, write_letter_aruco_svg
 
@@ -141,13 +142,16 @@ def command_bed_pose(args) -> None:
     _json({"poses": results})
 
 
-def _measure(config, image_dir: Path):
-    images = {
+def _images(config, image_dir: Path):
+    return {
         camera.name: image_dir / f"{camera.name}.jpg"
         for camera in config.cameras
         if (image_dir / f"{camera.name}.jpg").exists()
     }
-    return measure_marker(config, images)
+
+
+def _measure(config, image_dir: Path):
+    return measure_marker(config, _images(config, image_dir))
 
 
 def command_touch_off(args) -> None:
@@ -170,6 +174,25 @@ def command_touch_off(args) -> None:
 
 def command_measure(args) -> None:
     config = load_config(args.config)
+    projective_models = [
+        config.state_dir / "models" / f"{camera.name}-projective.npz"
+        for camera in config.cameras
+    ]
+    if sum(path.exists() for path in projective_models) >= 2:
+        nozzle, error, visible = measure_projective_nozzle(
+            config, _images(config, Path(args.images))
+        )
+        _json(
+            {
+                "precision_ready": True,
+                "method": "known-XYZ projective calibration",
+                "nozzle_xyz_mm": nozzle,
+                "nozzle_gap_mm": nozzle[2],
+                "visible_cameras": visible,
+                "reprojection_error_px": error,
+            }
+        )
+        return
     marker, error, visible = _measure(config, Path(args.images))
     touch = load_touch_off(config.state_dir / "models" / "touch-off.json")
     nozzle = touch.nozzle_xyz(marker)
@@ -183,6 +206,30 @@ def command_measure(args) -> None:
             "reprojection_error_px": error,
         }
     )
+
+
+def _float_values(raw: str) -> tuple[float, ...]:
+    return tuple(float(value) for value in raw.split(","))
+
+
+def command_collect_projective(args) -> None:
+    if not args.execute_motion:
+        raise ValueError("motion collection requires --execute-motion")
+    config = load_config(args.config)
+    payload = collect_observations(
+        config,
+        Path(args.output),
+        _float_values(args.x),
+        _float_values(args.y),
+        _float_values(args.z),
+        args.settle_seconds,
+    )
+    _json({"output": args.output, "positions": len(payload["observations"])})
+
+
+def command_calibrate_projective(args) -> None:
+    config = load_config(args.config)
+    _json(calibrate_observations(config, Path(args.observations)))
 
 
 def _monitor(config):
@@ -253,6 +300,19 @@ def parser() -> argparse.ArgumentParser:
     measure = commands.add_parser("measure")
     measure.add_argument("--images", required=True)
     measure.set_defaults(handler=command_measure)
+
+    collect = commands.add_parser("collect-projective-observations")
+    collect.add_argument("--output", required=True)
+    collect.add_argument("--x", default="80,150,220")
+    collect.add_argument("--y", default="80,150,220")
+    collect.add_argument("--z", default="60,120,180")
+    collect.add_argument("--settle-seconds", type=float, default=5.0)
+    collect.add_argument("--execute-motion", action="store_true")
+    collect.set_defaults(handler=command_collect_projective)
+
+    projective = commands.add_parser("calibrate-projective")
+    projective.add_argument("--observations", required=True)
+    projective.set_defaults(handler=command_calibrate_projective)
 
     reference = commands.add_parser("monitor-reference")
     reference.set_defaults(handler=command_monitor_reference)

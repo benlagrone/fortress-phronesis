@@ -45,6 +45,19 @@ class BedPose:
         return camera.matrix @ np.hstack((self.rotation, self.translation.reshape(3, 1)))
 
 
+@dataclass
+class ProjectiveCamera:
+    projection: np.ndarray
+    rms_px: float
+    observations: int
+
+    def project(self, point_xyz_mm: np.ndarray) -> np.ndarray:
+        homogeneous = self.projection @ np.append(point_xyz_mm, 1.0)
+        if abs(homogeneous[2]) < 1e-12:
+            raise ValueError("point projects at infinity")
+        return homogeneous[:2] / homogeneous[2]
+
+
 @dataclass(frozen=True)
 class PartialCheckerboard:
     """A visible rectangular subset of a larger checkerboard.
@@ -196,6 +209,81 @@ def triangulate_bed_point(
     return point, float(max(errors))
 
 
+def calibrate_projective_camera(
+    points_xyz_mm: np.ndarray, pixels: np.ndarray
+) -> ProjectiveCamera:
+    """Fit a metric 3D-to-pixel camera using normalized direct linear transform."""
+    points = np.asarray(points_xyz_mm, dtype=np.float64)
+    image_points = np.asarray(pixels, dtype=np.float64)
+    if points.ndim != 2 or points.shape[1] != 3 or image_points.shape != (len(points), 2):
+        raise ValueError("expected matching Nx3 world points and Nx2 image pixels")
+    if len(points) < 8:
+        raise ValueError("at least eight 3D marker positions are required")
+    if np.linalg.matrix_rank(points - points.mean(axis=0)) < 3:
+        raise ValueError("marker positions must span X, Y, and Z")
+
+    world_center = points.mean(axis=0)
+    world_scale = np.sqrt(3.0) / np.mean(np.linalg.norm(points - world_center, axis=1))
+    world_transform = np.eye(4)
+    world_transform[:3, :3] *= world_scale
+    world_transform[:3, 3] = -world_scale * world_center
+    normalized_world = (world_transform @ np.column_stack((points, np.ones(len(points)))).T).T
+
+    image_center = image_points.mean(axis=0)
+    image_scale = np.sqrt(2.0) / np.mean(
+        np.linalg.norm(image_points - image_center, axis=1)
+    )
+    image_transform = np.array(
+        [
+            [image_scale, 0.0, -image_scale * image_center[0]],
+            [0.0, image_scale, -image_scale * image_center[1]],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    normalized_image = (
+        image_transform @ np.column_stack((image_points, np.ones(len(points)))).T
+    ).T
+
+    rows = []
+    for world, pixel in zip(normalized_world, normalized_image):
+        x, y, z, w = world
+        u, v = pixel[:2]
+        rows.append([x, y, z, w, 0, 0, 0, 0, -u * x, -u * y, -u * z, -u * w])
+        rows.append([0, 0, 0, 0, x, y, z, w, -v * x, -v * y, -v * z, -v * w])
+    _, _, vh = np.linalg.svd(np.asarray(rows))
+    normalized_projection = vh[-1].reshape(3, 4)
+    projection = np.linalg.inv(image_transform) @ normalized_projection @ world_transform
+    projection /= np.linalg.norm(projection[2, :3])
+    model = ProjectiveCamera(projection, 0.0, len(points))
+    residuals = np.asarray(
+        [model.project(point) - pixel for point, pixel in zip(points, image_points)]
+    )
+    model.rms_px = float(np.sqrt(np.mean(np.sum(residuals**2, axis=1))))
+    return model
+
+
+def triangulate_projective_point(
+    pixels: tuple[tuple[float, float], ...],
+    cameras: tuple[ProjectiveCamera, ...],
+) -> tuple[np.ndarray, float]:
+    if len(pixels) != len(cameras) or len(pixels) < 2:
+        raise ValueError("two or more matching pixels and projective cameras are required")
+    rows = []
+    for (u, v), camera in zip(pixels, cameras):
+        projection = camera.projection
+        rows.extend((u * projection[2] - projection[0], v * projection[2] - projection[1]))
+    _, _, vh = np.linalg.svd(np.asarray(rows))
+    point = vh[-1]
+    if abs(point[3]) < 1e-12:
+        raise ValueError("camera rays do not form a stable 3D intersection")
+    xyz = point[:3] / point[3]
+    errors = [
+        float(np.linalg.norm(camera.project(xyz) - np.asarray(pixel)))
+        for pixel, camera in zip(pixels, cameras)
+    ]
+    return xyz, max(errors)
+
+
 def save_camera_model(path: Path, model: CameraModel) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
@@ -233,4 +321,21 @@ def load_bed_pose(path: Path) -> BedPose:
             data["rotation"],
             data["translation"],
             float(data["reprojection_rms_px"]),
+        )
+
+
+def save_projective_camera(path: Path, model: ProjectiveCamera) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        path,
+        projection=model.projection,
+        rms_px=np.asarray(model.rms_px),
+        observations=np.asarray(model.observations),
+    )
+
+
+def load_projective_camera(path: Path) -> ProjectiveCamera:
+    with np.load(path) as data:
+        return ProjectiveCamera(
+            data["projection"], float(data["rms_px"]), int(data["observations"])
         )

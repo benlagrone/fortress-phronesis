@@ -9,7 +9,9 @@ from .geometry import (
     detect_marker_center,
     load_bed_pose,
     load_camera_model,
+    load_projective_camera,
     triangulate_bed_point,
+    triangulate_projective_point,
 )
 from .quality import assess_image
 
@@ -47,6 +49,45 @@ def measure_marker(
         detail = "; ".join(failures) if failures else "no usable observations"
         raise ValueError(f"precision refused: fewer than two calibrated views; {detail}")
     point, error = triangulate_bed_point(tuple(pixels), tuple(models), tuple(poses))
+    if error > config.quality.maximum_reprojection_error_px:
+        raise ValueError(
+            f"precision refused: reprojection error {error:.3f}px exceeds "
+            f"{config.quality.maximum_reprojection_error_px:.3f}px"
+        )
+    return tuple(float(value) for value in point), error, visible
+
+
+def measure_projective_nozzle(
+    config: AppConfig, images: dict[str, Path]
+) -> tuple[tuple[float, float, float], float, list[str]]:
+    pixels = []
+    models = []
+    visible = []
+    failures = []
+    for camera in config.cameras:
+        model_path = config.state_dir / "models" / f"{camera.name}-projective.npz"
+        image_path = images.get(camera.name)
+        if image_path is None or not model_path.exists():
+            continue
+        quality = assess_image(image_path, config.quality)
+        if not quality.passed:
+            failures.append(f"{camera.name}: {', '.join(quality.failures)}")
+            continue
+        image = cv2.imread(str(image_path))
+        if image is None:
+            failures.append(f"{camera.name}: image cannot be decoded")
+            continue
+        try:
+            pixels.append(detect_marker_center(image))
+        except ValueError as exc:
+            failures.append(f"{camera.name}: {exc}")
+            continue
+        models.append(load_projective_camera(model_path))
+        visible.append(camera.name)
+    if len(pixels) < 2:
+        detail = "; ".join(failures) if failures else "no usable observations"
+        raise ValueError(f"precision refused: fewer than two projective views; {detail}")
+    point, error = triangulate_projective_point(tuple(pixels), tuple(models))
     if error > config.quality.maximum_reprojection_error_px:
         raise ValueError(
             f"precision refused: reprojection error {error:.3f}px exceeds "

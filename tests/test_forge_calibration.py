@@ -86,6 +86,35 @@ def test_three_camera_triangulation_is_metric_and_overdetermined():
     assert error < 1e-6
 
 
+def test_projective_calibration_recovers_metric_3d_points():
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("cv2")
+    from forge_calibration.geometry import (
+        calibrate_projective_camera,
+        triangulate_projective_point,
+    )
+
+    grid = np.asarray(
+        [(x, y, z) for z in (60.0, 120.0, 180.0) for y in (80.0, 150.0, 220.0) for x in (80.0, 150.0, 220.0)]
+    )
+    projections = (
+        np.array([[900.0, 10.0, 400.0, 100000.0], [5.0, 920.0, 300.0, 50000.0], [0.01, 0.02, 1.0, 800.0]]),
+        np.array([[850.0, -20.0, 500.0, 80000.0], [15.0, 900.0, 350.0, 60000.0], [-0.03, 0.01, 1.0, 900.0]]),
+    )
+
+    def project(matrix, point):
+        pixel = matrix @ np.append(point, 1.0)
+        return pixel[:2] / pixel[2]
+
+    pixel_sets = [np.asarray([project(matrix, point) for point in grid]) for matrix in projections]
+    models = tuple(calibrate_projective_camera(grid, pixels) for pixels in pixel_sets)
+    expected = np.array([123.0, 177.0, 93.0])
+    pixels = tuple(tuple(project(matrix, expected)) for matrix in projections)
+    measured, error = triangulate_projective_point(pixels, models)
+    assert measured == pytest.approx(expected, abs=1e-6)
+    assert error < 1e-6
+
+
 def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     pytest.importorskip("numpy")
     cv2 = pytest.importorskip("cv2")

@@ -6,7 +6,7 @@ from flask import Flask, jsonify
 
 from .capture import capture_set, capture_skew_ms
 from .config import load_config
-from .measurement import measure_marker
+from .measurement import measure_marker, measure_projective_nozzle
 from .quality import assess_image
 from .state import load_touch_off
 
@@ -58,6 +58,23 @@ def create_app(config_path: str | Path) -> Flask:
     def measure():
         frames = capture_set(config.cameras, config.state_dir / "captures")
         images = {frame.camera: frame.path for frame in frames}
+        projective_models = [
+            config.state_dir / "models" / f"{camera.name}-projective.npz"
+            for camera in config.cameras
+        ]
+        if sum(path.exists() for path in projective_models) >= 2:
+            nozzle, error, visible = measure_projective_nozzle(config, images)
+            return jsonify(
+                {
+                    "precision_ready": True,
+                    "method": "known-XYZ projective calibration",
+                    "nozzle_xyz_mm": nozzle,
+                    "nozzle_gap_mm": nozzle[2],
+                    "visible_cameras": visible,
+                    "reprojection_error_px": error,
+                    "capture_skew_ms": capture_skew_ms(frames),
+                }
+            )
         marker, error, visible = measure_marker(config, images)
         touch = load_touch_off(config.state_dir / "models" / "touch-off.json")
         nozzle = touch.nozzle_xyz(marker)
