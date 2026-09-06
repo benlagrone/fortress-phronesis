@@ -7,6 +7,10 @@ from pathlib import Path
 import cv2
 
 from .capture import capture_set, capture_skew_ms
+from .bed_slinger_workflow import (
+    calibrate_bed_slinger_observations,
+    collect_bed_slinger_observations,
+)
 from .config import load_config
 from .geometry import (
     Checkerboard,
@@ -47,12 +51,18 @@ def command_targets(args) -> None:
     write_letter_aruco_svg(
         destination / "toolhead-marker-23-letter.svg", marker_id=23, size_mm=30.0
     )
+    write_aruco_svg(destination / "bed-marker-24.svg", marker_id=24, size_mm=30.0)
+    write_letter_aruco_svg(
+        destination / "bed-marker-24-letter.svg", marker_id=24, size_mm=30.0
+    )
     _json(
         {
             "checkerboard": str(destination / "bed-checkerboard.svg"),
             "marker": str(destination / "toolhead-marker-23.png"),
             "metric_marker": str(destination / "toolhead-marker-23.svg"),
             "printable_metric_marker": str(destination / "toolhead-marker-23-letter.svg"),
+            "bed_marker": str(destination / "bed-marker-24.svg"),
+            "printable_bed_marker": str(destination / "bed-marker-24-letter.svg"),
             "print_scale": "100% / actual size; disable fit-to-page",
             "verification": f"one checkerboard square must measure {args.square_mm:.3f} mm",
         }
@@ -232,6 +242,26 @@ def command_calibrate_projective(args) -> None:
     _json(calibrate_observations(config, Path(args.observations)))
 
 
+def command_collect_bed_slinger(args) -> None:
+    if not args.execute_motion:
+        raise ValueError("motion collection requires --execute-motion")
+    config = load_config(args.config)
+    payload = collect_bed_slinger_observations(
+        config,
+        Path(args.output),
+        _float_values(args.x),
+        _float_values(args.y),
+        _float_values(args.z),
+        args.settle_seconds,
+    )
+    _json({"output": args.output, "positions": len(payload["observations"])})
+
+
+def command_calibrate_bed_slinger(args) -> None:
+    config = load_config(args.config)
+    _json(calibrate_bed_slinger_observations(config, Path(args.observations)))
+
+
 def _monitor(config):
     client = OctoPrintClient.from_config_file(
         config.octoprint_url, config.octoprint_api_key_file
@@ -313,6 +343,19 @@ def parser() -> argparse.ArgumentParser:
     projective = commands.add_parser("calibrate-projective")
     projective.add_argument("--observations", required=True)
     projective.set_defaults(handler=command_calibrate_projective)
+
+    slinger_collect = commands.add_parser("collect-bed-slinger-observations")
+    slinger_collect.add_argument("--output", required=True)
+    slinger_collect.add_argument("--x", default="100,150,200")
+    slinger_collect.add_argument("--y", default="100,150,200")
+    slinger_collect.add_argument("--z", default="5,15,30")
+    slinger_collect.add_argument("--settle-seconds", type=float, default=5.0)
+    slinger_collect.add_argument("--execute-motion", action="store_true")
+    slinger_collect.set_defaults(handler=command_collect_bed_slinger)
+
+    slinger = commands.add_parser("calibrate-bed-slinger")
+    slinger.add_argument("--observations", required=True)
+    slinger.set_defaults(handler=command_calibrate_bed_slinger)
 
     reference = commands.add_parser("monitor-reference")
     reference.set_defaults(handler=command_monitor_reference)

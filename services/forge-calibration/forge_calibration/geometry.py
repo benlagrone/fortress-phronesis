@@ -171,6 +171,25 @@ def detect_marker_center(
     return float(center[0]), float(center[1])
 
 
+def detect_marker_centers(
+    image: np.ndarray, marker_ids: tuple[int, ...] = (23, 24)
+) -> dict[int, tuple[float, float]]:
+    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    detector = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
+    corners, ids, _ = detector.detectMarkers(image)
+    if ids is None:
+        return {}
+    result = {}
+    flat_ids = ids.reshape(-1)
+    for marker_id in marker_ids:
+        matches = np.flatnonzero(flat_ids == marker_id)
+        if len(matches) != 1:
+            continue
+        center = corners[int(matches[0])].reshape(4, 2).mean(axis=0)
+        result[marker_id] = (float(center[0]), float(center[1]))
+    return result
+
+
 def triangulate_bed_point(
     pixels: tuple[tuple[float, float], ...],
     cameras: tuple[CameraModel, ...],

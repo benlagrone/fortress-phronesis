@@ -47,6 +47,8 @@ forge-calibration capture
 forge-calibration inspect-board --images ./current
 forge-calibration collect-projective-observations --output ./grid.json --execute-motion
 forge-calibration calibrate-projective --observations ./grid.json
+forge-calibration collect-bed-slinger-observations --output ./bed-slinger.json --execute-motion
+forge-calibration calibrate-bed-slinger --observations ./bed-slinger.json
 forge-calibration calibrate-intrinsics --camera left --images ./left-views
 forge-calibration calibrate-intrinsics --camera right --images ./right-views
 forge-calibration calibrate-bed-pose --images ./bed-pose
@@ -61,6 +63,10 @@ forge-calibration watch
 camera. It never assigns an absolute board origin to a partial, repeating
 pattern; uniquely coded toolhead observations at known printer positions are
 required to resolve that ambiguity.
+
+Generated target ID 23 belongs on the toolhead. Target ID 24 belongs flat on
+the moving bed. The separate IDs prevent a fixed background checkerboard from
+being mistaken for the bed reference.
 
 The projective workflow uses cold, homed XYZ motion as its metric reference. It
 is valid only when all three requested axes physically move the marker. On a

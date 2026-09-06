@@ -115,6 +115,28 @@ def test_projective_calibration_recovers_metric_3d_points():
     assert error < 1e-6
 
 
+def test_bed_slinger_model_uses_both_marker_tracks():
+    np = pytest.importorskip("numpy")
+    from forge_calibration.bed_slinger import calibrate_bed_slinger_camera
+
+    points = np.asarray(
+        [(x, y, z) for z in (5.0, 15.0, 30.0) for y in (100.0, 150.0, 200.0) for x in (100.0, 150.0, 200.0)]
+    )
+    features = []
+    for x, y, z in points:
+        toolhead = (2.0 * x + 0.3 * z, -0.2 * x + 3.0 * z)
+        bed = (500.0 + 0.5 * y + 0.001 * y**2, 800.0 - 1.2 * y)
+        features.append((*toolhead, *bed))
+    model = calibrate_bed_slinger_camera(np.asarray(features), points)
+    test = np.asarray((135.0, 175.0, 12.0))
+    x, y, z = test
+    predicted = model.predict(
+        (2.0 * x + 0.3 * z, -0.2 * x + 3.0 * z),
+        (500.0 + 0.5 * y + 0.001 * y**2, 800.0 - 1.2 * y),
+    )
+    assert predicted == pytest.approx(test, abs=0.05)
+
+
 def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     pytest.importorskip("numpy")
     cv2 = pytest.importorskip("cv2")
@@ -129,6 +151,7 @@ def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     assert 'width="215.9mm"' in marker_page
     assert 'height="279.4mm"' in marker_page
     assert 'black square 30.0 mm' in marker_page
+    assert 'ArUco 4x4 ID 24' in letter_aruco_svg(marker_id=24)
 
     marker = tmp_path / "marker.png"
     write_aruco_marker(marker)
