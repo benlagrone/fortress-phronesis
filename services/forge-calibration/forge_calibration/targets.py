@@ -73,3 +73,28 @@ def aruco_svg(marker_id: int = 23, size_mm: float = 30.0) -> str:
 
 def write_aruco_svg(path: Path, marker_id: int = 23, size_mm: float = 30.0) -> None:
     path.write_text(aruco_svg(marker_id, size_mm))
+
+
+def letter_aruco_svg(marker_id: int = 23, size_mm: float = 30.0) -> str:
+    """Put the metric marker on a US Letter page without changing its scale."""
+    marker = aruco_svg(marker_id, size_mm)
+    body = marker[marker.index("<rect") : marker.rindex("</svg>")]
+    canvas_mm = size_mm * 8 / 6
+    x = (215.9 - canvas_mm) / 2
+    y = (279.4 - canvas_mm) / 2
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="215.9mm" height="279.4mm" '
+        'viewBox="0 0 215.9 279.4" shape-rendering="crispEdges">\n'
+        '<rect width="215.9" height="279.4" fill="#fff"/>\n'
+        f'<g transform="translate({x},{y}) scale({canvas_mm / 8})">\n'
+        f'{body}</g>\n'
+        f'<text x="107.95" y="{y + canvas_mm + 8}" text-anchor="middle" '
+        'font-family="sans-serif" font-size="4">'
+        f'ArUco 4x4 ID {marker_id} - black square {size_mm:.1f} mm - print actual size'
+        '</text>\n</svg>\n'
+    )
+
+
+def write_letter_aruco_svg(path: Path, marker_id: int = 23, size_mm: float = 30.0) -> None:
+    path.write_text(letter_aruco_svg(marker_id, size_mm))

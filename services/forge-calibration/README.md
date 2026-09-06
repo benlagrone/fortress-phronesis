@@ -44,6 +44,7 @@ python3 -m venv venv
 venv/bin/pip install .
 forge-calibration generate-targets --output ./targets
 forge-calibration capture
+forge-calibration inspect-board --images ./current
 forge-calibration calibrate-intrinsics --camera left --images ./left-views
 forge-calibration calibrate-intrinsics --camera right --images ./right-views
 forge-calibration calibrate-bed-pose --images ./bed-pose
@@ -53,6 +54,11 @@ forge-calibration monitor-reference
 forge-calibration watch --once
 forge-calibration watch
 ```
+
+`inspect-board` reports the largest visible checkerboard rectangle in each
+camera. It never assigns an absolute board origin to a partial, repeating
+pattern; uniquely coded toolhead observations at known printer positions are
+required to resolve that ambiguity.
 
 `watch` is a local, multi-camera print supervisor. It checks capture quality and
 fixed-camera drift on every cycle, runs the configured ONNX print-failure model,

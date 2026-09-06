@@ -90,16 +90,45 @@ def test_generated_targets_have_metric_size_and_detectable_marker(tmp_path):
     pytest.importorskip("numpy")
     cv2 = pytest.importorskip("cv2")
     from forge_calibration.geometry import Checkerboard, detect_marker_center
-    from forge_calibration.targets import checkerboard_svg, write_aruco_marker
+    from forge_calibration.targets import checkerboard_svg, letter_aruco_svg, write_aruco_marker
 
     board = checkerboard_svg(Checkerboard())
     assert 'width="198.0mm"' in board
     assert 'height="132.0mm"' in board
 
+    marker_page = letter_aruco_svg()
+    assert 'width="215.9mm"' in marker_page
+    assert 'height="279.4mm"' in marker_page
+    assert 'black square 30.0 mm' in marker_page
+
     marker = tmp_path / "marker.png"
     write_aruco_marker(marker)
     center = detect_marker_center(cv2.imread(str(marker)))
     assert center == pytest.approx((499.5, 499.5), abs=1.0)
+
+
+def test_partial_checkerboard_reports_visible_grid_without_assigning_origin():
+    np = pytest.importorskip("numpy")
+    cv2 = pytest.importorskip("cv2")
+    from forge_calibration.geometry import Checkerboard, find_partial_checkerboard
+
+    square = 80
+    image = np.full((8 * square, 11 * square, 3), 255, dtype=np.uint8)
+    for row in range(6):
+        for column in range(9):
+            if (row + column) % 2 == 0:
+                cv2.rectangle(
+                    image,
+                    ((column + 1) * square, (row + 1) * square),
+                    ((column + 2) * square, (row + 2) * square),
+                    (0, 0, 0),
+                    thickness=-1,
+                )
+    image = image[:, 2 * square :]
+    detected = find_partial_checkerboard(image, Checkerboard())
+    assert detected.columns == 7
+    assert detected.rows == 5
+    assert len(detected.corners) == detected.columns * detected.rows
 
 
 def observation(camera, score, stable=True, quality=True):

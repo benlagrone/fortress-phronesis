@@ -45,6 +45,20 @@ class BedPose:
         return camera.matrix @ np.hstack((self.rotation, self.translation.reshape(3, 1)))
 
 
+@dataclass(frozen=True)
+class PartialCheckerboard:
+    """A visible rectangular subset of a larger checkerboard.
+
+    The grid size is measured in detected inner corners. Its absolute location
+    on the full checkerboard is intentionally not inferred: an unmarked
+    checkerboard is periodic, so a partial view has more than one valid origin.
+    """
+
+    corners: np.ndarray
+    columns: int
+    rows: int
+
+
 def find_checkerboard(image: np.ndarray, board: Checkerboard) -> np.ndarray:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     found, corners = cv2.findChessboardCornersSB(
@@ -55,6 +69,38 @@ def find_checkerboard(image: np.ndarray, board: Checkerboard) -> np.ndarray:
     if not found:
         raise ValueError("known-size checkerboard was not detected")
     return corners.astype(np.float32)
+
+
+def find_partial_checkerboard(
+    image: np.ndarray,
+    board: Checkerboard,
+    minimum_columns: int = 3,
+    minimum_rows: int = 3,
+) -> PartialCheckerboard:
+    """Find the largest visible checkerboard rectangle without inventing an origin."""
+    if minimum_columns < 3 or minimum_rows < 3:
+        raise ValueError("partial checkerboard minimum must be at least 3x3 corners")
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    flags = cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_LARGER
+    best: PartialCheckerboard | None = None
+    for rows in range(board.inner_rows, minimum_rows - 1, -1):
+        for columns in range(board.inner_columns, minimum_columns - 1, -1):
+            found, corners, meta = cv2.findChessboardCornersSBWithMeta(
+                gray, (columns, rows), flags=flags
+            )
+            if not found or corners is None or meta is None:
+                continue
+            detected_rows, detected_columns = meta.shape[:2]
+            if detected_columns > board.inner_columns or detected_rows > board.inner_rows:
+                continue
+            candidate = PartialCheckerboard(
+                corners.astype(np.float32), detected_columns, detected_rows
+            )
+            if best is None or len(candidate.corners) > len(best.corners):
+                best = candidate
+    if best is None:
+        raise ValueError("no 3x3 or larger checkerboard subset was detected")
+    return best
 
 
 def calibrate_intrinsics(

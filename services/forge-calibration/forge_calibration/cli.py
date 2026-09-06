@@ -11,6 +11,7 @@ from .config import load_config
 from .geometry import (
     Checkerboard,
     calibrate_intrinsics,
+    find_partial_checkerboard,
     load_camera_model,
     save_bed_pose,
     save_camera_model,
@@ -21,7 +22,7 @@ from .measurement import measure_marker
 from .monitor import PrintMonitor
 from .octoprint import OctoPrintClient
 from .state import TouchOff, load_touch_off, save_touch_off
-from .targets import write_aruco_marker, write_aruco_svg, write_checkerboard
+from .targets import write_aruco_marker, write_aruco_svg, write_checkerboard, write_letter_aruco_svg
 
 
 def _image(path: Path):
@@ -42,13 +43,46 @@ def command_targets(args) -> None:
     write_checkerboard(destination / "bed-checkerboard.svg", board)
     write_aruco_marker(destination / "toolhead-marker-23.png", marker_id=23)
     write_aruco_svg(destination / "toolhead-marker-23.svg", marker_id=23, size_mm=30.0)
+    write_letter_aruco_svg(
+        destination / "toolhead-marker-23-letter.svg", marker_id=23, size_mm=30.0
+    )
     _json(
         {
             "checkerboard": str(destination / "bed-checkerboard.svg"),
             "marker": str(destination / "toolhead-marker-23.png"),
             "metric_marker": str(destination / "toolhead-marker-23.svg"),
+            "printable_metric_marker": str(destination / "toolhead-marker-23-letter.svg"),
             "print_scale": "100% / actual size; disable fit-to-page",
             "verification": f"one checkerboard square must measure {args.square_mm:.3f} mm",
+        }
+    )
+
+
+def command_inspect_board(args) -> None:
+    board = Checkerboard(args.columns, args.rows, args.square_mm)
+    results = []
+    for image_path in sorted(Path(args.images).glob("*.jpg")):
+        try:
+            detection = find_partial_checkerboard(_image(image_path), board)
+            results.append(
+                {
+                    "camera": image_path.stem,
+                    "detected": True,
+                    "columns": detection.columns,
+                    "rows": detection.rows,
+                    "corners": len(detection.corners),
+                    "absolute_origin_resolved": detection.corners.shape[0]
+                    == board.inner_columns * board.inner_rows,
+                }
+            )
+        except ValueError as error:
+            results.append(
+                {"camera": image_path.stem, "detected": False, "error": str(error)}
+            )
+    _json(
+        {
+            "views": results,
+            "origin_gate": "partial views require uniquely coded toolhead observations",
         }
     )
 
@@ -201,6 +235,13 @@ def parser() -> argparse.ArgumentParser:
     bed.add_argument("--rows", type=int, default=5)
     bed.add_argument("--square-mm", type=float, default=22.0)
     bed.set_defaults(handler=command_bed_pose)
+
+    inspect = commands.add_parser("inspect-board")
+    inspect.add_argument("--images", required=True)
+    inspect.add_argument("--columns", type=int, default=8)
+    inspect.add_argument("--rows", type=int, default=5)
+    inspect.add_argument("--square-mm", type=float, default=22.0)
+    inspect.set_defaults(handler=command_inspect_board)
 
     touch = commands.add_parser("register-touch-off")
     touch.add_argument("--images", required=True)
