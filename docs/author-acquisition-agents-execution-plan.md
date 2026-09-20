@@ -7,6 +7,19 @@
 **Architecture diagram:** [author-acquisition-agents-architecture.mmd](author-acquisition-agents-architecture.mmd)
 **Deployment note:** This plan does not add a deployed service, public route, host port, environment variable, or deployment path by itself.
 
+## R1 Scheduled Audit Runner
+
+`scripts/author-acq.py run-scheduled-audit` is the scheduler-facing, read-only
+entry point. It writes a run-scoped `audit.json` and `report.md` below
+`tmp/author-acq/<UTC-date>/<run-id>/`. By default it performs ledger and tracker
+audits only; `--include-coverage` adds the bounded external bibliographic audit.
+
+The runner never changes a ledger, downloads a source text, builds an index,
+restarts a runtime, or publishes to production. A scheduler may invoke it, but
+its artifacts remain operator-review inputs, not authorization for the later
+acquisition stages. Runtime installation and cadence remain a separately
+reviewed Fortress change.
+
 ## Purpose
 
 PericopeAI's author-acquisition tracker has enough pending, partially wired, and

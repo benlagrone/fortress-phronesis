@@ -8,6 +8,7 @@ download sources, build indexes, or touch production state.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import re
 import sys
@@ -1180,6 +1181,97 @@ def _has_errors(report: dict[str, Any]) -> bool:
     return any(row["severity"] == "error" for row in report["issues"])
 
 
+def _scheduled_audit_markdown(packet: dict[str, Any]) -> str:
+    tracker = packet["tracker_audit"]
+    coverage = packet.get("coverage_audit")
+    lines = [
+        f"# Author Acquisition Audit - {packet['run_id']}",
+        "",
+        f"- Generated: {packet['generated_at']}",
+        "- Mode: read-only; no ledger, corpus, or production mutations were performed.",
+        f"- Ledger write guard: {tracker['ledger_write_guard']['status']}",
+        "",
+        "## Status Counts",
+        "",
+    ]
+    for status, count in sorted(
+        tracker["status_counts"].items(), key=lambda item: (-item[1], item[0])
+    ):
+        lines.append(f"- {status}: {count}")
+
+    lines.extend(["", "## Tracker Issues", ""])
+    if tracker["issues"]:
+        for issue in tracker["issues"]:
+            lines.append(f"- [{issue['severity']}] {issue['code']}: {issue['message']}")
+    else:
+        lines.append("- None")
+
+    if coverage is not None:
+        lines.extend(
+            [
+                "",
+                "## Coverage Audit",
+                "",
+                f"- Authors scanned: {coverage['authors_scanned']}",
+                f"- Authors with gaps: {coverage['authors_with_gaps']}",
+                f"- Publication gap packets: {coverage['publication_gap_count']}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Operator Boundary",
+            "",
+            "Review packets only. Approval is required before source acquisition, ledger changes, indexing, or production publication.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def write_scheduled_audit_artifacts(
+    fortress_ledger: Path,
+    service_ledger: Path,
+    corpus_root: Path,
+    output_root: Path,
+    *,
+    run_id: str,
+    include_coverage: bool = False,
+    max_pages: int = 1,
+    generated_at: dt.datetime | None = None,
+) -> tuple[dict[str, Any], Path]:
+    """Write a read-only scheduled audit packet without touching acquisition state."""
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", run_id):
+        raise ValueError("run_id must contain only letters, numbers, underscores, and hyphens")
+
+    generated_at = generated_at or dt.datetime.now(dt.timezone.utc)
+    tracker = build_tracker_audit(fortress_ledger, service_ledger, corpus_root=corpus_root)
+    packet: dict[str, Any] = {
+        "packet_type": "scheduled_author_acquisition_audit",
+        "schema_version": 1,
+        "run_id": run_id,
+        "generated_at": generated_at.isoformat(),
+        "mutation_policy": "read_only",
+        "tracker_audit": tracker,
+    }
+    if include_coverage:
+        packet["coverage_audit"] = build_coverage_audit(
+            fortress_ledger,
+            service_ledger,
+            corpus_root=corpus_root,
+            max_pages=max(1, max_pages),
+        )
+
+    run_dir = output_root / generated_at.strftime("%Y-%m-%d") / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    (run_dir / "audit.json").write_text(
+        json.dumps(packet, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (run_dir / "report.md").write_text(_scheduled_audit_markdown(packet), encoding="utf-8")
+    return packet, run_dir
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="author-acq",
@@ -1215,6 +1307,23 @@ def main(argv: list[str] | None = None) -> int:
 
     status_parser = subparsers.add_parser("status-report", help="Print status counts")
     status_parser.add_argument("--format", choices=["text", "json"], default="text")
+
+    scheduled_parser = subparsers.add_parser(
+        "run-scheduled-audit",
+        help="Write a read-only scheduled audit packet for operator review",
+    )
+    scheduled_parser.add_argument(
+        "--output-root",
+        default="tmp/author-acq",
+        help="Directory for generated, untracked audit artifacts",
+    )
+    scheduled_parser.add_argument("--run-id", default="", help="Optional stable scheduler run ID")
+    scheduled_parser.add_argument(
+        "--include-coverage",
+        action="store_true",
+        help="Also run the bounded external bibliographic coverage audit",
+    )
+    scheduled_parser.add_argument("--max-pages", type=int, default=1)
 
     args = parser.parse_args(argv)
     fortress_ledger, service_ledger = _paths_from_args(args)
@@ -1263,6 +1372,26 @@ def main(argv: list[str] | None = None) -> int:
         else:
             _print_status_report(report)
         return 1 if _has_errors(report) else 0
+
+    if args.command == "run-scheduled-audit":
+        now = dt.datetime.now(dt.timezone.utc)
+        run_id = args.run_id or now.strftime("scheduled-%Y%m%dT%H%M%SZ")
+        try:
+            packet, run_dir = write_scheduled_audit_artifacts(
+                fortress_ledger,
+                service_ledger,
+                corpus_root,
+                Path(args.output_root),
+                run_id=run_id,
+                include_coverage=bool(args.include_coverage),
+                max_pages=max(1, args.max_pages),
+                generated_at=now,
+            )
+        except (OSError, ValueError) as exc:
+            print(f"Unable to write scheduled audit: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps({"run_dir": str(run_dir), "packet": packet}, indent=2, sort_keys=True))
+        return 1 if _has_errors(packet["tracker_audit"]) else 0
 
     parser.error(f"Unknown command: {args.command}")
     return 2
