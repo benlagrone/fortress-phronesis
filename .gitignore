@@ -16,3 +16,4 @@ scripts/*
 scripts/.env
 runtime/solar-potential-backend/
 output/
+tmp/author-acq/

@@ -30,7 +30,63 @@ def _json_response(payload: dict[str, object]) -> MagicMock:
     return context
 
 
+def _empty_corpus_root(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "author_index.json").write_text("[]\n", encoding="utf-8")
+    return path
+
+
 class AuthorAcqTrackerAuditTests(unittest.TestCase):
+    def test_scheduled_audit_writes_read_only_review_artifacts(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fortress = tmp_path / "fortress" / "author_acquisition.json"
+            service = tmp_path / "service" / "author_acquisition.json"
+            corpus_root = _empty_corpus_root(tmp_path / "AugustineCorpus")
+            _write_ledger(fortress, [{"name": "Author A", "status": "pending"}])
+            service.parent.mkdir(parents=True, exist_ok=True)
+            service.write_bytes(fortress.read_bytes())
+            original_ledger = fortress.read_bytes()
+
+            packet, run_dir = author_acq.write_scheduled_audit_artifacts(
+                fortress,
+                service,
+                corpus_root,
+                tmp_path / "artifacts",
+                run_id="scheduled-20260919T120000Z",
+                generated_at=author_acq.dt.datetime(
+                    2026, 9, 19, 12, tzinfo=author_acq.dt.timezone.utc
+                ),
+            )
+
+            self.assertEqual(packet["mutation_policy"], "read_only")
+            self.assertEqual(packet["tracker_audit"]["ledger_write_guard"]["status"], "allowed")
+            self.assertTrue((run_dir / "audit.json").is_file())
+            self.assertIn("Review packets only.", (run_dir / "report.md").read_text(encoding="utf-8"))
+            self.assertEqual(fortress.read_bytes(), original_ledger)
+
+    def test_scheduled_audit_rejects_unsafe_run_id(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fortress = tmp_path / "fortress" / "author_acquisition.json"
+            service = tmp_path / "service" / "author_acquisition.json"
+            _write_ledger(fortress, [{"name": "Author A", "status": "pending"}])
+            service.parent.mkdir(parents=True, exist_ok=True)
+            service.write_bytes(fortress.read_bytes())
+
+            with self.assertRaisesRegex(ValueError, "run_id"):
+                author_acq.write_scheduled_audit_artifacts(
+                    fortress,
+                    service,
+                    tmp_path / "AugustineCorpus",
+                    tmp_path / "artifacts",
+                    run_id="../unsafe",
+                )
+
     def test_tracker_audit_allows_identical_ledgers(self) -> None:
         with self.subTest("identical ledgers"):
             import tempfile
@@ -57,7 +113,11 @@ class AuthorAcqTrackerAuditTests(unittest.TestCase):
                 service.parent.mkdir(parents=True, exist_ok=True)
                 service.write_bytes(fortress.read_bytes())
 
-                report = author_acq.build_tracker_audit(fortress, service)
+                report = author_acq.build_tracker_audit(
+                    fortress,
+                    service,
+                    corpus_root=_empty_corpus_root(tmp_path / "AugustineCorpus"),
+                )
 
                 self.assertIs(report["ledger_sync"]["byte_equal"], True)
                 self.assertIs(report["ledger_sync"]["semantic_equal"], True)
@@ -79,7 +139,11 @@ class AuthorAcqTrackerAuditTests(unittest.TestCase):
                 [{"name": "Author A", "status": "texts present; index volume wired"}],
             )
 
-            report = author_acq.build_tracker_audit(fortress, service)
+            report = author_acq.build_tracker_audit(
+                fortress,
+                service,
+                corpus_root=_empty_corpus_root(tmp_path / "AugustineCorpus"),
+            )
 
             self.assertIs(report["ledger_sync"]["byte_equal"], False)
             self.assertIs(report["ledger_sync"]["semantic_equal"], False)
@@ -104,7 +168,11 @@ class AuthorAcqTrackerAuditTests(unittest.TestCase):
             service.parent.mkdir(parents=True, exist_ok=True)
             service.write_bytes(fortress.read_bytes())
 
-            report = author_acq.build_tracker_audit(fortress, service)
+            report = author_acq.build_tracker_audit(
+                fortress,
+                service,
+                corpus_root=_empty_corpus_root(tmp_path / "AugustineCorpus"),
+            )
             issue_codes = [issue["code"] for issue in report["issues"]]
 
             self.assertEqual(report["ledger_write_guard"]["status"], "allowed")
