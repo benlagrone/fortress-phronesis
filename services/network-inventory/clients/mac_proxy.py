@@ -7,6 +7,10 @@ class Proxy(http.server.BaseHTTPRequestHandler):
  def handle_request(self):
   if self.headers.get('Host') not in {'127.0.0.1:18161','localhost:18161'} or self.headers.get('Origin','http://127.0.0.1:18161') not in {'http://127.0.0.1:18161','http://localhost:18161'}:
    self.send_error(403);return
+  if self.path=='/client-status':
+   try:body=(ROOT/'connection.json').read_bytes()
+   except OSError:body=b'{"route":"unknown","status":"initializing"}'
+   self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
   if self.headers.get('Transfer-Encoding'):self.send_error(400);return
   try:length=int(self.headers.get('Content-Length','0'))
   except ValueError:self.send_error(400);return
