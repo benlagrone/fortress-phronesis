@@ -10,19 +10,23 @@ def classify_route(home_lan, vpn_up):
 
     Returns:
         str: 'lan' for known home LAN, 'vpn' for known away + VPN, 'unavailable' for known away without VPN,
-             'unknown' for unresolved inputs
+             'unknown' for unresolved or invalid inputs
     """
+    # Reject coercion: strings and numbers are not boolean observations.
+    if any(value is not None and type(value) is not bool for value in (home_lan, vpn_up)):
+        return 'unknown'
+
     # If home_lan is unknown, route is unknown even if VPN is known
     if home_lan is None:
         return 'unknown'
 
     # If home_lan is True, we're on LAN regardless of VPN status
-    if home_lan:
+    if home_lan is True:
         return 'lan'
 
     # At this point, home_lan is False (away)
     # If VPN is up, we're using VPN
-    if vpn_up:
+    if vpn_up is True:
         return 'vpn'
 
     # If VPN is down, we're unavailable
@@ -42,10 +46,10 @@ def assess_owner(observed_owner, expected_owner):
         expected_owner (str or None): Expected owner name or None if unknown
 
     Returns:
-        str: 'matches' if owners match, 'mismatch' if they don't, 'unknown' if either is None
+        str: 'matches' if owners match, 'mismatch' if they don't, 'unknown' if either is missing, invalid or blank
     """
-    # If either owner is unknown, return 'unknown'
-    if observed_owner is None or expected_owner is None:
+    # Only nonblank string claims are comparable; never coerce or normalize.
+    if any(type(owner) is not str or not owner.strip() for owner in (observed_owner, expected_owner)):
         return 'unknown'
 
     # If both owners are present and equal, return 'matches'

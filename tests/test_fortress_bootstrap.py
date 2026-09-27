@@ -68,6 +68,26 @@ class TestFortressBootstrap(unittest.TestCase):
         self.assertEqual(assess_owner('owner-a', None), 'unknown')
 
 
+    def test_route_rejects_non_boolean_observations(self):
+        for invalid in ('false', 'true', '', 0, 1, 0.0, 1.0, [], [True], {}, {'up': True}):
+            for valid in (True, False, None):
+                with self.subTest(invalid=invalid, valid=valid):
+                    self.assertEqual(classify_route(invalid, valid), 'unknown')
+                    self.assertEqual(classify_route(valid, invalid), 'unknown')
+
+    def test_owner_requires_nonempty_strings_on_both_sides(self):
+        for invalid in ('', ' ', '\t\n', False, True, 0, 1, 0.0, [], {}, None):
+            with self.subTest(invalid=invalid):
+                self.assertEqual(assess_owner(invalid, invalid), 'unknown')
+                self.assertEqual(assess_owner(invalid, 'owner-a'), 'unknown')
+                self.assertEqual(assess_owner('owner-a', invalid), 'unknown')
+        self.assertEqual(assess_owner(False, 0), 'unknown')
+
+    def test_valid_owner_claims_compare_exactly_without_normalization(self):
+        self.assertEqual(assess_owner(' owner-a ', 'owner-a'), 'mismatch')
+        self.assertEqual(assess_owner('Owner-a', 'owner-a'), 'mismatch')
+
+
 
 
 class TestBootstrapReport(unittest.TestCase):
@@ -150,6 +170,13 @@ class TestBootstrapReport(unittest.TestCase):
                     service_available=value, source_available=value))
                 self.assertEqual(report['service_status'], 'unknown')
                 self.assertEqual(report['source_status'], 'unknown')
+
+    def test_report_keeps_invalid_route_and_owner_observations_unknown(self):
+        report = bootstrap.report_bootstrap(dict(home_lan='false', vpn_up='true',
+            observed_owner=False, expected_owner=0, service_available=True,
+            source_available=False, live_acceptance='passed'))
+        self.assertEqual(report, dict(route='unknown', owner_status='unknown',
+            service_status='available', source_status='unavailable', live_acceptance='not_run'))
 
     def test_report_uses_production_helpers(self):
         with patch.object(bootstrap, 'classify_route', return_value='unknown') as route:
