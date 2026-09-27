@@ -49,3 +49,27 @@ def test_auth_and_mcp_readonly(tmp_path):
   assert len(r['result']['tools'])==5
   assert c.post('/mcp',headers=headers,json={'id':2,'method':'resources/read'}).json()['error']['code']==-32601
   auth.write_text('{"identities":[]}');assert c.get('/api/graph',headers=headers).status_code==401
+
+def test_repeated_snapshot_is_idempotent_and_changed_ip_retains_id(tmp_path):
+ s=Store(str(tmp_path/'db'));n={'id':'device-1','name':'Example','kind':'device','attributes':{'ipAddress':'192.0.2.1'}}
+ s.ingest('unifi','unifi',[n],[]);revision=s.meta('revision');s.ingest('unifi','unifi',[n],[])
+ assert s.meta('revision')==revision
+ s.ingest('unifi','unifi',[dict(n,attributes={'ipAddress':'192.0.2.2'})],[])
+ assert len(s.snapshot()['nodes'])==1 and s.snapshot()['nodes'][0]['id']=='device-1'
+ assert s.snapshot()['nodes'][0]['attributes']['ipAddress']=='192.0.2.2'
+def test_definition_and_observed_assertions_do_not_overwrite(tmp_path):
+ s=Store(str(tmp_path/'db'));s.ingest('docker','docker',[{'id':'a','name':'Observed A','kind':'host'}],[])
+ s.activate(compile_documents({'a.md':doc()},'v1'))
+ assert {n['id'] for n in s.snapshot()['nodes']}=={'a','definition:a'}
+ assert s.snapshot()['definitions'][0]['name']=='Example'
+def test_restricted_definitions_and_edges_not_visible(tmp_path):
+ s=Store(str(tmp_path/'db'));s.activate(compile_documents({'a.md':doc().replace('fortress-private','restricted')},'v1'))
+ assert s.snapshot()['nodes']==[] and s.snapshot()['definitions']==[]
+ assert len(s.snapshot(True)['definitions'])==1
+@pytest.mark.parametrize('rel',[{'predicate':'implements','target':'a','evidence_kind':'declared'},{'predicate':'hosted_on','target':'missing','evidence_kind':'declared'}])
+def test_typed_edges_reject_invalid(rel):
+ text=doc(kind='vm').replace('relationships: []','relationships: '+json.dumps([rel]))
+ with pytest.raises(InvalidOntology):compile_documents({'a.md':text},'v1')
+def test_containment_cycle_rejected():
+ text=doc(kind='vm').replace('relationships: []','relationships: [{predicate: hosted_on, target: a, evidence_kind: declared}]')
+ with pytest.raises(InvalidOntology):compile_documents({'a.md':text},'v1')
