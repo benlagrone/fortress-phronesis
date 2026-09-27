@@ -3,6 +3,8 @@ import argparse,json,sqlite3,time
 from pathlib import Path
 from .store import Store
 p=argparse.ArgumentParser();p.add_argument('command',choices=['backup','restore-drill']);p.add_argument('--database',required=True);p.add_argument('--destination',required=True);a=p.parse_args()
+if not Path(a.database).is_file():p.error('Source database does not exist')
+if Path(a.database).resolve()==Path(a.destination).resolve():p.error('Destination must differ from source')
 source=Store(a.database);source.backup(a.destination)
 if a.command=='backup':print(json.dumps({'backup_created':True}));raise SystemExit
 shadow=Store(a.destination);before={r[0] for r in shadow.db.execute('SELECT id FROM nodes')};revision=shadow.meta('definition_revision')

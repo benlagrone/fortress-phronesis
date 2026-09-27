@@ -77,7 +77,7 @@ def create_app(config_path=None):
   if offset<0 or limit<1 or limit>500:raise HTTPException(400,'Invalid bounds')
   if revision!=-1 and revision!=d['revision']:raise HTTPException(409,'Snapshot changed; restart pagination')
   nodes=[n for n in d['nodes'] if (not q or q.lower() in (n['name']+' '+n['id']).lower()) and (not kind or n['kind']==kind)]
-  d['total']=len(nodes);d['nodes']=nodes[offset:offset+limit];allowed={n['id'] for n in d['nodes']};d['edges']=[e for e in d['edges'] if e['source'] in allowed and e['target'] in allowed]
+  d['total']=len(nodes);visible={n['id'] for n in nodes};d['nodes']=nodes[offset:offset+limit];allowed={n['id'] for n in d['nodes']};d['edges']=[e for e in d['edges'] if e['source'] in allowed and e['target'] in visible]
   d.pop('definitions');d['next_offset']=offset+limit if offset+limit<len(nodes) else None;return d
  @app.get('/api/node')
  def detail(request:Request,id:str):
