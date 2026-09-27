@@ -54,10 +54,18 @@ async def homeassistant(config):
      if item.get(field):edges.append(edge(id,prefix+':'+targetkind+':'+item[field],predicate))
  return nodes,edges
 
+def secret(config):
+ if config.get('token_env_file'):
+  key=config['token_env_key']
+  for line in Path(config['token_env_file']).read_text().splitlines():
+   if line.startswith(key+'='):return line.split('=',1)[1].strip().strip('"').strip("'")
+  raise PermissionError('configured credential unavailable')
+ return Path(config['token_file']).read_text().strip()
+
 async def mcp(config):
  """HTTP MCP lists only. Never tools/call, resources/read or prompts/get."""
  headers={'Accept':'application/json, text/event-stream','Content-Type':'application/json'}
- if config.get('token_file'):headers['Authorization']='Bearer '+Path(config['token_file']).read_text().strip()
+ if config.get('token_file') or config.get('token_env_file'):headers['Authorization']='Bearer '+secret(config)
  sid=config['id'];nodes=[node(sid,config.get('name',sid),'mcp_service',state='registered')];edges=[]
  async with httpx.AsyncClient(timeout=20,follow_redirects=False) as client:
   counter=0

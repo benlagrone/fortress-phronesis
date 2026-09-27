@@ -23,6 +23,7 @@ def create_app(config_path=None):
   raise HTTPException(401,'Sign in to Fortess DNA')
  @asynccontextmanager
  async def lifespan(app):
+  for source in config.get('expected_sources',[]):store.health(source['id'],source['kind'],'unconfigured',source['reason'])
   task=asyncio.create_task(collect_loop(store,config))
   async def definitions():
    last=None
