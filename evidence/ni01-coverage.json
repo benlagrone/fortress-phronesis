@@ -1,0 +1,117 @@
+{
+  "issue_complete": false,
+  "live_acceptance": "not_run",
+  "scope": "Current NI-01 offline reporting stage only. All 26 stories and R01-R38/T01-T38 remain mandatory; no milestone completion.",
+  "requirements": {
+    "R01": {
+      "offline_status": "passed",
+      "evidence": "Owner helper and report matrix compare synthetic matching, mismatched and absent claims only.",
+      "live_status": "not_run",
+      "required_live_evidence": "Verify trusted physical Sextant identity and VM/engine binding; establish no inventory runtime on physical Phronesis or Contabo. Record dated, sanitized owner evidence."
+    },
+    "R16": {
+      "offline_status": "not_run",
+      "evidence": "No DNS, TLS, listeners or access-control checks executed; offline route labels do not establish connectivity.",
+      "live_status": "not_run",
+      "required_live_evidence": "Verify the approved private hostname over LAN and VPN, certificate trust and enrolled identity; prove guest, WAN and unauthorized IPv6 denial without metadata exposure."
+    },
+    "R17": {
+      "offline_status": "passed",
+      "evidence": "20 production-bound bootstrap tests include all nine route pairs and 405 route/owner/service/source report combinations; explicit VPN-up/service-down and service-up/source-down checks passed.",
+      "live_status": "not_run",
+      "required_live_evidence": "Exercise real home LAN with VPN off/on and away with VPN off/on; independently interrupt inventory service, source authentication and client connection in an authorized test window; retain distinct status and recovery evidence."
+    },
+    "R18": {
+      "offline_status": "not_run",
+      "evidence": "No native discovery/helper implementation or live impostor rejection tested. Supplied identity comparison is not authentication.",
+      "live_status": "not_run",
+      "required_live_evidence": "Observe native service advertisement, TLS and enrolled identity verification before authentication, impostor/rebinding rejection and network-change reconnect independent of the legacy resolver."
+    },
+    "R19": {
+      "offline_status": "not_run",
+      "evidence": "No shared client configuration or external project accessed.",
+      "live_status": "not_run",
+      "required_live_evidence": "Verify installed shared MCP configuration and use two fresh authorized non-Sysco project tasks to resolve an endpoint through the same inventory owner/tools, with source, freshness and vantage evidence."
+    },
+    "R20": {
+      "offline_status": "passed",
+      "evidence": "Synthetic privacy test passes: identities, credentials, HA state, resource contents, command arguments, description, URI, icon and unknown fields absent from report; stdout/stderr empty; input preserved. Only the offline return boundary is tested.",
+      "live_status": "not_run",
+      "required_live_evidence": "Inject synthetic canaries through authorized source adapters; verify absence across storage, API, UI, SSE, cache and logs, including revocation; retain sanitized results without copying secrets."
+    },
+    "R24": {
+      "offline_status": "passed",
+      "evidence": "Repository-only verify-pericope-deploy-lock.sh passed (20 static checks); deployment files unchanged. No runtime lock/registry/graph reconciliation executed.",
+      "live_status": "not_run",
+      "required_live_evidence": "Owner must record and preserve existing dirty worktrees before any work: branch, commit, status, untracked paths and hashes of dirty files in a private record; never auto-stash, clean or overwrite them. Read authoritative workspace policies and reconcile lock, registry, graph, immutable images, host identity, auth and smoke checks; verify protected Pericope contracts unchanged."
+    },
+    "R26": {
+      "offline_status": "passed",
+      "evidence": "Offline source inspection and privacy tests show supplied-evidence classification only; no network/control operations added. Operator checker checks prohibited imports.",
+      "live_status": "not_run",
+      "required_live_evidence": "Instrument approved discovery paths to prove zero scanning, HA actuation, Docker writes, arbitrary SSH/URL/process execution, downstream MCP invocation or automatic DNS/VPN changes; verify deployment refusal cases."
+    }
+  },
+  "scenarios": {
+    "T12": {
+      "offline_status": "passed",
+      "evidence": "Synthetic hostile description/URI/icon/command fields are dropped by report; no output or input mutation. Rendering/fetch behavior elsewhere is untested.",
+      "live_status": "not_run",
+      "required_live_evidence": "Test malicious metadata end-to-end with instrumented UI and adapters: inert escaped content, zero remote icon/URI fetches or launched processes."
+    },
+    "T15": {
+      "offline_status": "passed",
+      "evidence": "Report matrix independently maps service and source true/false/null; this utility has no authentication-error, reconciliation or client-disconnect model.",
+      "live_status": "not_run",
+      "required_live_evidence": "Distinguish source auth failure, client disconnect and service failure; prove no mass offline/deletion and correct resnapshot/recovery."
+    },
+    "T17": {
+      "offline_status": "passed",
+      "evidence": "All nine supplied route combinations tested against preserved production helper; DNS/TLS untested.",
+      "live_status": "not_run",
+      "required_live_evidence": "Run actual home/away and VPN off/on matrix; record route evidence plus private DNS/TLS results and native helper behavior."
+    },
+    "T18": {
+      "offline_status": "passed",
+      "evidence": "Explicit VPN-up/service-down test retains vpn route and unknown source; separate source-down test keeps service available. No first-visit browser test.",
+      "live_status": "not_run",
+      "required_live_evidence": "With VPN up, make the inventory unavailable in an authorized isolated test; verify accurate helper messaging, including first visit without cached shell, and no false device-outage claims."
+    },
+    "T19": {
+      "offline_status": "not_run",
+      "evidence": "Synthetic owner mismatch is covered but no Bonjour, authentication, TLS or rebinding implementation is exercised.",
+      "live_status": "not_run",
+      "required_live_evidence": "Present an impostor advertisement and rebinding endpoint in an authorized harness; prove rejection before any credential transmission and reconnect only to enrolled identity."
+    },
+    "T20": {
+      "offline_status": "not_run",
+      "evidence": "No fresh external project task or shared MCP registration executed.",
+      "live_status": "not_run",
+      "required_live_evidence": "Run two fresh authorized non-Sysco project tasks using the same configured inventory MCP; record owner/tools and evidence-backed endpoint resolution."
+    },
+    "T21": {
+      "offline_status": "passed",
+      "evidence": "Synthetic canaries absent from offline report and stdout/stderr. Storage/API/SSE/cache/log paths are not implemented by this utility.",
+      "live_status": "not_run",
+      "required_live_evidence": "Trace synthetic HA/Docker/MCP canaries through store, API, UI, SSE, cache and logs; confirm no sensitive contents, including after logout/revocation."
+    },
+    "T24": {
+      "offline_status": "not_run",
+      "evidence": "No runtime or cold-start test performed.",
+      "live_status": "not_run",
+      "required_live_evidence": "In an authorized test window cold-start with physical Phronesis unavailable and WAN interrupted; show independent graph/sources/bootstrap startup and explicitly unavailable cloud sources."
+    },
+    "T26": {
+      "offline_status": "not_run",
+      "evidence": "Static Pericope contract check passed, but no inventory deployment verifier refusal exercised.",
+      "live_status": "not_run",
+      "required_live_evidence": "In an isolated authorized acceptance harness, supply wrong host identity, occupied port and mismatched image/lock; capture verifier refusal before application, preserving existing services."
+    },
+    "T27": {
+      "offline_status": "not_run",
+      "evidence": "No guest, WAN, IPv6 or access-scoped graph test performed.",
+      "live_status": "not_run",
+      "required_live_evidence": "From authorized negative-test vantages verify guest/WAN/unauthorized IPv6 cannot obtain private graph, metadata, source credentials or cached/event data."
+    }
+  }
+}
