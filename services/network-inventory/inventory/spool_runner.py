@@ -1,5 +1,5 @@
 """Separate native collector owner. API receives only allowlisted snapshots."""
-import asyncio,json,os,time,sys
+import asyncio,json,os,time,sys,subprocess
 from pathlib import Path
 from .collectors import unifi,homeassistant,mcp
 from .agent import collect
@@ -9,6 +9,13 @@ async def main():
   while True:
    try:
     if source['kind']=='docker':payload=await asyncio.to_thread(collect,source['host_id'])
+    elif source['kind']=='ssh_docker':
+     # Fixed enrolled host; requests never accept arbitrary SSH destinations or commands.
+     if source['host']!='master-benjamin@192.168.0.126':raise ValueError('Host not enrolled')
+     code=(Path(__file__).parent/'agent.py').read_text()
+     command=['/usr/bin/ssh','-o','BatchMode=yes','-o','ConnectTimeout=6','-o','StrictHostKeyChecking=yes',source['host'],'DNA_DOCKER=/usr/bin/docker python3 - --once --host-id fortress.host.phronesis']
+     def remote():return subprocess.run(command,input=code,text=True,capture_output=True,timeout=35,check=True).stdout
+     payload=json.loads(await asyncio.to_thread(remote))
     else:
      nodes,edges=await {'unifi':unifi,'homeassistant':homeassistant,'mcp':mcp}[source['kind']](source)
      payload={'created_at':time.time(),'nodes':nodes,'edges':edges}

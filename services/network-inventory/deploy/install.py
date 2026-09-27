@@ -18,9 +18,11 @@ if collector.exists():
 optimization_env=pathlib.Path.home()/'Library/Application Support/Fortress/optimization/runtime.env'
 if optimization_env.exists() and not any(s['id']=='optimization-mcp' for s in sources):
  sources.append({'id':'optimization-mcp','name':'Fortress optimization MCP','kind':'mcp','url':'http://127.0.0.1:8001/mcp','token_env_file':str(optimization_env),'token_env_key':'FORTRESS_MCP_TOKEN','interval':60})
+if not any(s['id']=='phronesis' for s in sources):
+ sources.append({'id':'phronesis','kind':'ssh_docker','host':'master-benjamin@192.168.0.126','interval':15})
 collector.write_text(json.dumps({'spool':str(r/'spool'),'sources':sources}))
-app={'database':'/data/dna.sqlite','auth_file':'/config/auth.json','definitions_dir':'/definitions','static_dir':'/app/frontend/dist','secure_cookie':False,'route':'private authenticated loopback; HTTPS pending verification','origins':['http://127.0.0.1:18161','http://localhost:18161','http://127.0.0.1:18160','https://fortress-sextant.tail25f5c3.ts.net:8443'],'sources':[{'id':s['id'],'kind':'docker_spool' if s['kind']=='docker' else 'spool','path':'/spool/'+s['id']+'.json','interval':5} for s in sources]}
-app['expected_sources']=[{'id':'homeassistant','kind':'homeassistant','reason':'Authenticated registry credential not yet configured'},{'id':'phronesis','kind':'host','reason':'Physical host inventory not verified'}]
+app={'database':'/data/dna.sqlite','auth_file':'/config/auth.json','definitions_dir':'/definitions','static_dir':'/app/frontend/dist','secure_cookie':False,'route':'private authenticated loopback; HTTPS pending verification','origins':['http://127.0.0.1:18161','http://localhost:18161','http://127.0.0.1:18160','https://fortress-sextant.tail25f5c3.ts.net:8443'],'sources':[{'id':s['id'],'kind':'docker_spool' if s['kind'] in {'docker','ssh_docker'} else 'spool','path':'/spool/'+s['id']+'.json','interval':5} for s in sources]}
+app['expected_sources']=[{'id':'homeassistant','kind':'homeassistant','reason':'Authenticated registry credential not yet configured'}]
 (r/'config/config.json').write_text(json.dumps(app))
 # Real private definitions remain outside the public source repository.
 def definition(id,kind,name,owner,relations=[]):
