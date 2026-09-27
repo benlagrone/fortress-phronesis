@@ -29,7 +29,7 @@ class Store:
  def health(self,id,kind,status,detail=''):
   with self.lock,self.db:
    prev=self.db.execute('SELECT * FROM sources WHERE id=?',(id,)).fetchone()
-   self.db.execute('INSERT OR REPLACE INTO sources VALUES(?,?,?,?,?,?)',(id,kind,status,stamp(),prev['success'] if prev else None,detail[:160]))
+   self.db.execute('INSERT OR REPLACE INTO sources VALUES(?,?,?,?,?,?)',(id,kind,status,stamp(),stamp() if status=='healthy' else prev['success'] if prev else None,detail[:160]))
    if not prev or prev['status']!=status:self.bump('source',id)
  def ingest(self,source,kind,nodes,edges,complete=True,absence='missing'):
   if not complete:

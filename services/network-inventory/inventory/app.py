@@ -68,7 +68,7 @@ def create_app(config_path=None):
   sessions.pop(request.cookies.get('dna_session',''),None);r=JSONResponse({'ok':True});r.delete_cookie('dna_session');return r
  @app.get('/api/me')
  def me(request:Request):
-  a,_=actor(request);return {'name':a['name'],'role':a['role'],'owner':'fortress-sextant:network-inventory','route':config.get('route','private'),'location':'unknown','authorization_epoch':hashlib.sha256(Path(config['auth_file']).read_bytes()).hexdigest()[:16]}
+  a,_=actor(request);return {'name':a['name'],'role':a['role'],'authentication':'device' if request.headers.get('authorization') else 'session','owner':'fortress-sextant:network-inventory','route':config.get('route','private'),'location':'unknown','authorization_epoch':hashlib.sha256(Path(config['auth_file']).read_bytes()).hexdigest()[:16]}
  def snapshot(request):
   a,_=actor(request);d=store.snapshot(a['role']=='admin');d['authorization_epoch']=hashlib.sha256(Path(config['auth_file']).read_bytes()).hexdigest()[:16];return d
  @app.get('/api/graph')
