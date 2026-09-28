@@ -16,3 +16,9 @@ scripts/*
 scripts/.env
 runtime/solar-potential-backend/
 output/
+
+# Fortess DNA build products; runtime/private evidence must never be committed.
+services/network-inventory/frontend/node_modules/
+services/network-inventory/frontend/dist/
+services/network-inventory/**/__pycache__/
+services/network-inventory/.pytest_cache/
