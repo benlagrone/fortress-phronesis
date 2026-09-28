@@ -5,3 +5,5 @@
 .server-shortcuts{display:flex;flex-wrap:wrap;gap:10px}.server-shortcuts button{padding:12px;color:var(--accent)}.server-shortcuts small{margin-left:8px}.toolbar>div[hidden]{display:none}
 
 .map-help{font-size:12px;color:var(--muted);margin:12px 0;line-height:1.6}.graph{height:65vh;min-height:520px}.graph:active{cursor:grabbing}
+
+.map-breadcrumb,.map-pages{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0}.map-breadcrumb button{font-size:12px}.map-breadcrumb>span{margin-left:auto;font-size:12px;color:var(--muted)}.map-pages{justify-content:center;padding:12px;font-size:12px}.map-pages button:disabled{opacity:.35;cursor:default}
