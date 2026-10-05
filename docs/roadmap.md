@@ -66,12 +66,15 @@ extend that model instead of bypassing it.
    matter anchor, multi-author counsel stack, and neutral synthesis.
 2. The next public commitment is `v1.3.6R` / `v1.3.6`: author-work reader and
    passage-anchored same-author chat.
-3. After the reader flow, continue with `v1.2.2` and `v1.2.3` so sessions can
+3. Begin additive contract and fixture work for `v1.3.6S` immediately, then
+   promote context-faithful staged author responses as the first public
+   follow-on after the reader flow.
+4. After the staged-response flow, continue with `v1.2.2` and `v1.2.3` so sessions can
    carry matters, counsels, follow-up questions, and synthesis without prompt
    bloat.
-4. After continuity, continue the evidence/review expansion in `v1.3.8A`,
+5. After continuity, continue the evidence/review expansion in `v1.3.8A`,
    `v1.3.8B`, `v1.3.9A`, `v1.3.x-OPS`, and `v1.3.x-PROMOTE`.
-5. `v1.4.0` and `v1.4.0-ops` stay on the roadmap as a commercial and ops lane,
+6. `v1.4.0` and `v1.4.0-ops` stay on the roadmap as a commercial and ops lane,
    but they do not define the next default product build.
 
 ### Unfinished Publication / Merge Gate
@@ -87,12 +90,15 @@ side-repo issue rather than the blocker for PericopeAI web-stack sequencing:
 1. Execute `v1.3.6R` / `v1.3.6` as the next public commitment:
    author-work reader, stable range navigation, selected passage anchors, and
    additive `source_context` into same-author chat.
-2. After the reader flow, execute `v1.2.2` and `v1.2.3` against the same
+2. Start `v1.3.6S` contract, prompt-fixture, and local vertical-slice work now;
+   promote its context-faithful staged text/audio response flow immediately
+   after the reader closeout.
+3. After staged responses, execute `v1.2.2` and `v1.2.3` against the same
    matter/counsel/synthesis model so continuity improves without broad prompt
    replay.
-3. Keep `v1.4.0` pricing/subscriptions and `v1.4.0-ops` reliability work as a
+4. Keep `v1.4.0` pricing/subscriptions and `v1.4.0-ops` reliability work as a
    separate commercial and operational lane.
-4. Resolve `pericopeai-mobile-app` upstream publication when mobile work
+5. Resolve `pericopeai-mobile-app` upstream publication when mobile work
    resumes; do not treat it as the front-of-queue blocker for the web stack.
 
 ---
@@ -122,6 +128,41 @@ same-author chat rather than jump to a separate commercial surface.
   same-author contextual asking.
 - It should not be expanded into author-acquisition, operator review, pricing,
   or subscription scope.
+
+---
+
+## Immediate Follow-On: Context-Faithful Staged Author Responses
+
+**Status:** urgent planned execution; additive contracts and fixtures may begin
+immediately, with public integration sequenced directly after the reader flow.
+
+**Execution plan:** [Context-Faithful Staged Author Response Execution Plan](context-faithful-staged-author-response-execution-plan.md)
+
+**Release target:** `v1.3.6S`
+
+- Replace monolithic author speeches with one growing response composed of
+  connected semantic counsel movements.
+- Retrieve the selected author's works and assemble the historical evidence
+  packet before any user-facing author prose.
+- Run a hidden source-bound structural LLM prompt before segment generation.
+- Recover the author's historical, geographic, linguistic, rhetorical, and
+  intellectual context before bounded application to the user's world.
+- Keep the temporal mediator narrow: preserve the user's original words and
+  explain only unfamiliar referents needed for comprehension across time.
+- Preserve protected vocabulary, translation registers, and meaningful forms
+  of address, including grammatical and relational `thou/thee` distinctions.
+- Generate the closing synthesis from the actual completed segments.
+- Deliberate on the most appropriate next conversational move from user intent
+  and what the author actually said; allow `conclude` instead of forcing a
+  question.
+- Stream completed text segments one at a time, automatically prewarm and cache
+  opening speech, and overlap bounded text, audit, and TTS work.
+- Preserve the legacy complete-answer response while the staged path is behind
+  a feature gate.
+
+The first local vertical slice is Augustine-only. Broader promotion requires
+at least two materially different author or translation profiles plus latency,
+grounding, lexical-fidelity, anachronism, audio-cache, and recovery evidence.
 
 ---
 
@@ -591,6 +632,10 @@ contains three different delivery classes and they should remain separated:
 
 - `v1.3.6 Reader Follow-On` is the cleanest next public user-facing slice:
   bounded UI/API work, direct value, and independent of agent orchestration.
+- `v1.3.6S` is the urgent public follow-on:
+  source-grounded structural planning, historically bounded connected counsel
+  segments, final synthesis, intent-aware follow-up, and pipelined segment TTS.
+  Contract and fixture work may begin immediately while the reader closes.
 - `v1.3.7` is a separate operator/ops release:
   local-only, MDE-linked, and not coupled to author publication or public UX.
 - `v1.3.8` is too large for one release:
@@ -623,7 +668,31 @@ contains three different delivery classes and they should remain separated:
      - no acquisition, review-queue, or operator-agent work
    - stop condition: a user can read a work, select a passage, and ask the same
      author about it in one stable public flow
-2. `v1.3.7 — local_tools Model Release Watch + MDE Handoff`
+2. `v1.3.6S — Context-Faithful Staged Author Responses`
+   - features:
+     - retrieve author works and assemble a historical evidence packet before
+       user-facing prose
+     - run a hidden source-bound structural planner before segment generation
+     - preserve original user wording while a temporal mediator explains only
+       unfamiliar referents required for comprehension
+     - generate opening, development, bounded application, closing synthesis,
+       and follow-up as connected audited movements
+     - preserve protected vocabulary, translation registers, and relational
+       forms of address
+     - stream completed text movements into one growing author turn
+     - automatically prewarm and cache opening TTS, then prefetch ordered
+       semantic segments under bounded concurrency
+     - keep the legacy complete-answer JSON path available behind the feature
+       gate
+   - excludes:
+     - no generic pre-retrieval LLM acknowledgement
+     - no mediator interpretation of the user's situation
+     - no live external historical-data dependency in public chat
+     - no forced follow-up question
+   - stop condition: one Augustine request produces a source-traceable growing
+     counsel stack with cached opening audio, audited historical/lexical
+     boundaries, final synthesis, appropriate next move, and legacy fallback
+3. `v1.3.7 — local_tools Model Release Watch + MDE Handoff`
    - features:
      - scheduled provider-model polling through MDE-owned catalog snapshots
      - deduped release-event creation keyed by provider/model/first-seen
@@ -638,7 +707,7 @@ contains three different delivery classes and they should remain separated:
      - no acquisition-ledger mutation
    - stop condition: one newly released model creates one actionable event and
      one benchmark handoff path
-3. `v1.3.x-RI1 — Reference Intelligence Foundation`
+4. `v1.3.x-RI1 — Reference Intelligence Foundation`
    - features:
      - contracts for references, targets, review states, evidence spans, and
        idempotent runs
@@ -655,7 +724,7 @@ contains three different delivery classes and they should remain separated:
      - no public API/UI or runtime promotion
    - stop condition: dry-run evidence and lead packets exist without
      persistence, review UI, or runtime mutation
-4. `v1.3.8A — Author Acquisition Foundation`
+5. `v1.3.8A — Author Acquisition Foundation`
    - features:
      - ledger sync validation across both acquisition ledgers
      - status counts, duplicate-name checks, and dry-run diff reporting
@@ -670,7 +739,7 @@ contains three different delivery classes and they should remain separated:
      - no indexing, runtime wiring, or production mutation
    - stop condition: bounded acquisition candidates can be reviewed and approved
      before any full-text ingestion
-5. `v1.3.8B — Author Acquisition Execution`
+6. `v1.3.8B — Author Acquisition Execution`
    - features:
      - approved local source download and normalization
      - metadata diffs and local file inventory
@@ -685,7 +754,7 @@ contains three different delivery classes and they should remain separated:
    - stop condition: one approved author/work can move from source approval to
      local verification with governed production handoff prepared but not
      auto-executed
-6. `v1.3.9A — Historical Context Pilot`
+7. `v1.3.9A — Historical Context Pilot`
    - features:
      - capability manifest for
        `author_historical_context_enrichment`
@@ -702,7 +771,7 @@ contains three different delivery classes and they should remain separated:
      - no author-acquisition ledger mutation
    - stop condition: one reviewed historical-context snapshot can be exposed in
      profile payloads without request-time external dependencies
-7. `v1.3.x-OPS — Operator Review Surface`
+8. `v1.3.x-OPS — Operator Review Surface`
    - features:
      - local persistence for runs, packets, approvals, and retries
      - orchestration of bounded jobs and retry behavior
@@ -716,7 +785,7 @@ contains three different delivery classes and they should remain separated:
      - no bypass of review gates through local UI
    - stop condition: operators can review, approve, defer, retry, and audit
      packets from one local surface without bypassing gates
-8. `v1.3.x-PROMOTE — Runtime Promotion Gate`
+9. `v1.3.x-PROMOTE — Runtime Promotion Gate`
    - features:
      - production DB/API/UI/runtime promotion decision for reviewed
        agent-derived outputs
@@ -733,6 +802,9 @@ contains three different delivery classes and they should remain separated:
 
 - Do not merge `v1.3.6R` with `v1.3.8` or `v1.3.9`; the trust model, rollback
   surface, and validation path are different.
+- Start `v1.3.6S` contracts and fixtures immediately, but sequence public
+  service/frontend integration after `v1.3.6R` closeout to avoid competing
+  edits to the reader-anchored chat path.
 - Do not treat `v1.3.8` as complete until both `v1.3.8A` and `v1.3.8B` are
   closed; `v1.3.8` is not one shippable pass.
 - Keep `v1.4.0` pricing/subscriptions as a separate commercial lane; it should
@@ -1074,6 +1146,80 @@ contains three different delivery classes and they should remain separated:
 - Selecting a passage and asking a question sends an anchored `/api/v2/chat` request and receives an answer that cites or names the selected section.
 - Reader links are bookmarkable and recover the same author/work/range.
 - Existing `/api/v2/chat`, references, verse bundles, and author browse flows remain backward compatible.
+
+### v1.3.6S — Context-Faithful Staged Author Responses
+**Goal:** Replace long monolithic author speeches with a source-grounded,
+historically bounded, connected counsel stack whose text and speech become
+available movement by movement.
+
+**Execution plan:** [Context-Faithful Staged Author Response Execution Plan](context-faithful-staged-author-response-execution-plan.md)
+
+- Required orchestration:
+  - retrieve works before author prose
+  - assemble a versioned author knowledge envelope and evidence packet
+  - preserve the original user question and apply only minimal temporal
+    mediation for unfamiliar referents
+  - run a hidden structural LLM prompt that organizes thought, interprets intent
+    cautiously, binds movements to sources, protects vocabulary, and plans the
+    historical-understanding-before-application sequence
+  - generate connected opening, development, and optional bounded-application
+    movements
+  - audit each movement for evidence, anachronism, lexical fidelity,
+    translation register, and forms of address before release
+  - generate the closing synthesis from the actual audited movements
+  - deliberate on the next conversational move from the original intent and
+    what the author actually said; permit `conclude`
+- Text and speech pipeline:
+  - negotiate incremental events through the existing `/api/v2/chat` route
+    while preserving the legacy complete JSON response
+  - render one growing author turn rather than unrelated assistant messages
+  - start and cache opening TTS automatically after opening text passes audit
+  - overlap bounded later text generation, audit, and TTS work
+  - reuse cached audio, prefetch the next semantic movement after Speak begins,
+    and preserve ordered playback
+- Historical and linguistic boundary:
+  - understand the author in the author's dated, geographic, linguistic,
+    rhetorical, social, and intellectual context before application
+  - keep the mediator limited to mediation; it does not diagnose, interpret, or
+    choose the author's answer
+  - preserve load-bearing terms such as `meek` and prevent flattening into
+    modern approximations
+  - model `thou/thee/thy/thine` and `ye/you/your` as grammatical and relational
+    choices, including asymmetric authority where the source register supports
+    it
+  - accept user testimony about another time without granting the author
+    unrestricted modern knowledge
+
+**Fast timeline (`2026-07-14` through `2026-07-28`)**
+
+- July 14-15: lock contracts, knowledge-envelope/translation fixtures,
+  protected-term/address fixtures, and latency baseline.
+- July 16-18: complete the Augustine backend vertical slice behind a feature
+  gate.
+- July 19-21: add incremental counsel-stack rendering, automatic opening TTS
+  prewarm/cache, and ordered playback.
+- July 22-24: enforce temporal, geographic, lexical, translation, address, and
+  anachronism boundaries.
+- July 25-28: benchmark, validate at least three materially different profiles,
+  finish recovery/rollback coverage, and make a feature-gated promotion
+  decision.
+
+**Definition of Done**
+
+- The first visible text is an author-grounded opening created after work
+  retrieval and structural planning, not a generic LLM acknowledgement.
+- The response arrives as two to five connected semantic movements inside one
+  author turn.
+- Every substantive movement records sources and a knowledge-basis status.
+- Historical meaning precedes bounded modern application.
+- Protected vocabulary and meaningful historical address forms survive text,
+  closing synthesis, and speech generation.
+- Opening audio is automatically generated and cached without unauthorized
+  autoplay; Speak reuses it and keeps one semantic movement prefetched.
+- Closing synthesis uses actual completed movements, and follow-up selection
+  may clarify, deepen, examine a source, apply, compare counsel, invite
+  reflection, or conclude.
+- Legacy chat remains functional when staged orchestration is disabled.
 
 ### v1.3.7 — `local_tools` Model Release Watch + MDE Test Handoff
 **Goal:** Make the local control plane detect newly released provider models, notify the operator once, and hand off directly into MDE benchmarking.

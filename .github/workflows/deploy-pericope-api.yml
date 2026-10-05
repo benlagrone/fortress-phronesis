@@ -82,6 +82,9 @@ jobs:
           STRIPE_SCHOLAR_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_SCHOLAR_PRICE_LOOKUP_KEY }}
           STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY }}
           STRIPE_INSTITUTION_PRICE_LOOKUP_KEY: ${{ secrets.STRIPE_INSTITUTION_PRICE_LOOKUP_KEY }}
+          PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED: ${{ secrets.PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED }}
+          PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID: ${{ secrets.PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID }}
+          PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET: ${{ secrets.PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET }}
         run: |
           set -euo pipefail
 
@@ -96,7 +99,7 @@ jobs:
           )
 
           ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' AUTHOR_PROFILE_VERIFY_TIMEOUT='${AUTHOR_PROFILE_VERIFY_TIMEOUT}' RUN_CORPUS_REFRESH='${RUN_CORPUS_REFRESH}' RUN_AUTHOR_INDEXING='${RUN_AUTHOR_INDEXING}' RUN_FRONTEND_REFRESH='${RUN_FRONTEND_REFRESH}' PERICOPE_BILLING_PROVIDER='${PERICOPE_BILLING_PROVIDER}' PERICOPE_BILLING_TEST_MODE='${PERICOPE_BILLING_TEST_MODE}' STRIPE_SECRET_KEY='${STRIPE_SECRET_KEY}' STRIPE_WEBHOOK_SECRET='${STRIPE_WEBHOOK_SECRET}' STRIPE_PUBLISHABLE_KEY='${STRIPE_PUBLISHABLE_KEY}' STRIPE_READER_PRICE_ID='${STRIPE_READER_PRICE_ID}' STRIPE_SCHOLAR_PRICE_ID='${STRIPE_SCHOLAR_PRICE_ID}' STRIPE_FAMILY_GROUP_PRICE_ID='${STRIPE_FAMILY_GROUP_PRICE_ID}' STRIPE_INSTITUTION_PRICE_ID='${STRIPE_INSTITUTION_PRICE_ID}' STRIPE_READER_PRICE_LOOKUP_KEY='${STRIPE_READER_PRICE_LOOKUP_KEY}' STRIPE_SCHOLAR_PRICE_LOOKUP_KEY='${STRIPE_SCHOLAR_PRICE_LOOKUP_KEY}' STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY='${STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY}' STRIPE_INSTITUTION_PRICE_LOOKUP_KEY='${STRIPE_INSTITUTION_PRICE_LOOKUP_KEY}' bash -s" <<'REMOTE'
+            "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' REQUIRED_PUBLIC_AUTHOR_SLUGS='${REQUIRED_PUBLIC_AUTHOR_SLUGS}' AUTHOR_PROFILE_VERIFY_TIMEOUT='${AUTHOR_PROFILE_VERIFY_TIMEOUT}' RUN_CORPUS_REFRESH='${RUN_CORPUS_REFRESH}' RUN_AUTHOR_INDEXING='${RUN_AUTHOR_INDEXING}' RUN_FRONTEND_REFRESH='${RUN_FRONTEND_REFRESH}' PERICOPE_BILLING_PROVIDER='${PERICOPE_BILLING_PROVIDER}' PERICOPE_BILLING_TEST_MODE='${PERICOPE_BILLING_TEST_MODE}' STRIPE_SECRET_KEY='${STRIPE_SECRET_KEY}' STRIPE_WEBHOOK_SECRET='${STRIPE_WEBHOOK_SECRET}' STRIPE_PUBLISHABLE_KEY='${STRIPE_PUBLISHABLE_KEY}' STRIPE_READER_PRICE_ID='${STRIPE_READER_PRICE_ID}' STRIPE_SCHOLAR_PRICE_ID='${STRIPE_SCHOLAR_PRICE_ID}' STRIPE_FAMILY_GROUP_PRICE_ID='${STRIPE_FAMILY_GROUP_PRICE_ID}' STRIPE_INSTITUTION_PRICE_ID='${STRIPE_INSTITUTION_PRICE_ID}' STRIPE_READER_PRICE_LOOKUP_KEY='${STRIPE_READER_PRICE_LOOKUP_KEY}' STRIPE_SCHOLAR_PRICE_LOOKUP_KEY='${STRIPE_SCHOLAR_PRICE_LOOKUP_KEY}' STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY='${STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY}' STRIPE_INSTITUTION_PRICE_LOOKUP_KEY='${STRIPE_INSTITUTION_PRICE_LOOKUP_KEY}' PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED='${PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED}' PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID='${PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID}' PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET='${PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           FORTRESS_REPO_URL="git@github.com:benlagrone/fortress-phronesis.git"
@@ -245,6 +248,35 @@ jobs:
           restore_env_file "${FE_ENV_BACKUP}" "${FE_ROOT}/.env"
           restore_env_file "${SERVICE_ENV_BACKUP}" "${SERVICE_ROOT}/.env"
 
+          configure_keycloak_billing_role_sync() {
+            local kc_container kc_env_json kc_admin_user kc_admin_password client_uuid client_secret
+            kc_container="${KC_CONTAINER:-auth-keycloak-1}"
+            if ! docker ps --format '{{.Names}}' | grep -qx "${kc_container}"; then
+              kc_container="$(docker ps --format '{{.Names}}' | awk '/keycloak/ {print; exit}')"
+            fi
+            [ -n "${kc_container:-}" ] || { echo "No Keycloak container found; leaving billing role synchronization disabled."; return 0; }
+
+            kc_env_json="$(docker inspect "${kc_container}" --format '{{json .Config.Env}}')"
+            kc_admin_user="$(printf '%s' "${kc_env_json}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_USERNAME") or env.get("KEYCLOAK_ADMIN") or "")')"
+            kc_admin_password="$(printf '%s' "${kc_env_json}" | python3 -c 'import json,sys; data=json.load(sys.stdin); env=dict(item.split("=",1) for item in data if "=" in item); print(env.get("KC_BOOTSTRAP_ADMIN_PASSWORD") or env.get("KEYCLOAK_ADMIN_PASSWORD") or "")')"
+            [ -n "${kc_admin_user}" ] && [ -n "${kc_admin_password}" ] || { echo "Keycloak bootstrap credentials are unavailable." >&2; exit 1; }
+
+            docker exec "${kc_container}" /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://127.0.0.1:8080 --realm master --user "${kc_admin_user}" --password "${kc_admin_password}" >/dev/null
+            client_uuid="$(docker exec "${kc_container}" /opt/keycloak/bin/kcadm.sh get clients -r pericope --fields id,clientId | python3 -c 'import json,sys; clients=json.load(sys.stdin); print(next((item.get("id", "") for item in clients if item.get("clientId") == "pericope-billing-role-sync"), ""))')"
+            if [ -z "${client_uuid}" ]; then
+              echo "Keycloak billing role-sync client is not provisioned; leaving synchronization disabled."
+              return 0
+            fi
+            client_secret="$(docker exec "${kc_container}" /opt/keycloak/bin/kcadm.sh get "clients/${client_uuid}/client-secret" -r pericope | python3 -c 'import json,sys; print(json.load(sys.stdin).get("value", ""))')"
+            [ -n "${client_secret}" ] || { echo "Keycloak billing role-sync client has no secret." >&2; exit 1; }
+            export PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true
+            export PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID=pericope-billing-role-sync
+            export PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET="${client_secret}"
+            echo "Resolved Keycloak billing role-sync credentials on the production host."
+          }
+          configure_keycloak_billing_role_sync
+
           SERVICE_ROOT="${SERVICE_ROOT}" python3 - <<'PY'
           import os
           from pathlib import Path
@@ -264,6 +296,9 @@ jobs:
               "STRIPE_SCHOLAR_PRICE_LOOKUP_KEY",
               "STRIPE_FAMILY_GROUP_PRICE_LOOKUP_KEY",
               "STRIPE_INSTITUTION_PRICE_LOOKUP_KEY",
+              "PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED",
+              "PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID",
+              "PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET",
           ]
           updates = {key: os.environ[key] for key in keys if os.environ.get(key)}
           if not updates:
@@ -335,6 +370,44 @@ jobs:
             echo "Skipping frontend refresh for API-only deploy."
           fi
           docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml ps augustine-corpus-live pericopeai-api pericopeai-frontend
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python - <<'PY'
+          from billing import PUBLIC_SUBSCRIPTION_TIERS, get_billing_provider
+
+          provider = get_billing_provider()
+          print(f"Billing provider: {provider.name}")
+          if provider.name != "stripe":
+              raise SystemExit(0)
+          for tier in PUBLIC_SUBSCRIPTION_TIERS:
+              if tier == "institution":
+                  continue
+              print(f"Stripe price ready: {tier} -> {provider._resolve_price_id(tier)}")
+          PY
+
+          docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.pericope.yml exec -T pericopeai-api python - <<'PY'
+          import httpx
+
+          from keycloak_billing_roles import KeycloakBillingRoleSyncConfig
+
+          config = KeycloakBillingRoleSyncConfig.from_environment()
+          if not config.enabled:
+              print("Keycloak billing role synchronization is disabled.")
+              raise SystemExit(0)
+          config.validate()
+          with httpx.Client(timeout=config.timeout_seconds) as client:
+              response = client.post(
+                  f"{config.base_url}/realms/{config.realm}/protocol/openid-connect/token",
+                  data={
+                      "grant_type": "client_credentials",
+                      "client_id": config.client_id,
+                      "client_secret": config.client_secret,
+                  },
+              )
+              response.raise_for_status()
+              if not response.json().get("access_token"):
+                  raise SystemExit("Keycloak billing role-sync client returned no access token.")
+          print("Keycloak billing role-sync client authenticated.")
+          PY
 
           for url in \
             http://127.0.0.1:18000/api/healthz \
@@ -420,6 +493,28 @@ jobs:
             done
             curl -fsS "$url" >/dev/null
           done
+          python3 - <<'PY'
+          import json
+          from urllib.request import urlopen
+
+          with urlopen("https://pericopeai.com/api/v1/billing/config/public", timeout=20) as response:
+              config = json.load(response)
+          expected = {
+              "provider": "stripe",
+              "test_mode": False,
+              "provider_ready": True,
+              "role_sync_enabled": True,
+              "role_sync_configured": True,
+          }
+          mismatches = {
+              name: {"expected": value, "actual": config.get(name)}
+              for name, value in expected.items()
+              if config.get(name) != value
+          }
+          if mismatches:
+              raise SystemExit(f"Public live billing fulfillment check failed: {mismatches}")
+          print("Public live billing and Keycloak role-sync readiness verified.")
+          PY
           for _ in $(seq 1 12); do
             if python3 scripts/verify-pericope-author-profiles.py \
               --base-url https://pericopeai.com \
@@ -464,6 +559,7 @@ jobs:
             echo "- Public API: https://pericopeai.com/api/v1/services/augustine.en/version"
             echo "- Public History: https://pericopeai.com/api/v1/services/augustine.en/versions"
             echo "- Billing dummy-account route: https://pericopeai.com/api/v1/billing/test/dummy-account"
+            echo "- Keycloak billing role-sync client credential is verified during the server deployment gate when enabled"
             echo "- Public Augustine profile: https://pericopeai.com/api/v1/authors/augustine/profile"
             echo "- Public Cyprian profile: https://pericopeai.com/api/v1/authors/cyprian_of_carthage/profile"
             echo "- Public Boethius profile: https://pericopeai.com/api/v1/authors/boethius/profile"

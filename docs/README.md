@@ -23,6 +23,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 - [Reference Intelligence Agents Architecture](reference-intelligence-agents-architecture.mmd)
 - [Author Historical Context Capability Execution Plan](author-historical-context-capability-execution-plan.md)
 - [Author Historical Context Capability Architecture](author-historical-context-capability-architecture.mmd)
+- [Context-Faithful Staged Author Response Execution Plan](context-faithful-staged-author-response-execution-plan.md)
 - [Author Work Reader and Passage-Anchored Chat Architecture](author-work-reader-passage-chat-architecture.mmd)
 - [Prod Release Runbook v1.1.1](release-runbook-prod-v1.1.1.md)
 - [Release Runbook v1.1.0](release-runbook-v1.1.0.md)

@@ -38,22 +38,126 @@ jobs:
       - name: Checkout Fortress Repo
         uses: actions/checkout@v4
 
+      - name: Resolve Deploy Credentials
+        id: resolve_deploy
+        shell: bash
+        env:
+          PRIMARY_DEPLOY_HOST: ${{ secrets.AMA_WORDPRESS_DEPLOY_HOST }}
+          PRIMARY_DEPLOY_USER: ${{ secrets.AMA_WORDPRESS_DEPLOY_USER }}
+          PRIMARY_DEPLOY_ROOT: ${{ secrets.AMA_WORDPRESS_DEPLOY_ROOT }}
+          PRIMARY_DEPLOY_SSH_KEY: ${{ secrets.AMA_WORDPRESS_DEPLOY_SSH_KEY }}
+          PRIMARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.AMA_WORDPRESS_DEPLOY_KNOWN_HOSTS }}
+          SECONDARY_DEPLOY_HOST: ${{ secrets.AMA_CALCULATORS_DEPLOY_HOST }}
+          SECONDARY_DEPLOY_USER: ${{ secrets.AMA_CALCULATORS_DEPLOY_USER }}
+          SECONDARY_DEPLOY_ROOT: ${{ secrets.AMA_CALCULATORS_DEPLOY_ROOT }}
+          SECONDARY_DEPLOY_SSH_KEY: ${{ secrets.AMA_CALCULATORS_DEPLOY_SSH_KEY }}
+          SECONDARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.AMA_CALCULATORS_DEPLOY_KNOWN_HOSTS }}
+          TERTIARY_DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+          TERTIARY_DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+          TERTIARY_DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+          TERTIARY_DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+          TERTIARY_DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          pick() {
+            if [ -n "${1:-}" ]; then
+              printf '%s' "${1}"
+            elif [ -n "${2:-}" ]; then
+              printf '%s' "${2}"
+            else
+              printf '%s' "${3:-}"
+            fi
+          }
+
+          DEPLOY_HOST="$(pick "${PRIMARY_DEPLOY_HOST:-}" "${SECONDARY_DEPLOY_HOST:-}" "${TERTIARY_DEPLOY_HOST:-}")"
+          DEPLOY_USER="$(pick "${PRIMARY_DEPLOY_USER:-}" "${SECONDARY_DEPLOY_USER:-}" "${TERTIARY_DEPLOY_USER:-}")"
+          DEPLOY_ROOT="$(pick "${PRIMARY_DEPLOY_ROOT:-}" "${SECONDARY_DEPLOY_ROOT:-}" "${TERTIARY_DEPLOY_ROOT:-}")"
+          DEPLOY_SSH_KEY="$(pick "${PRIMARY_DEPLOY_SSH_KEY:-}" "${SECONDARY_DEPLOY_SSH_KEY:-}" "${TERTIARY_DEPLOY_SSH_KEY:-}")"
+          DEPLOY_KNOWN_HOSTS="$(pick "${PRIMARY_DEPLOY_KNOWN_HOSTS:-}" "${SECONDARY_DEPLOY_KNOWN_HOSTS:-}" "${TERTIARY_DEPLOY_KNOWN_HOSTS:-}")"
+
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("${name}")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing AMA WordPress deploy configuration after fallback: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+          primary_all_set=true
+          for name in \
+            PRIMARY_DEPLOY_HOST \
+            PRIMARY_DEPLOY_USER \
+            PRIMARY_DEPLOY_ROOT \
+            PRIMARY_DEPLOY_SSH_KEY \
+            PRIMARY_DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name:-}" ]; then
+              primary_all_set=false
+              break
+            fi
+          done
+
+          secondary_all_set=true
+          for name in \
+            SECONDARY_DEPLOY_HOST \
+            SECONDARY_DEPLOY_USER \
+            SECONDARY_DEPLOY_ROOT \
+            SECONDARY_DEPLOY_SSH_KEY \
+            SECONDARY_DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name:-}" ]; then
+              secondary_all_set=false
+              break
+            fi
+          done
+
+          if [ "${primary_all_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="ama-wordpress-dedicated"
+          elif [ "${secondary_all_set}" = "true" ]; then
+            CREDENTIAL_SOURCE="ama-calculators-shared"
+          else
+            CREDENTIAL_SOURCE="solomonic-clock-shared"
+          fi
+
+          {
+            echo "DEPLOY_HOST<<EOF"
+            echo "${DEPLOY_HOST}"
+            echo "EOF"
+            echo "DEPLOY_USER<<EOF"
+            echo "${DEPLOY_USER}"
+            echo "EOF"
+            echo "DEPLOY_ROOT<<EOF"
+            echo "${DEPLOY_ROOT}"
+            echo "EOF"
+            echo "DEPLOY_SSH_KEY<<EOF"
+            echo "${DEPLOY_SSH_KEY}"
+            echo "EOF"
+            echo "DEPLOY_KNOWN_HOSTS<<EOF"
+            echo "${DEPLOY_KNOWN_HOSTS}"
+            echo "EOF"
+            echo "CREDENTIAL_SOURCE=${CREDENTIAL_SOURCE}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Prepare SSH
         shell: bash
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.AMA_WORDPRESS_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ steps.resolve_deploy.outputs.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.AMA_WORDPRESS_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ steps.resolve_deploy.outputs.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy On Server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.AMA_WORDPRESS_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.AMA_WORDPRESS_DEPLOY_USER }}
-          DEPLOY_ROOT: ${{ secrets.AMA_WORDPRESS_DEPLOY_ROOT }}
+          DEPLOY_HOST: ${{ steps.resolve_deploy.outputs.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ steps.resolve_deploy.outputs.DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ steps.resolve_deploy.outputs.DEPLOY_ROOT }}
           INPUT_SERVICE_REF: ${{ github.event.inputs.service_ref }}
           INPUT_SOURCE_SHA: ${{ github.event.inputs.source_sha }}
           RUN_ID: ${{ github.run_id }}
@@ -62,6 +166,9 @@ jobs:
 
           SERVICE_REF="${INPUT_SERVICE_REF:-main}"
           SOURCE_SHA="${INPUT_SOURCE_SHA:-}"
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "BACKUP_ROOT_INPUT='' bash -s" \
+            < scripts/backup-ama-wordpress-remote-v3.sh
 
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "DEPLOY_ROOT='${DEPLOY_ROOT}' SERVICE_REF='${SERVICE_REF}' SOURCE_SHA='${SOURCE_SHA}' COMPOSE_PROJECT='${COMPOSE_PROJECT}' WORDPRESS_ROOT='${WORDPRESS_ROOT}' RUN_ID='${RUN_ID}' bash -s" <<'REMOTE'
@@ -86,10 +193,6 @@ jobs:
           git -C "${FORTRESS_ROOT}" pull --ff-only origin main
 
           cd "${FORTRESS_ROOT}"
-
-          BACKUP_LABEL="gha-${RUN_ID}-${SERVICE_REF}" \
-          WORDPRESS_ROOT="${WORDPRESS_ROOT}" \
-          bash scripts/backup-ama-wordpress.sh
 
           git -C "${WORDPRESS_ROOT}" fetch origin --tags
 
@@ -120,9 +223,45 @@ jobs:
             exit 1
           fi
 
+          LIVE_WP_PATH=""
+          for candidate in /var/www/askmortgageauthority /var/www/askmortgageauthority.com; do
+            if [ -d "${candidate}/wp-content/uploads" ]; then
+              LIVE_WP_PATH="${candidate}"
+              break
+            fi
+          done
+
+          if [ -n "${LIVE_WP_PATH}" ]; then
+            echo "Syncing live uploads from ${LIVE_WP_PATH}/wp-content/uploads"
+            if command -v rsync >/dev/null 2>&1; then
+              rsync -a "${LIVE_WP_PATH}/wp-content/uploads/" "${WORDPRESS_ROOT}/data/uploads/"
+            else
+              cp -a "${LIVE_WP_PATH}/wp-content/uploads/." "${WORDPRESS_ROOT}/data/uploads/"
+            fi
+          fi
+
+          if [ -n "${LIVE_WP_PATH}" ] && [ -f "${LIVE_WP_PATH}/wp-config.php" ]; then
+            echo "Live wp-config database constants:"
+            perl -ne 'print if /define\(\s*["'"'"'"](DB_NAME|DB_USER|DB_HOST)["'"'"'"]/' "${LIVE_WP_PATH}/wp-config.php" || true
+          fi
+
+          echo "Port 18020 listeners before container start:"
+          ss -ltnp '( sport = :18020 )' || true
+          echo "Port 3306 listeners before container start:"
+          ss -ltnp '( sport = :3306 )' || true
+          echo "Docker containers publishing 18020 before container start:"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep '18020' || true
+          echo "Docker containers related to mysql or mariadb:"
+          docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'mysql|mariadb|3306' || true
+          echo "Host nginx config referencing askmortgageauthority or 18020:"
+          grep -R -n -E 'askmortgageauthority|18020|proxy_pass|fastcgi_pass' \
+            /etc/nginx/sites-available /etc/nginx/sites-enabled 2>/dev/null || true
+          echo "blog-wordpress container details:"
+          docker inspect blog-wordpress --format 'name={{.Name}} image={{.Config.Image}} status={{.State.Status}} started={{.State.StartedAt}}' 2>/dev/null || true
+
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml pull nginx
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml build wordpress
-          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d wordpress nginx
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d wordpress
 
           if [ -f "${WORDPRESS_ROOT}/plugins.txt" ] && [ -f "${WORDPRESS_ROOT}/scripts/install-plugins.sh" ]; then
             AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" \
@@ -130,6 +269,28 @@ jobs:
             COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT}" \
             bash "${WORDPRESS_ROOT}/scripts/install-plugins.sh"
           fi
+
+          LEGACY_PORT_CONTAINER="$(docker ps --filter publish=18020 --format '{{.Names}}' | head -n1 || true)"
+          LEGACY_STOPPED=false
+
+          rollback_cutover() {
+            if [ "${LEGACY_STOPPED}" = "true" ] && [ -n "${LEGACY_PORT_CONTAINER}" ]; then
+              echo "Rolling back to ${LEGACY_PORT_CONTAINER}" >&2
+              AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml stop nginx || true
+              docker rm -f ama-wordpress-nginx >/dev/null 2>&1 || true
+              docker start "${LEGACY_PORT_CONTAINER}" || true
+            fi
+          }
+
+          if [ -n "${LEGACY_PORT_CONTAINER}" ]; then
+            echo "Stopping existing port 18020 container: ${LEGACY_PORT_CONTAINER}"
+            docker stop "${LEGACY_PORT_CONTAINER}"
+            LEGACY_STOPPED=true
+          fi
+
+          trap rollback_cutover ERR
+
+          AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml up -d nginx
 
           AMA_WORDPRESS_ROOT="${WORDPRESS_ROOT}" docker compose -p "${COMPOSE_PROJECT}" -f docker-compose.wordpress.yml ps wordpress nginx
 
@@ -144,6 +305,8 @@ jobs:
             done
             curl -fsSL "$url" >/dev/null
           done
+
+          trap - ERR
           REMOTE
 
       - name: Public Smoke

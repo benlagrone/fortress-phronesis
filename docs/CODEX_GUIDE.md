@@ -44,6 +44,20 @@ Port mappings are fixed:
   - `bash scripts/verify-pericope-deploy-lock.sh`
 - Do not change project name, compose file, network name, or PericopeAI host ports without explicit user approval and matching doc updates.
 
+## Shared capability boundaries
+
+Workspace shared capabilities follow this boundary:
+
+```text
+client or browser -> app same-origin route -> owning capability service -> provider adapters
+```
+
+For voice, PericopeAI, TrueVineOS/Solomonic Clock, and Fortress Personal are
+consumers. Production voice must route through `fortress-lan:voice-gateway`;
+VibeVoice, Azure Voice, OpenAI Audio, and local STT/TTS endpoints are provider
+adapters behind that gateway. Direct `:8011` or `:8013` routes are diagnostic
+bypasses, not normal deployment wiring.
+
 Calculators (`docker-compose.calculators.yml`):
 - host 18010 -> container 8000
 

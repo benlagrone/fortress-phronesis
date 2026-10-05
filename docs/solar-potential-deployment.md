@@ -113,6 +113,7 @@ Backend env values supported by fortress compose:
 - `SOLARPOTENTIAL_PERSONAL_INFO_SHEET_ID`
 - `SOLARPOTENTIAL_BROWSER_DATA_SHEET_ID`
 - `SOLARPOTENTIAL_SOLAR_DATA_SHEET_ID`
+- `SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY`
 
 Recommended production defaults:
 
@@ -127,6 +128,9 @@ Notes:
   change the matching bind mount target
 - if Google Sheets export is required, the credentials file path must resolve
   inside the running container, not only on the host
+- `SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY` is injected into the container as
+  `HOME_ASSISTANT_API_KEY`; keep it in the Fortress `prod` environment secret,
+  never in the checked-in env file
 
 ## Canonical Deploy Commands
 
@@ -193,6 +197,7 @@ Preferred dedicated production secrets for backend:
 - `SOLARPOTENTIAL_BACKEND_DEPLOY_SSH_KEY`
 - `SOLARPOTENTIAL_BACKEND_DEPLOY_KNOWN_HOSTS`
 - `SOLARPOTENTIAL_BACKEND_GHCR_READ_TOKEN`
+- `SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY`
 
 These workflows are the fortress-side deployment entrypoints. The source repos
 own image publication and then dispatch fortress after the images exist.
@@ -259,6 +264,10 @@ curl http://127.0.0.1:18030/runtime-config.js
 curl -I http://127.0.0.1:18030/release-history.html
 curl http://127.0.0.1:18031/health
 curl http://127.0.0.1:18031/openapi.json >/dev/null
+test "$(curl -sS -o /dev/null -w '%{http_code}' \
+  'http://127.0.0.1:18031/api/home-assistant/snapshot?latitude=30.2672&longitude=-97.7431')" = 401
+curl -H "X-API-Key: ${SOLARPOTENTIAL_HOME_ASSISTANT_API_KEY}" \
+  'http://127.0.0.1:18031/api/home-assistant/snapshot?latitude=30.2672&longitude=-97.7431' >/dev/null
 docker compose -p solar-potential -f docker-compose.solar-potential.yml ps
 ```
 

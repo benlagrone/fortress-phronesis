@@ -143,9 +143,11 @@ commercial lane:
   `unpaid`, `checkout_pending`, `awaiting_role_sync`, and `paid_active`.
 - `GET /api/v1/billing/config/public` exposes a non-secret runtime snapshot of
   the configured billing provider, Stripe mode readiness, publishable/webhook
-  wiring state, and the tier lookup keys expected by the public commercial
-  lane. This route is intended for public prod verification without requiring a
-  Keycloak login.
+  wiring state, Keycloak role-sync enablement/configuration, and the tier
+  lookup keys expected by the public commercial lane. Live Stripe is not
+  reported ready unless role synchronization is enabled and configured. This
+  route is intended for public prod verification without requiring a Keycloak
+  login.
 - `POST /api/v1/billing/checkout/session` creates a subscription-mode checkout
   session through the configured provider. The default local/CI provider is the
   fixture provider, which returns `checkout.stripe.test` URLs and never stores
@@ -160,17 +162,36 @@ commercial lane:
 - `POST /api/v1/billing/test/complete-checkout` completes the fixture checkout
   locally for the authenticated dummy user and records the active subscription
   state without requiring a real Stripe callback.
-- `POST /api/v1/billing/webhooks/stripe` processes a Stripe-shaped
-  `checkout.session.completed` or `customer.subscription.updated` event and
-  returns explicit simulated Keycloak claims / role-sync output. Production
-  identity mutation must remain a separate, audited Keycloak operation.
+- `POST /api/v1/billing/webhooks/stripe` verifies the raw Stripe signature,
+  normalizes Checkout and invoice subscription metadata, persists the
+  subscription state, and returns the resulting role-sync state.
+  When `PERICOPE_KEYCLOAK_ROLE_SYNC_ENABLED=true`, it uses the confidential
+  `PERICOPE_KEYCLOAK_ADMIN_CLIENT_ID` and
+  `PERICOPE_KEYCLOAK_ADMIN_CLIENT_SECRET` to synchronize only the managed paid
+  realm roles (`reader`, `scholar`, `family_group`, `institution`) through the
+  Keycloak Admin API. Fortress provisions the confidential
+  `pericope-billing-role-sync` client through the `Provision Pericope Billing
+  Role Sync` GitHub `prod` workflow. The deployment workflow resolves its
+  secret directly from Keycloak on the production host and writes it only to
+  the AugustineService runtime environment. Its service account has Keycloak's required `view-users`,
+  `manage-users`, and `view-realm` roles in `realm-management`; the service
+  code limits its writes to the four managed paid roles. It is disabled by
+  default and fails closed with `503` so Stripe retries rather than recording a
+  false fulfillment.
+- The Fortress `Provision Pericope Live Stripe Catalog` workflow is the
+  additive, production-controlled catalog runway. It verifies or creates the
+  three public monthly Prices from the frontend contract: Reader at $9,
+  Scholar at $19, and Family / Group at $39. It uses the stable live lookup
+  keys `pericopeai_starter_monthly`, `pericopeai_pro_monthly`, and
+  `pericopeai_family_group_monthly`; the Institution tier remains a sales-led
+  contact path and must not be provisioned as a self-serve Price.
 
 The frontend `/pricing` and `/billing/success` routes consume the billing
 endpoints. Billing state persists in MySQL `billing_accounts` independently of
 the Keycloak role claims so the commercial state and the runtime access state
 can be observed separately. The automated test path covers dummy account ->
-checkout -> completion -> role sync simulation -> portal session. Sacred /
-Restricted access remains separate from public paid subscription roles.
+checkout -> completion -> role sync -> portal session. Sacred / Restricted
+access remains separate from public paid subscription roles.
 
 The separately packaged Expo/React Native client consumes the same billing
 status, checkout, and portal endpoints without embedding Stripe or OIDC client
@@ -215,6 +236,49 @@ The main browser chat path is:
 
 VibeVoice/TTS endpoints are separate from this normal chat response path.
 
+## Planned Context-Faithful Staged Author Responses
+
+The urgent `v1.3.6S` response-pipeline change is documented in
+`docs/context-faithful-staged-author-response-execution-plan.md`. It replaces
+the planned single monolithic author answer with an additive, feature-gated
+orchestration path while preserving the current complete JSON response for
+legacy clients.
+
+The planned data flow is:
+
+1. Retrieve selected-author works and assemble a versioned evidence packet
+   before user-facing prose.
+2. Preserve the original user question and apply only minimal temporal
+   mediation for referents the author could not recognize. Mediation must not
+   interpret the user's circumstances or choose the author's conclusion.
+3. Run a hidden source-bound structural planner that organizes connected
+   movements, binds them to evidence, protects lexical/address choices, and
+   places historical understanding before bounded modern application.
+4. Generate and audit opening and development movements independently under
+   bounded concurrency, releasing each movement only after evidence,
+   anachronism, translation, lexical-fidelity, and address checks pass.
+5. Automatically enqueue and cache opening speech after opening text passes;
+   continue later text, audit, and TTS work concurrently while preserving
+   ordered playback.
+6. Generate the final author synthesis from the actual audited movements.
+7. Deliberate on the most appropriate next conversational move from the
+   original intent and completed answer, including the option to conclude.
+8. Persist response-run, segment, evidence, audit, audio, synthesis, follow-up,
+   prompt/model version, and timing state in MySQL-backed application storage.
+
+The temporal mediator, intent interpreter, counsel planner, segment generators,
+closing synthesizer, and follow-up deliberator are separate logical roles. The
+first implementation may host them inside `pericopeai-api`; this plan does not
+add a new service, public route, port, hostname, graph database, or live
+external-data dependency by itself. Negotiated streaming should remain on
+`POST /api/v2/chat`, with the existing non-streaming JSON behavior as fallback.
+
+The current local-only summary compaction rule remains deployed truth until
+`v1.3.6S` is implemented and promoted. Promotion of the separate user-facing
+closing-synthesis model call requires matching updates to migrations,
+configuration, prompt/version manifests, latency monitors, smoke checks,
+deployment locks when applicable, and rollback coverage.
+
 ## Persistence And Memory
 
 MySQL is the current deployed source of truth for PericopeAI application
@@ -256,9 +320,9 @@ The planned split is:
 
 - `fortress.lan` runs bounded citation extraction, resolution, edge-building,
   scoring, and acquisition-lead generation jobs.
-- `fortress.local` presents operator review queues for references,
+- `fortress.lan` presents the canonical operator review queues for references,
   cross-reference edges, author discovery leads, and acquisition handoff
-  proposals.
+  proposals, with `fortress.local` available as the workstation mirror route.
 - `pericopeai.local` and the public PericopeAI app consume only reviewed or
   confidence-gated reference outputs.
 
@@ -315,6 +379,15 @@ publication handoff, public verification, and operator review.
 Tracker stewardship is expected to reconcile ledger works inventory against the
 mounted AugustineCorpus texts so acquisition status is tied to all acquired
 works, not only highlighted titles.
+
+The canonical operator surface for this system is now the read-only Fortress LAN
+page at `http://fortress.lan/author-acquisition`, with
+`http://fortress.local/author-acquisition` remaining the workstation mirror
+route. The Fortress LAN control plane renders tracker and coverage data by
+invoking the Fortress Phronesis `scripts/author_acq.py` dry-run commands
+against the mirrored ledgers. This route is a control-plane/operator surface,
+not a Pericope feature route, and it must not mutate acquisition ledgers or
+trigger source ingestion/publication by itself.
 
 The plan does not add a public route, host port, deployed service, environment
 variable, or deployment path by itself. If promoted from plan to runtime, the

@@ -5,7 +5,9 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import sqlite3
+import string
 import threading
 import time
 from dataclasses import dataclass
@@ -27,6 +29,7 @@ ALLOWED_LOOKUP_KEYS = {
 }
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing", "past_due", "unpaid", "paused"}
 DB_LOCK = threading.Lock()
+INTEGRATION_IDENTIFIER_PREFIX = "truevineos"
 
 
 def _required_env(name: str) -> str:
@@ -54,6 +57,11 @@ def _stripe_dict(value: Any) -> dict[str, Any]:
     return dict(value or {})
 
 
+def _checkout_integration_identifier() -> str:
+    suffix = "".join(secrets.choice(string.ascii_lowercase) for _ in range(8))
+    return f"{INTEGRATION_IDENTIFIER_PREFIX}_{suffix}"
+
+
 @dataclass(frozen=True)
 class Settings:
     stripe_secret_key: str
@@ -64,6 +72,14 @@ class Settings:
     allowed_return_origins: tuple[str, ...]
     db_path: str
     port: int
+
+    @property
+    def stripe_mode(self) -> str:
+        if self.stripe_secret_key.startswith(("sk_live_", "rk_live_", "rkcs_live_")):
+            return "live"
+        if self.stripe_secret_key.startswith(("sk_test_", "rk_test_", "rkcs_test_")):
+            return "test"
+        return "unknown"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -192,7 +208,7 @@ class BillingService:
         customer = self.client.v1.customers.create(
             {
                 "email": email,
-                "metadata": {"project": PROJECT, "environment": "test", "truevineos_user_id": user_id},
+                "metadata": {"project": PROJECT, "environment": self.settings.stripe_mode, "truevineos_user_id": user_id},
             },
             {"idempotency_key": f"{PROJECT}:customer:{hashlib.sha256(user_id.encode()).hexdigest()}"},
         )
@@ -227,7 +243,7 @@ class BillingService:
                     "product_name": product.get("name") or "TrueVine OS",
                 }
             )
-        return {"project": PROJECT, "environment": "test", "plans": plans}
+        return {"project": PROJECT, "environment": self.settings.stripe_mode, "plans": plans}
 
     def create_checkout(self, payload: dict[str, Any]) -> dict[str, Any]:
         user_id, email = self._require_identity(payload)
@@ -243,11 +259,10 @@ class BillingService:
             raise FileExistsError("This account already has a subscription; use Manage billing.")
         metadata = {
             "project": PROJECT,
-            "environment": "test",
+            "environment": self.settings.stripe_mode,
             "plan": plan,
             "user_id": user_id,
             "price_lookup_key": lookup_key,
-            "integration_identifier": "truevineos",
         }
         session = self.client.v1.checkout.sessions.create(
             {
@@ -257,6 +272,7 @@ class BillingService:
                 "line_items": [{"price": price["id"], "quantity": 1}],
                 "success_url": success_url,
                 "cancel_url": cancel_url,
+                "integration_identifier": _checkout_integration_identifier(),
                 "metadata": metadata,
                 "subscription_data": {"metadata": metadata},
             },
@@ -419,7 +435,7 @@ class BillingRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path.rstrip("/") or "/"
         if path in {"/health", "/v1/health"}:
-            self._send_json({"status": "ok", "service": "lecrown-billing", "stripe_mode": "test"})
+            self._send_json({"status": "ok", "service": "lecrown-billing", "stripe_mode": self.service.settings.stripe_mode})
             return
         if not self._authorized():
             self._send_json({"error": "Unauthorized."}, HTTPStatus.UNAUTHORIZED)

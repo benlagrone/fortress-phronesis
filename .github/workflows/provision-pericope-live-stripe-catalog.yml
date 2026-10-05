@@ -1,0 +1,116 @@
+name: Provision Pericope Live Stripe Catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type PROVISION_PERICOPE_LIVE_CATALOG to create missing live Prices.
+        required: true
+        type: string
+      verify_checkout:
+        description: Create an uncompleted Reader Checkout Session to verify live permissions and redirects.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      CONFIRM: ${{ inputs.confirm }}
+      VERIFY_CHECKOUT: ${{ inputs.verify_checkout }}
+    steps:
+      - name: Validate live catalog request
+        run: |
+          set -euo pipefail
+          test "${CONFIRM}" = "PROVISION_PERICOPE_LIVE_CATALOG"
+          case "${STRIPE_SECRET_KEY}" in
+            sk_live_*|rk_live_*) ;;
+            *) echo "::error::A Stripe live secret or restricted key is required."; exit 1 ;;
+          esac
+
+      - name: Create missing Pericope subscription prices
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          key = os.environ["STRIPE_SECRET_KEY"]
+          catalog = (
+              ("reader", "Pericope AI Reader", 900, "pericopeai_starter_monthly"),
+              ("scholar", "Pericope AI Scholar", 1900, "pericopeai_pro_monthly"),
+              ("family_group", "Pericope AI Family / Group", 3900, "pericopeai_family_group_monthly"),
+          )
+
+          def stripe(method, path, form=None):
+              data = urlencode(form or {}).encode() if form is not None else None
+              request = Request(
+                  f"https://api.stripe.com/v1{path}",
+                  data=data,
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {key}",
+                      "Content-Type": "application/x-www-form-urlencoded",
+                  },
+              )
+              with urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+          resolved_prices = {}
+          for plan, product_name, amount, lookup_key in catalog:
+              existing = stripe("GET", f"/prices?{urlencode({'lookup_keys[]': lookup_key, 'active': 'true', 'limit': 1})}")
+              matches = existing.get("data") or []
+              if matches:
+                  price = matches[0]
+                  recurring = price.get("recurring") or {}
+                  if price.get("currency") != "usd" or price.get("unit_amount") != amount or recurring.get("interval") != "month":
+                      raise SystemExit(f"Existing {lookup_key} has incompatible live price settings.")
+                  resolved_prices[plan] = price["id"]
+                  print(f"Verified {plan}: {lookup_key} ({amount} usd/month)")
+                  continue
+
+              product = stripe("POST", "/products", {
+                  "name": product_name,
+                  "metadata[project]": "pericopeai",
+                  "metadata[environment]": "live",
+                  "metadata[plan]": plan,
+              })
+              price = stripe("POST", "/prices", {
+                  "product": product["id"],
+                  "currency": "usd",
+                  "unit_amount": str(amount),
+                  "recurring[interval]": "month",
+                  "lookup_key": lookup_key,
+                  "metadata[project]": "pericopeai",
+                  "metadata[environment]": "live",
+                  "metadata[plan]": plan,
+              })
+              resolved_prices[plan] = price["id"]
+              print(f"Created {plan}: {lookup_key} ({amount} usd/month), price {price['id']}")
+
+          if os.getenv("VERIFY_CHECKOUT", "").lower() == "true":
+              session = stripe("POST", "/checkout/sessions", {
+                  "mode": "subscription",
+                  "line_items[0][price]": resolved_prices["reader"],
+                  "line_items[0][quantity]": "1",
+                  "success_url": "https://pericopeai.com/billing/success?session_id={CHECKOUT_SESSION_ID}",
+                  "cancel_url": "https://pericopeai.com/pricing",
+                  "customer_email": "live-billing-e2e@pericopeai.invalid",
+                  "client_reference_id": "pericope-live-billing-probe",
+                  "integration_identifier": "pericopeai_reader_liveprobe",
+                  "metadata[project]": "pericopeai",
+                  "metadata[environment]": "live",
+                  "metadata[plan]": "reader",
+                  "subscription_data[metadata][project]": "pericopeai",
+                  "subscription_data[metadata][environment]": "live",
+                  "subscription_data[metadata][plan]": "reader",
+              })
+              print(f"Live Reader Checkout verified: {session['id']}")
+          PY
