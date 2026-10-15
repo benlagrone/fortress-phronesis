@@ -1,6 +1,7 @@
 .rag/
 venv/
 scripts/*
+!scripts/verify-fortresslegaltech-deploy-lock.sh
 !scripts/author-acq.py
 !scripts/author_acq.py
 !scripts/smoke-crossrefs.py
