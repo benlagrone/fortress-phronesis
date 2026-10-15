@@ -58,6 +58,29 @@ docker compose -p fortresslegaltech -f docker-compose.fortresslegaltech.yml \
 
 A successful probe reports HTTP 200 and a validated archive containing only `locations.xml`. Never print, commit, copy into the image, or return the private key, password, CMS header, or provider payload through a browser endpoint.
 
+## Tyler STAGE Callback
+
+The two exact public callback paths are owned by the `fortresslegaltech.com`
+nginx vhost and proxy to the existing Fortress LAN receiver at
+`192.168.0.126:8133` through the approved Contabo-to-LAN private route:
+
+- `GET /legal/api/efsp/tyler/stage/callback/healthz`
+- `POST /legal/api/efsp/tyler/stage/callback`
+
+No prefix route is exposed. The callback route deliberately bypasses host Basic
+Auth because Tyler cannot supply interactive credentials; the receiver must
+instead run with `LEGAL_TYLER_CALLBACK_ENABLED=true` and
+`LEGAL_TYLER_CALLBACK_SIGNATURE_REQUIRED=true`, with the Tyler STAGE trust
+anchor mounted at the configured path. Keep replay state on persistent storage.
+Do not install or reload this vhost until a Contabo-host health probe reports
+`ok: true`, signature validation enabled, and the trust anchor ready.
+
+Before requesting Tyler callback registration, verify externally that the exact
+health path returns HTTP 200, malformed or unsigned callback requests are
+rejected, oversized payloads are rejected, and an adjacent path remains routed
+to the public application rather than the callback receiver. Retain only
+redacted, correlation-bound evidence.
+
 ## DNS And TLS
 
 1. Install `deploy/nginx/fortresslegaltech.com.bootstrap.conf` only after the container health checks pass.
@@ -73,6 +96,11 @@ A successful probe reports HTTP 200 and a validated archive containing only `loc
 curl -fsS https://fortresslegaltech.com/healthz
 curl -fsS https://fortresslegaltech.com/expunction >/dev/null
 curl -fsS https://fortresslegaltech.com/api/v1/workflows/expunction >/dev/null
+curl -fsS https://fortresslegaltech.com/legal/api/efsp/tyler/stage/callback/healthz
+test "$(curl -sS -o /dev/null -w '%{http_code}' \
+  -H 'Content-Type: application/xml' \
+  --data '<not-valid-callback/>' \
+  https://fortresslegaltech.com/legal/api/efsp/tyler/stage/callback)" = "400"
 curl -fsSI https://www.fortresslegaltech.com/ | grep -i '^location: https://fortresslegaltech.com/'
 ```
 
