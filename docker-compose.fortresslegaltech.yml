@@ -12,12 +12,21 @@ services:
       TYLER_STAGE_CERTIFICATE_PATH: /run/secrets/tyler-stage-certificate
       TYLER_STAGE_PRIVATE_KEY_PATH: /run/secrets/tyler-stage-private-key
       TYLER_STAGE_PRIVATE_KEY_PASSWORD_FILE: /run/secrets/tyler-stage-key-password
+      TYLER_STAGE_CALLBACK_ENABLED: ${FORTRESSLEGALTECH_TYLER_STAGE_CALLBACK_ENABLED:-false}
+      TYLER_STAGE_CALLBACK_SIGNATURE_REQUIRED: "true"
+      TYLER_STAGE_CALLBACK_TRUST_ANCHOR_PATH: /run/secrets/tyler-stage-callback-trust-anchor
+      TYLER_STAGE_CALLBACK_STATE_DIR: /data/tyler-stage-callback
+      TYLER_STAGE_CALLBACK_MAX_BYTES: "67108864"
+      TYLER_STAGE_CALLBACK_CLOCK_SKEW_SECONDS: "300"
     ports:
       - "127.0.0.1:18042:8080"
     secrets:
       - tyler-stage-certificate
       - tyler-stage-private-key
       - tyler-stage-key-password
+      - tyler-stage-callback-trust-anchor
+    volumes:
+      - ./state/tyler-stage-callback:/data/tyler-stage-callback
 
 secrets:
   tyler-stage-certificate:
@@ -26,3 +35,5 @@ secrets:
     file: ./secrets/tyler-stage/fortress-legal-technologies-stage.key.pem
   tyler-stage-key-password:
     file: ./secrets/tyler-stage/FortressLegalTechnologies-password.txt
+  tyler-stage-callback-trust-anchor:
+    file: ./secrets/tyler-stage/tylerofsefmrootsha2.crt
