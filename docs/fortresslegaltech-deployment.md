@@ -1,6 +1,6 @@
 # Fortress Legal Technologies Deployment
 
-This document is the production implementation contract for `fortresslegaltech.com`. The source application lives in `/Users/benjaminlagrone/Documents/projects/fortresslegaltech.com`; operational Compose, nginx, TLS, and host routing remain owned by Fortress Phronesis.
+This document is the production implementation contract for `fortresslegaltech.com`. The source application lives in `/Users/benjaminlagrone/Documents/projects/fortresslegaltech.com`; operational Compose, nginx, TLS, and host routing remain owned by the `fortress-phronesis` deployment repository. That repository name does not make the physical home-LAN Phronesis machine a runtime dependency.
 
 ## Locked Runtime
 
@@ -21,14 +21,14 @@ The runtime contract is prepared but must not be represented as deployed until a
 
 1. `benlagrone/fortresslegaltech.com` exists and the source commit is pushed.
 2. The matching immutable GHCR image exists.
-3. The Phronesis production checkout is clean and synchronized to the deployment commit.
+3. The Contabo deployment checkout is clean and synchronized to the deployment commit.
 4. Namecheap DNS points the apex and `www` records to the authorized public host.
 5. Local health, nginx bootstrap, ACME issuance, TLS routing, and public acceptance checks pass.
 
 ## Deploy
 
 Run from the isolated application stack root. The deployment artifact is copied
-from the synchronized Phronesis deployment repository; the production checkout
+from the synchronized `fortress-phronesis` deployment repository; the production checkout
 is not used as mutable application storage.
 
 ```bash
@@ -61,19 +61,22 @@ A successful probe reports HTTP 200 and a validated archive containing only `loc
 ## Tyler STAGE Callback
 
 The two exact public callback paths are owned by the `fortresslegaltech.com`
-nginx vhost and proxy to the existing Fortress LAN receiver at
-`192.168.0.126:8133` through the approved Contabo-to-LAN private route:
+nginx vhost and proxy to the same Contabo-hosted Fortress Legal application on
+loopback port `18042`:
 
 - `GET /legal/api/efsp/tyler/stage/callback/healthz`
 - `POST /legal/api/efsp/tyler/stage/callback`
 
-No prefix route is exposed. The callback route deliberately bypasses host Basic
-Auth because Tyler cannot supply interactive credentials; the receiver must
-instead run with `LEGAL_TYLER_CALLBACK_ENABLED=true` and
-`LEGAL_TYLER_CALLBACK_SIGNATURE_REQUIRED=true`, with the Tyler STAGE trust
-anchor mounted at the configured path. Keep replay state on persistent storage.
-Do not install or reload this vhost until a Contabo-host health probe reports
-`ok: true`, signature validation enabled, and the trust anchor ready.
+No prefix route is exposed. Phronesis and the home LAN are not runtime
+dependencies. The callback route does not use interactive Basic Auth because
+Tyler cannot supply it; the receiver instead verifies Tyler WS-Security inside
+the public application. Before activation, place the Tyler STAGE root at
+`secrets/tyler-stage/tylerofsefmrootsha2.crt`, create
+`state/tyler-stage-callback` owned by UID/GID `10001:10001` with mode `0700`,
+and set `FORTRESSLEGALTECH_TYLER_STAGE_CALLBACK_ENABLED=true`. The container
+keeps `TYLER_STAGE_CALLBACK_SIGNATURE_REQUIRED=true` fixed. Do not install or
+reload this vhost until the loopback health response reports `ok: true`,
+signature validation enabled, and the trust anchor ready.
 
 Before requesting Tyler callback registration, verify externally that the exact
 health path returns HTTP 200, malformed or unsigned callback requests are

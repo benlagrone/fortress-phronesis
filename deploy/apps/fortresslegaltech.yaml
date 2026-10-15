@@ -19,7 +19,7 @@ healthchecks:
   - type: http
     url: http://127.0.0.1:18042/healthz
   - type: http
-    url: http://192.168.0.126:8133/legal/api/efsp/tyler/stage/callback/healthz
+    url: http://127.0.0.1:18042/legal/api/efsp/tyler/stage/callback/healthz
   - type: http
     url: http://127.0.0.1:18042/expunction
   - type: http

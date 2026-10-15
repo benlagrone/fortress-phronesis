@@ -19,6 +19,10 @@ grep -Fq 'TYLER_STAGE_CERTIFICATE_PATH: /run/secrets/tyler-stage-certificate' "$
 grep -Fq 'file: ./secrets/tyler-stage/FortressLegalTechnologies.crt' "$compose_file"
 grep -Fq 'file: ./secrets/tyler-stage/fortress-legal-technologies-stage.key.pem' "$compose_file"
 grep -Fq 'file: ./secrets/tyler-stage/FortressLegalTechnologies-password.txt' "$compose_file"
+grep -Fq 'TYLER_STAGE_CALLBACK_ENABLED: ${FORTRESSLEGALTECH_TYLER_STAGE_CALLBACK_ENABLED:-false}' "$compose_file"
+grep -Fq 'TYLER_STAGE_CALLBACK_SIGNATURE_REQUIRED: "true"' "$compose_file"
+grep -Fq 'file: ./secrets/tyler-stage/tylerofsefmrootsha2.crt' "$compose_file"
+grep -Fq './state/tyler-stage-callback:/data/tyler-stage-callback' "$compose_file"
 grep -Fq 'project_name: fortresslegaltech' "$app_manifest"
 grep -Fq 'stack_root: /srv/fortresslegaltech' "$app_manifest"
 grep -Fq 'host_bind: 127.0.0.1:18042' "$app_manifest"
@@ -27,13 +31,18 @@ grep -Fq 'proxy_pass http://127.0.0.1:18042;' "$nginx_bootstrap"
 grep -Fq '/etc/letsencrypt/live/fortresslegaltech.com/fullchain.pem' "$nginx_tls"
 grep -Fq 'location = /legal/api/efsp/tyler/stage/callback/healthz {' "$nginx_tls"
 grep -Fq 'location = /legal/api/efsp/tyler/stage/callback {' "$nginx_tls"
-test "$(grep -Fc 'proxy_pass http://192.168.0.126:8133;' "$nginx_tls")" -eq 2
+test "$(grep -Fc 'proxy_pass http://127.0.0.1:18042;' "$nginx_tls")" -eq 3
 grep -Fq 'client_max_body_size 64m;' "$nginx_tls"
-grep -Fq 'http://192.168.0.126:8133/legal/api/efsp/tyler/stage/callback/healthz' "$app_manifest"
+grep -Fq 'http://127.0.0.1:18042/legal/api/efsp/tyler/stage/callback/healthz' "$app_manifest"
 grep -Fq 'Compose project: `fortresslegaltech`' "$runbook"
 grep -Fq 'Stack root: `/srv/fortresslegaltech`' "$runbook"
 grep -Fq 'fortress-tyler-stage-probe' "$runbook"
-grep -Fq 'LEGAL_TYLER_CALLBACK_SIGNATURE_REQUIRED=true' "$runbook"
+grep -Fq 'TYLER_STAGE_CALLBACK_SIGNATURE_REQUIRED=true' "$runbook"
+
+if grep -Fq '192.168.0.126' "$nginx_tls" "$app_manifest" "$runbook"; then
+  echo "FAIL: Tyler callback deployment must not depend on the home LAN" >&2
+  exit 1
+fi
 
 if grep -Eq '(^|[[:space:]])18042:8080' "$compose_file"; then
   echo "FAIL: public host binding detected; port 18042 must be loopback-only" >&2
