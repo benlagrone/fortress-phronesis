@@ -25,9 +25,15 @@ grep -Fq 'host_bind: 127.0.0.1:18042' "$app_manifest"
 grep -Fq 'server_name fortresslegaltech.com www.fortresslegaltech.com;' "$nginx_bootstrap"
 grep -Fq 'proxy_pass http://127.0.0.1:18042;' "$nginx_bootstrap"
 grep -Fq '/etc/letsencrypt/live/fortresslegaltech.com/fullchain.pem' "$nginx_tls"
+grep -Fq 'location = /legal/api/efsp/tyler/stage/callback/healthz {' "$nginx_tls"
+grep -Fq 'location = /legal/api/efsp/tyler/stage/callback {' "$nginx_tls"
+test "$(grep -Fc 'proxy_pass http://192.168.0.126:8133;' "$nginx_tls")" -eq 2
+grep -Fq 'client_max_body_size 64m;' "$nginx_tls"
+grep -Fq 'http://192.168.0.126:8133/legal/api/efsp/tyler/stage/callback/healthz' "$app_manifest"
 grep -Fq 'Compose project: `fortresslegaltech`' "$runbook"
 grep -Fq 'Stack root: `/srv/fortresslegaltech`' "$runbook"
 grep -Fq 'fortress-tyler-stage-probe' "$runbook"
+grep -Fq 'LEGAL_TYLER_CALLBACK_SIGNATURE_REQUIRED=true' "$runbook"
 
 if grep -Eq '(^|[[:space:]])18042:8080' "$compose_file"; then
   echo "FAIL: public host binding detected; port 18042 must be loopback-only" >&2
