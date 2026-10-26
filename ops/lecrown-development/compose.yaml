@@ -1,0 +1,67 @@
+name: lecrown-development
+
+x-runtime: &runtime
+  APP_NAME: LeCrown Development
+  DATABASE_URL: sqlite:////app/data/lecrown-development.db
+  SECRET_KEY: ${SECRET_KEY:?Development SECRET_KEY is required}
+  ADMIN_USERNAME: ${ADMIN_USERNAME:?Development administrator is required}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Development administrator password is required}
+  PUBLIC_APP_URL: https://app.lecrowndevelopment.com
+  CORS_ORIGINS: https://app.lecrowndevelopment.com
+  ALLOWED_HOSTS: app.lecrowndevelopment.com,api.lecrowndevelopment.com,backend,localhost,127.0.0.1
+  WORKSPACE_AUTH_REQUIRED: 'false'
+  ESPOCRM_BASE_URL: https://crm.lecrowndevelopment.com
+  ESPOCRM_USERNAME: ${ESPOCRM_USERNAME:?EspoCRM login is required}
+  ESPOCRM_PASSWORD: ${ESPOCRM_PASSWORD:?EspoCRM password is required}
+  GOV_CONTRACT_SOURCE_CATALOG: espocrm
+  GOV_CONTRACT_PORTAL_BATCH_SIZE: '10'
+  GOV_CONTRACT_PORTAL_INTERVAL_SECONDS: '6'
+  GOV_CONTRACT_REQUEST_TIMEOUT_SECONDS: '12'
+  PROCUREMENT_CANDIDATE_JSON_PATH: /app/data/procurement-candidates.json
+  PROCUREMENT_COLLECTION_INTERVAL_SECONDS: '900'
+
+services:
+  backend:
+    image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
+    restart: unless-stopped
+    environment: *runtime
+    volumes:
+      - development-data:/app/data
+    ports:
+      - '127.0.0.1:18045:8000'
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+    labels:
+      com.fortress.deployment-owner: workspace-deployment
+      org.opencontainers.image.revision: ${SOURCE_SHA}
+
+  frontend:
+    image: lecrown-development-admin:sha-${SOURCE_SHA:?Source revision is required}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:13095:3000'
+
+  collector:
+    image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
+    restart: unless-stopped
+    command: [python, -u, -m, app.jobs.collect_procurement_candidates]
+    environment: *runtime
+    volumes:
+      - development-data:/app/data
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  development-data:
+    name: lecrown_development_data
+
+networks:
+  default:
+    name: lecrown-development-net
