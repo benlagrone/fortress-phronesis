@@ -20,6 +20,11 @@ on:
         required: true
         default: true
         type: boolean
+      reset_admin_password:
+        description: Reset the admin password from the protected environment secret
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -72,11 +77,22 @@ jobs:
           DEPLOY_HOST: ${{ secrets.UNICORNJUMP_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.UNICORNJUMP_DEPLOY_USER }}
           ISSUE_CERTIFICATE: ${{ inputs.issue_certificate }}
+          RESET_ADMIN_PASSWORD: ${{ secrets.ESPOCRM_ADMIN_PASSWORD }}
+          RESET_ADMIN_PASSWORD_ENABLED: ${{ inputs.reset_admin_password }}
         run: |
           set -euo pipefail
 
+          if [ "${RESET_ADMIN_PASSWORD_ENABLED}" = "true" ]; then
+            if [ -z "${RESET_ADMIN_PASSWORD}" ]; then
+              echo "ESPOCRM_ADMIN_PASSWORD must be configured for an admin password reset." >&2
+              exit 1
+            fi
+            printf '%s' "${RESET_ADMIN_PASSWORD}" | ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+              "install -d ${REMOTE_DIR} && umask 077 && cat > ${REMOTE_DIR}/.reset-admin-password"
+          fi
+
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "REMOTE_DIR='${REMOTE_DIR}' ISSUE_CERTIFICATE='${ISSUE_CERTIFICATE}' CERTBOT_EMAIL='${CERTBOT_EMAIL}' bash -s" <<'REMOTE'
+            "REMOTE_DIR='${REMOTE_DIR}' ISSUE_CERTIFICATE='${ISSUE_CERTIFICATE}' CERTBOT_EMAIL='${CERTBOT_EMAIL}' RESET_ADMIN_PASSWORD_ENABLED='${RESET_ADMIN_PASSWORD_ENABLED}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           set_kv() {
@@ -118,6 +134,18 @@ jobs:
           ./crm.sh pull
           ./crm.sh up
           ./crm.sh ps
+
+          if [ "${RESET_ADMIN_PASSWORD_ENABLED}" = "true" ]; then
+            reset_password_file="${REMOTE_DIR}/.reset-admin-password"
+            trap 'rm -f "${reset_password_file}"' EXIT
+            if [ ! -s "${reset_password_file}" ]; then
+              echo "Missing protected admin password reset file." >&2
+              exit 1
+            fi
+            reset_admin_password="$(cat "${reset_password_file}")"
+            printf '%s\n%s\n' "${reset_admin_password}" "${reset_admin_password}" | \
+              docker compose --env-file .env -f docker-compose.yml exec -T espocrm bin/command set-password admin
+          fi
 
           for attempt in $(seq 1 30); do
             if curl -fsSI http://127.0.0.1:18036 >/dev/null 2>&1; then
