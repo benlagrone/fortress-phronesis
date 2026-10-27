@@ -26,6 +26,7 @@ jobs:
       DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
       DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+      STATIC_SITE_REPO_TOKEN: ${{ secrets.JESTER_REPO_TOKEN }}
       ARTICLE_PATH: /2026/10/27/these-are-not-the-droids-you-are-looking-for/
 
     steps:
@@ -34,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]
-          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS)
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS STATIC_SITE_REPO_TOKEN)
           missing=()
           for name in "${required[@]}"; do
             if [ -z "${!name:-}" ]; then missing+=("${name}"); fi
@@ -59,10 +60,10 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOURCE_SHA='${SOURCE_SHA}' DEPLOY_ROOT='${DEPLOY_ROOT}' ARTICLE_PATH='${ARTICLE_PATH}' bash -s" <<'REMOTE'
+            "SOURCE_SHA='${SOURCE_SHA}' DEPLOY_ROOT='${DEPLOY_ROOT}' ARTICLE_PATH='${ARTICLE_PATH}' STATIC_SITE_REPO_TOKEN='${STATIC_SITE_REPO_TOKEN}' bash -s" <<'REMOTE'
           set -euo pipefail
           RELEASE_ROOT="${DEPLOY_ROOT%/}/benjaminlagrone-static-release"
-          REPOSITORY="https://github.com/benlagrone/benjaminlagrone.com.git"
+          REPOSITORY="https://x-access-token:${STATIC_SITE_REPO_TOKEN}@github.com/benlagrone/benjaminlagrone.com.git"
           COMPOSE_FILE="${RELEASE_ROOT}/static-site/deploy/docker-compose.fortress-phronesis.yml"
 
           if [ ! -d "${RELEASE_ROOT}/.git" ]; then
@@ -70,7 +71,8 @@ jobs:
             git clone "${REPOSITORY}" "${RELEASE_ROOT}"
           fi
 
-          git -C "${RELEASE_ROOT}" fetch origin main
+          git -C "${RELEASE_ROOT}" remote set-url origin "https://github.com/benlagrone/benjaminlagrone.com.git"
+          git -C "${RELEASE_ROOT}" -c remote.origin.url="${REPOSITORY}" fetch origin main
           git -C "${RELEASE_ROOT}" checkout --detach "${SOURCE_SHA}"
           test "$(git -C "${RELEASE_ROOT}" rev-parse HEAD)" = "${SOURCE_SHA}"
 
