@@ -41,6 +41,10 @@ Properties container IDs and nginx hashes before and after cutover, and checks i
 public health. Failure restores the two Development vhosts and prior Development
 release, or stops only the new project on its first release, without removing data.
 
+For an existing Development runtime, a mode-0600 SQLite online backup is verified
+under `/app/data/backups/` before migrations or container replacement. It includes
+existing account records; neither bootstrap credentials nor existing users are reset.
+
 ## Verification
 
 - Public Development app, same-origin `/api/healthz`, and API health return successfully.

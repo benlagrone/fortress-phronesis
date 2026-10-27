@@ -83,6 +83,25 @@ def compose(env, *args):
     return run(["docker", "compose", "-p", "lecrown-development", "-f", str(ROOT / "compose.yaml"), *args], env=env)
 
 
+def snapshot_existing_database(backup):
+    script = """
+import os, pathlib, sqlite3, sys
+source = pathlib.Path('/app/data/lecrown-development.db')
+assert source.is_file(), 'Existing Development database is missing'
+directory = source.parent / 'backups'
+directory.mkdir(mode=0o700, exist_ok=True)
+target = directory / (sys.argv[1] + '.db')
+descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+os.close(descriptor)
+with sqlite3.connect('file:' + str(source) + '?mode=ro', uri=True) as original:
+    with sqlite3.connect(target) as snapshot:
+        original.backup(snapshot)
+        assert snapshot.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+print('Development database snapshot verified before release')
+"""
+    run(["docker", "exec", "lecrown-development-backend-1", "python", "-c", script, backup.name])
+
+
 def validate_payload(payload):
     if not re.fullmatch(r"[a-f0-9]{40}", payload.get("source_sha", "")):
         raise ValueError("Expected a full Git source revision")
@@ -165,6 +184,8 @@ def install(payload):
             raise RuntimeError("Image revision verification failed")
     backup = ROOT / "backups" / time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
     backup.mkdir(parents=True, mode=0o700)
+    if previous_release:
+        snapshot_existing_database(backup)
     for domain, path in targets.items():
         shutil.copy2(path, backup / domain)
     if (ROOT / "compose.yaml").exists():
