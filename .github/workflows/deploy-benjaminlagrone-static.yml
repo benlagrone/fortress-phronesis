@@ -26,7 +26,7 @@ jobs:
       DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
       DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
-      STATIC_SITE_REPO_TOKEN: ${{ secrets.JESTER_REPO_TOKEN }}
+      GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
       ARTICLE_PATH: /2026/10/27/these-are-not-the-droids-you-are-looking-for/
 
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]
-          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS STATIC_SITE_REPO_TOKEN)
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
           missing=()
           for name in "${required[@]}"; do
             if [ -z "${!name:-}" ]; then missing+=("${name}"); fi
@@ -60,23 +60,16 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "SOURCE_SHA='${SOURCE_SHA}' DEPLOY_ROOT='${DEPLOY_ROOT}' ARTICLE_PATH='${ARTICLE_PATH}' STATIC_SITE_REPO_TOKEN='${STATIC_SITE_REPO_TOKEN}' bash -s" <<'REMOTE'
+            "SOURCE_SHA='${SOURCE_SHA}' ARTICLE_PATH='${ARTICLE_PATH}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' bash -s" <<'REMOTE'
           set -euo pipefail
-          RELEASE_ROOT="${DEPLOY_ROOT%/}/benjaminlagrone-static-release"
-          REPOSITORY="https://x-access-token:${STATIC_SITE_REPO_TOKEN}@github.com/benlagrone/benjaminlagrone.com.git"
-          COMPOSE_FILE="${RELEASE_ROOT}/static-site/deploy/docker-compose.fortress-phronesis.yml"
-
-          if [ ! -d "${RELEASE_ROOT}/.git" ]; then
-            install -d "$(dirname "${RELEASE_ROOT}")"
-            git clone "${REPOSITORY}" "${RELEASE_ROOT}"
+          IMAGE="ghcr.io/benlagrone/benjaminlagrone-static:sha-${SOURCE_SHA}"
+          echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          docker pull "${IMAGE}"
+          if docker inspect benjaminlagrone-static >/dev/null 2>&1; then
+            docker rm -f benjaminlagrone-static
           fi
-
-          git -C "${RELEASE_ROOT}" remote set-url origin "https://github.com/benlagrone/benjaminlagrone.com.git"
-          git -C "${RELEASE_ROOT}" -c remote.origin.url="${REPOSITORY}" fetch origin main
-          git -C "${RELEASE_ROOT}" checkout --detach "${SOURCE_SHA}"
-          test "$(git -C "${RELEASE_ROOT}" rev-parse HEAD)" = "${SOURCE_SHA}"
-
-          docker compose -p benjaminlagrone-static -f "${COMPOSE_FILE}" up -d --build
+          docker run -d --name benjaminlagrone-static --restart unless-stopped \
+            -p 127.0.0.1:18020:80 "${IMAGE}"
 
           for attempt in $(seq 1 30); do
             if curl -fsS "http://127.0.0.1:18020${ARTICLE_PATH}" | grep -q "These Are Not the Droids You Are Looking For"; then
