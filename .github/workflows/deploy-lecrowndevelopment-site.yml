@@ -1,0 +1,61 @@
+name: Deploy LeCrown Development Site
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact LeCrown Development site commit to deploy
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lecrowndevelopment-site-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+      GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+    steps:
+      - name: Validate release inputs
+        run: |
+          set -euo pipefail
+          [[ "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN; do test -n "${!name:-}"; done
+      - name: Prepare Fortress deployment identity
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Replace only the marketing-site container
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" "SOURCE_SHA='${SOURCE_SHA}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          image="ghcr.io/benlagrone/lecrowndevelopment-site:sha-${SOURCE_SHA}"
+          echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          docker pull "${image}"
+          docker rm -f lecrown-site || true
+          docker run -d --name lecrown-site --restart unless-stopped -p 127.0.0.1:18032:8080 "${image}"
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18032/privacy/index.html | grep -q 'Privacy Policy'; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+          REMOTE
+      - name: Verify public privacy page
+        run: |
+          set -euo pipefail
+          curl -fsS https://lecrowndevelopment.com/privacy/index.html | grep -q 'Privacy Policy'

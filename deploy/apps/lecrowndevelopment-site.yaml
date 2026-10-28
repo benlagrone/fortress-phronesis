@@ -1,0 +1,18 @@
+schema_version: 1
+app_id: lecrowndevelopment-site
+display_name: LeCrown Development Marketing Site
+deploy_kind: immutable_image
+repo:
+  url: https://github.com/benlagrone/lecrowndevelopment.com
+artifacts:
+  image: ghcr.io/benlagrone/lecrowndevelopment-site
+runtime:
+  container_name: lecrown-site
+  host_bind: 127.0.0.1:18032
+release_types: [code_release, rollback]
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18032/privacy/index.html
+public_urls:
+  - https://lecrowndevelopment.com/
+  - https://www.lecrowndevelopment.com/
