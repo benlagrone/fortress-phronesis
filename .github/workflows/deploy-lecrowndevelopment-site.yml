@@ -47,8 +47,16 @@ jobs:
           image="ghcr.io/benlagrone/lecrowndevelopment-site:sha-${SOURCE_SHA}"
           echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
           docker pull "${image}"
-          docker rm -f lecrown-site || true
-          docker run -d --name lecrown-site --restart unless-stopped -p 127.0.0.1:18032:8080 "${image}"
+          old_container="$(docker ps -q --filter publish=18032)"
+          test -n "${old_container}"
+          old_image="$(docker inspect --format '{{.Config.Image}}' "${old_container}")"
+          docker rm -f lecrown-site >/dev/null 2>&1 || true
+          docker rm -f "${old_container}"
+          if ! docker run -d --name lecrown-site --restart unless-stopped -p 127.0.0.1:18032:8080 "${image}"; then
+            docker rm -f lecrown-site >/dev/null 2>&1 || true
+            docker run -d --name lecrown-site-rollback --restart unless-stopped -p 127.0.0.1:18032:8080 "${old_image}"
+            exit 1
+          fi
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:18032/privacy/index.html | grep -q 'Privacy Policy'; then exit 0; fi
             sleep 2
