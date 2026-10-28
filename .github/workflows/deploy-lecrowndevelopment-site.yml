@@ -47,14 +47,18 @@ jobs:
           image="ghcr.io/benlagrone/lecrowndevelopment-site:sha-${SOURCE_SHA}"
           echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
           docker pull "${image}"
+          lead_api_container="$(docker ps --format '{{.Names}}' | grep -m1 'lead-api')"
+          test -n "${lead_api_container}"
+          lead_api_network="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}' "${lead_api_container}")"
+          test -n "${lead_api_network}"
           old_container="$(docker ps -q --filter publish=18032)"
-          test -n "${old_container}"
-          old_image="$(docker inspect --format '{{.Config.Image}}' "${old_container}")"
+          old_image=""
+          if test -n "${old_container}"; then old_image="$(docker inspect --format '{{.Config.Image}}' "${old_container}")"; fi
           docker rm -f lecrown-site >/dev/null 2>&1 || true
           docker rm -f "${old_container}"
-          if ! docker run -d --name lecrown-site --restart unless-stopped -p 127.0.0.1:18032:8080 "${image}"; then
+          if ! docker run -d --name lecrown-site --restart unless-stopped --network "${lead_api_network}" --network-alias lead-api -p 127.0.0.1:18032:8080 "${image}"; then
             docker rm -f lecrown-site >/dev/null 2>&1 || true
-            docker run -d --name lecrown-site-rollback --restart unless-stopped -p 127.0.0.1:18032:8080 "${old_image}"
+            if test -n "${old_image}"; then docker run -d --name lecrown-site-rollback --restart unless-stopped --network "${lead_api_network}" --network-alias lead-api -p 127.0.0.1:18032:8080 "${old_image}"; fi
             exit 1
           fi
           for attempt in $(seq 1 30); do
