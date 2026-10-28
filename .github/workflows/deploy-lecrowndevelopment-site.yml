@@ -49,8 +49,8 @@ jobs:
           docker pull "${image}"
           lead_api_container="$(docker ps --format '{{.Names}}' | grep -m1 'lead-api')"
           test -n "${lead_api_container}"
-          lead_api_network="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{end}}' "${lead_api_container}")"
-          test -n "${lead_api_network}"
+          lead_api_network="lecrowndevelopment-site_default"
+          docker network inspect "${lead_api_network}" >/dev/null
           old_container="$(docker ps -q --filter publish=18032)"
           old_image=""
           if test -n "${old_container}"; then old_image="$(docker inspect --format '{{.Config.Image}}' "${old_container}")"; fi
