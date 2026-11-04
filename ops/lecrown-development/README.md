@@ -33,6 +33,8 @@ Use the Development Python environment (includes python-dotenv):
 After scope approval, add `--apply` and supply `--app-env`, `--crm-env`, and `--ssh-env`
 with the explicitly authorized Development, EspoCRM, and Fortress connection files.
 Do not print their contents. Run workspace lock/runway validation before applying.
+Use `--source-root CLEAN_CHECKOUT` to release from a clean checkout of the locked
+`benlagrone/lecrown-platform` repository without including unrelated local changes.
 
 The installer checks unclaimed loopback ports, volume/network ownership, image revision
 labels, backend health, admin authentication, and inbox capability before changing
@@ -54,6 +56,11 @@ existing account records; neither bootstrap credentials nor existing users are r
 - Authenticated `/contracts/candidates/export.json` contains actual source-backed
   candidates. Promotion tests use mocks; do not create test Opportunities in live CRM.
 - Preserve Properties container IDs, vhosts, database, credentials, and public health.
+- The portless `pursuit-ranker` worker checks all EspoCRM Opportunities every 60 seconds.
+  It writes only nine scoring fields, reuses collector snapshots without extra portal
+  traffic, and persists private state/receipts in `/app/data/crm-pursuit-scoring`.
+  The installer requires a successful verified CRM pass and healthy worker before
+  declaring deployment complete. Read it back with `--verify --apply --ssh-env FILE`.
 - Record source SHA, archive digest, backup path, and release timestamp in `release.json`.
 
 ## Rollback
@@ -63,3 +70,5 @@ The backup path must belong to this Development deployment. The initial-split ro
 restores Development's old shared upstreams and stops only `lecrown-development`, keeping
 its data volume. Later rollbacks restore the prior Development image pins and compose
 definition. Properties is never stopped, rebuilt, migrated, or reconfigured.
+Rollback removes project-scoped orphan containers so rolling back to a pre-worker
+release cannot leave the new scorer running against the previous application.

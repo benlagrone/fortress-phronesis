@@ -3,8 +3,11 @@ import hashlib
 import io
 import tarfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from install_release import new_vhost_text, validate_payload
+from install_release import new_vhost_text, pursuit_health, rollback, validate_payload
+from deploy import validate_source
 
 
 class DeploymentBoundaryTest(unittest.TestCase):
@@ -43,6 +46,29 @@ class DeploymentBoundaryTest(unittest.TestCase):
         payload["archive_sha256"] = "incorrect"
         with self.assertRaises(ValueError):
             validate_payload(payload)
+
+    def test_clean_source_override_stays_in_locked_repository(self):
+        with patch("deploy.git", side_effect=[b"/private/tmp/source\n", b"https://github.com/benlagrone/lecrown-platform.git\n"]):
+            self.assertEqual(Path("/private/tmp/source"), validate_source(Path("/private/tmp/source")))
+        with patch("deploy.git", side_effect=[b"/private/tmp/source\n", b"https://github.com/other/repository.git\n"]):
+            with self.assertRaises(ValueError):
+                validate_source(Path("/private/tmp/source"))
+
+    def test_worker_health_requires_successful_pass_of_exact_revision(self):
+        import json
+        with patch("install_release.run", side_effect=["running healthy", json.dumps({"status": "ok", "source_sha": "a" * 40, "count": 22})]):
+            self.assertEqual(22, pursuit_health("a" * 40)["count"])
+        with patch("install_release.run", return_value="running unhealthy"), patch("install_release.time.sleep"):
+            with self.assertRaises(RuntimeError):
+                pursuit_health("a" * 40)
+
+    def test_rollback_removes_only_development_project_orphans(self):
+        import json
+        with patch("pathlib.Path.read_text", return_value=json.dumps({"vhosts": {}, "previous_release": {"source_sha": "old"}})), \
+             patch("install_release.shutil.copy2"), patch("install_release.run"), \
+             patch("install_release.private_write"), patch("install_release.compose") as compose:
+            rollback(Path("/backup"), {})
+            self.assertEqual(("up", "-d", "--remove-orphans"), compose.call_args.args[1:])
 
 
 if __name__ == "__main__":

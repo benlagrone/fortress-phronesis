@@ -19,6 +19,9 @@ x-runtime: &runtime
   GOV_CONTRACT_REQUEST_TIMEOUT_SECONDS: '12'
   PROCUREMENT_CANDIDATE_JSON_PATH: /app/data/procurement-candidates.json
   PROCUREMENT_COLLECTION_INTERVAL_SECONDS: '900'
+  CRM_PURSUIT_POLL_SECONDS: '60'
+  CRM_PURSUIT_STATE_DIR: /app/data/crm-pursuit-scoring
+  SOURCE_SHA: ${SOURCE_SHA:?Source revision is required}
 
 services:
   backend:
@@ -57,6 +60,23 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+  pursuit-ranker:
+    image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
+    restart: unless-stopped
+    command: [python, -u, -m, app.jobs.score_crm_opportunities]
+    environment: *runtime
+    volumes:
+      - development-data:/app/data
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -m, app.jobs.score_crm_opportunities, --healthcheck]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
 
 volumes:
   development-data:
