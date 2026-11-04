@@ -117,6 +117,13 @@ def semantic_health(source_sha):
             script = "import json; print(json.dumps(json.load(open('/app/data/semantic-fit/health.json'))))"
             health = json.loads(run(["docker", "exec", container, "python", "-c", script], capture=True))
             if health.get("status") == "ok" and health.get("source_sha") == source_sha and health.get("evaluation", {}).get("ready"):
+                inspected = json.loads(run(["docker", "inspect", container], capture=True))[0]
+                names = {value.split("=", 1)[0] for value in inspected["Config"]["Env"]}
+                if names & {"SECRET_KEY", "ADMIN_PASSWORD", "ESPOCRM_USERNAME", "ESPOCRM_PASSWORD"}:
+                    raise RuntimeError("Semantic worker must not receive application or CRM credentials")
+                if not inspected["HostConfig"].get("ReadonlyRootfs"):
+                    raise RuntimeError("Semantic worker root filesystem must be read-only")
+                health["credential_free"] = True
                 return health
         time.sleep(5)
     raise RuntimeError("Semantic qualification did not complete a trained, verified production pass")
