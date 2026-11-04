@@ -1,0 +1,29 @@
+services:
+  dna:
+    image: ${DNA_IMAGE:?immutable DNA image required}
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 768m
+    cpus: 1.0
+    tmpfs: [/tmp]
+    ports: ["127.0.0.1:18160:18160"]
+    volumes:
+      - ${DNA_ROOT:?runtime root required}/config:/config:ro
+      - ${DNA_ROOT}/data:/data
+      - ${DNA_ROOT}/spool:/spool:ro
+      - ${DNA_ROOT}/definitions:/definitions:ro
+    labels:
+      com.fortress.capability-owner: fortress-sextant:network-inventory
+      com.fortress.deployment-host: fortress.sextant
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18160/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+networks:
+  default:
+    name: fortress-network-inventory-net
