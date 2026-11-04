@@ -389,6 +389,12 @@ against the mirrored ledgers. This route is a control-plane/operator surface,
 not a Pericope feature route, and it must not mutate acquisition ledgers or
 trigger source ingestion/publication by itself.
 
+The scheduler-facing `run-scheduled-audit` command currently writes only
+untracked, run-scoped audit JSON and Markdown beneath `tmp/author-acq/`. It is
+not a deployed timer or service. Any installation of a recurring runtime job
+requires the workspace deployment lock, this architecture document, and smoke
+checks to be updated in the same change.
+
 The plan does not add a public route, host port, deployed service, environment
 variable, or deployment path by itself. If promoted from plan to runtime, the
 workspace deployment lock, this architecture document, and smoke checks must be
