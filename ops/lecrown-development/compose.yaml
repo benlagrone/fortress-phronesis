@@ -69,7 +69,20 @@ services:
     image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
     restart: unless-stopped
     command: [python, -u, -m, app.jobs.qualify_semantic_candidates]
-    environment: *runtime
+    environment:
+      APP_NAME: LeCrown Development
+      DATABASE_URL: sqlite:////app/data/lecrown-development.db
+      PROCUREMENT_CANDIDATE_JSON_PATH: /app/data/procurement-candidates.json
+      SEMANTIC_FIT_ENABLED: 'true'
+      SEMANTIC_FIT_STATE_DIR: /app/data/semantic-fit
+      SEMANTIC_DESCRIPTION_BATCH_SIZE: '5'
+      HF_HUB_OFFLINE: '1'
+      SOURCE_SHA: ${SOURCE_SHA:?Source revision is required}
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
     volumes:
       - development-data:/app/data
     depends_on:

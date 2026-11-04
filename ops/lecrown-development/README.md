@@ -75,6 +75,10 @@ existing account records; neither bootstrap credentials nor existing users are r
 - `--inspect-candidates NEW_PRIVATE_FILE --apply --ssh-env FILE` writes a mode-0600,
   read-only audit of retained candidates, source payloads and feedback without
   printing those contents. The output must be a new file, never an overwritten backup.
+  The semantic worker receives only its database/candidate/model settings, not the
+  application's signing key, administrator password or EspoCRM credentials. Its
+  root filesystem is read-only, Linux capabilities are dropped, privilege escalation
+  is disabled, and browser scratch space is a temporary filesystem.
 
 ## Rollback
 

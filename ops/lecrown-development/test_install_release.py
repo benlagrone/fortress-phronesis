@@ -79,6 +79,14 @@ class DeploymentBoundaryTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 semantic_health("a" * 40)
 
+    def test_semantic_worker_has_no_app_or_crm_credentials(self):
+        text = (Path(__file__).parent / "compose.yaml").read_text()
+        worker = text.split("  semantic-qualifier:\n", 1)[1].split("  pursuit-ranker:", 1)[0]
+        for secret in ["*runtime", "ADMIN_PASSWORD", "ESPOCRM_PASSWORD", "SECRET_KEY"]:
+            self.assertNotIn(secret, worker)
+        self.assertIn("read_only: true", worker)
+        self.assertIn("no-new-privileges:true", worker)
+
 
 if __name__ == "__main__":
     unittest.main()
