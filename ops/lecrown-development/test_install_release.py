@@ -72,8 +72,8 @@ class DeploymentBoundaryTest(unittest.TestCase):
 
     def test_semantic_health_requires_trained_exact_revision(self):
         import json
-        health = {"status": "ok", "source_sha": "a" * 40, "evaluation": {"ready": True}, "training_count": 499}
-        inspected = [{"Config": {"Env": ["DATABASE_URL=test"]}, "HostConfig": {"ReadonlyRootfs": True}}]
+        health = {"status": "ok", "source_sha": "a" * 40, "evaluation": {"ready": True}, "training_count": 499, "checked_at": "2026-11-04T22:00:00Z"}
+        inspected = [{"Config": {"Env": ["DATABASE_URL=test"]}, "HostConfig": {"ReadonlyRootfs": True}, "State": {"StartedAt": "2026-11-04T21:59:00Z"}}]
         with patch("install_release.run", side_effect=["running healthy", json.dumps(health), json.dumps(inspected)]):
             self.assertEqual(499, semantic_health("a" * 40)["training_count"])
         with patch("install_release.run", return_value="running unhealthy"), patch("install_release.time.sleep"):

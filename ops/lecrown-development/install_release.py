@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime
 import hashlib
 import io
 import json
@@ -123,7 +124,14 @@ def semantic_health(source_sha):
                     raise RuntimeError("Semantic worker must not receive application or CRM credentials")
                 if not inspected["HostConfig"].get("ReadonlyRootfs"):
                     raise RuntimeError("Semantic worker root filesystem must be read-only")
+                started = inspected.get("State", {}).get("StartedAt")
+                def stamp(value):
+                    return datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", value).replace("Z", "+00:00"))
+                if not started or stamp(health["checked_at"]) < stamp(started):
+                    time.sleep(5)
+                    continue
                 health["credential_free"] = True
+                health["container_started_at"] = started
                 return health
         time.sleep(5)
     raise RuntimeError("Semantic qualification did not complete a trained, verified production pass")
