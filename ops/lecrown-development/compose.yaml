@@ -22,6 +22,10 @@ x-runtime: &runtime
   CRM_PURSUIT_POLL_SECONDS: '60'
   CRM_PURSUIT_STATE_DIR: /app/data/crm-pursuit-scoring
   SOURCE_SHA: ${SOURCE_SHA:?Source revision is required}
+  SEMANTIC_FIT_ENABLED: 'true'
+  SEMANTIC_FIT_STATE_DIR: /app/data/semantic-fit
+  SEMANTIC_DESCRIPTION_BATCH_SIZE: '5'
+  HF_HUB_OFFLINE: '1'
 
 services:
   backend:
@@ -60,6 +64,23 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+  semantic-qualifier:
+    image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
+    restart: unless-stopped
+    command: [python, -u, -m, app.jobs.qualify_semantic_candidates]
+    environment: *runtime
+    volumes:
+      - development-data:/app/data
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -m, app.jobs.qualify_semantic_candidates, --healthcheck]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 600s
 
   pursuit-ranker:
     image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}

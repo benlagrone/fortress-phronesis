@@ -43,6 +43,7 @@ def main():
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--rollback", help="Exact Development backup directory from a release receipt")
     parser.add_argument("--verify", action="store_true", help="Read back the deployed release and worker health")
+    parser.add_argument("--inspect-candidates", type=Path, help="Private read-only candidate/feedback audit output")
     args = parser.parse_args()
     lock = json.loads(LOCK.read_text())
     if lock["compose_project"] != "lecrown-development" or lock["host_ports"] != {"api": "18045", "frontend": "13095"}:
@@ -50,9 +51,9 @@ def main():
     subprocess.run(["python3", str(WORKSPACE / "workspace-deployment/checks/validate_locks.py"),
                     "--app", "lecrown-development"], check=True)
     source_sha = None
-    if args.rollback and args.verify:
-        parser.error("rollback and verify are mutually exclusive")
-    if not args.rollback and not args.verify:
+    if sum(bool(x) for x in (args.rollback, args.verify, args.inspect_candidates)) > 1:
+        parser.error("rollback, verify and candidate inspection are mutually exclusive")
+    if not args.rollback and not args.verify and not args.inspect_candidates:
         source = validate_source(args.source_root)
         if not args.source_sha:
             parser.error("--source-sha is required for a release")
@@ -61,7 +62,7 @@ def main():
             raise SystemExit("Application source differs from the selected commit")
         if git("ls-files", "--others", "--exclude-standard", "platform/backend", "platform/frontend", source=source).strip():
             raise SystemExit("Untracked application files must be reviewed before release")
-    print(json.dumps({"action": "verify" if args.verify else "rollback" if args.rollback else "deploy", "apply": args.apply,
+    print(json.dumps({"action": "inspect-candidates" if args.inspect_candidates else "verify" if args.verify else "rollback" if args.rollback else "deploy", "apply": args.apply,
                       "source_sha": source_sha, "host": "89.117.151.145", "project": "lecrown-development",
                       "development_ports": {"frontend": 13095, "api": 18045}, "properties_ports_unchanged": [13084, 18035]}), flush=True)
     if not args.apply:
@@ -73,7 +74,9 @@ def main():
     if not password:
         raise SystemExit("Deployment connection credential is missing")
     installer = (HERE / "install_release.py").read_text()
-    if args.verify:
+    if args.inspect_candidates:
+        payload = {"action": "inspect-candidates"}
+    elif args.verify:
         payload = {"action": "verify"}
     elif args.rollback:
         payload = {"action": "rollback", "backup": args.rollback}
@@ -96,9 +99,17 @@ def main():
         askpass.chmod(0o700)
         env = {**os.environ, "DISPLAY": ":0", "SSH_ASKPASS_REQUIRE": "force", "SSH_ASKPASS": str(askpass), "LECROWN_DEPLOY_PASSWORD": password}
         command = "python3 -c " + shlex.quote(installer)
-        subprocess.run(["ssh", "-o", "PubkeyAuthentication=no", "-o", "PreferredAuthentications=password",
+        result = subprocess.run(["ssh", "-o", "PubkeyAuthentication=no", "-o", "PreferredAuthentications=password",
                         "-o", "NumberOfPasswordPrompts=1", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=20",
-                        "root@89.117.151.145", command], input=json.dumps(payload), text=True, env=env, check=True)
+                        "root@89.117.151.145", command], input=json.dumps(payload), text=True, env=env, check=True,
+                        stdout=subprocess.PIPE if args.inspect_candidates else None)
+        if args.inspect_candidates:
+            audit = json.loads(result.stdout)
+            args.inspect_candidates.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            descriptor = os.open(args.inspect_candidates, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(descriptor, "w") as handle:
+                json.dump(audit, handle)
+            print(json.dumps({"private_snapshot": str(args.inspect_candidates), "count": len(audit["records"])}))
 
 
 if __name__ == "__main__":

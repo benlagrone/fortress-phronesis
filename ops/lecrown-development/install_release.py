@@ -104,8 +104,22 @@ def verify_release():
         wait_health(url)
     if properties_identity() != release["properties_identity"]:
         raise RuntimeError("Properties identity differs from the recorded release")
-    return {"verified": True, "source_sha": release["source_sha"], "pursuit_worker": health,
+    semantic = semantic_health(release["source_sha"]) if release.get("semantic_worker") else None
+    return {"verified": True, "source_sha": release["source_sha"], "pursuit_worker": health, "semantic_worker": semantic,
             "properties_unchanged": True, "backup": release["backup"]}
+
+
+def semantic_health(source_sha):
+    container = "lecrown-development-semantic-qualifier-1"
+    for _ in range(120):
+        status = run(["docker", "inspect", "--format", "{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}", container], capture=True).strip()
+        if status == "running healthy":
+            script = "import json; print(json.dumps(json.load(open('/app/data/semantic-fit/health.json'))))"
+            health = json.loads(run(["docker", "exec", container, "python", "-c", script], capture=True))
+            if health.get("status") == "ok" and health.get("source_sha") == source_sha and health.get("evaluation", {}).get("ready"):
+                return health
+        time.sleep(5)
+    raise RuntimeError("Semantic qualification did not complete a trained, verified production pass")
 
 
 def snapshot_existing_database(backup):
@@ -245,14 +259,16 @@ def install(payload):
         wait_health("https://backoffice.lecrownproperties.com/api/healthz")
         compose(env, "up", "-d", "pursuit-ranker")
         worker_health = pursuit_health(payload["source_sha"])
+        compose(env, "up", "-d", "semantic-qualifier")
+        semantic_worker = semantic_health(payload["source_sha"])
         compose(env, "up", "-d", "collector")
         state = {"source_sha": payload["source_sha"], "archive_sha256": payload["archive_sha256"],
                  "released_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "backup": str(backup),
                  "properties_identity": baseline, "candidate_path": "/app/data/procurement-candidates.json",
-                 "pursuit_worker": worker_health}
+                 "pursuit_worker": worker_health, "semantic_worker": semantic_worker}
         private_write(ROOT / "release.json", json.dumps(state, indent=2))
         print(json.dumps({"deployed": True, "source_sha": payload["source_sha"], "properties_unchanged": True,
-                          "backup": str(backup), "pursuit_worker": worker_health,
+                          "backup": str(backup), "pursuit_worker": worker_health, "semantic_worker": semantic_worker,
                           "app": "https://app.lecrowndevelopment.com/"}), flush=True)
     except Exception:
         rollback(backup, env)
@@ -261,7 +277,20 @@ def install(payload):
 
 def main():
     payload = json.load(sys.stdin)
-    if payload.get("action") == "verify":
+    if payload.get("action") == "inspect-candidates":
+        script = """
+import json
+from sqlalchemy import select
+from app.core.database import SessionLocal
+from app.models.gov_contract import GovContractOpportunity
+from app.services.gov_contract_service import serialize_opportunity
+from app.services.candidate_inbox import snapshot
+with SessionLocal() as db:
+    records = [{**serialize_opportunity(row).model_dump(mode='json'), 'raw_payload': row.raw_payload} for row in db.scalars(select(GovContractOpportunity))]
+print(json.dumps({'records': records, 'inbox': snapshot()}))
+"""
+        print(run(["docker", "exec", "lecrown-development-backend-1", "python", "-c", script], capture=True), end="")
+    elif payload.get("action") == "verify":
         print(json.dumps(verify_release()), flush=True)
     elif payload.get("action") == "rollback":
         backup = Path(payload["backup"]).resolve()

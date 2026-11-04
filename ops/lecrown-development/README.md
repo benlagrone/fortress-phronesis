@@ -62,6 +62,19 @@ existing account records; neither bootstrap credentials nor existing users are r
   The installer requires a successful verified CRM pass and healthy worker before
   declaring deployment complete. Read it back with `--verify --apply --ssh-env FILE`.
 - Record source SHA, archive digest, backup path, and release timestamp in `release.json`.
+- Before this release, fit feedback used title overlap. The new portless
+  `semantic-qualifier` uses local neural embeddings, full captured descriptions,
+  a classifier trained on current High/Low ratings, and LeCrown capability gates.
+  `SEMANTIC_FIT_ENABLED=true` enables the projection; private state lives in
+  `/app/data/semantic-fit`. No candidate text is sent to an external AI API.
+  Public description collection uses five-record batches, six-second pacing and
+  the existing collector lock/cooldown; ordinary headless pages do not solve
+  challenges or log in. Missing/blocked descriptions remain reviewable.
+  Deployment requires healthy, trained worker output from the exact source SHA;
+  `--verify` reads this back. No ports, networks, credentials or CRM business fields change.
+- `--inspect-candidates NEW_PRIVATE_FILE --apply --ssh-env FILE` writes a mode-0600,
+  read-only audit of retained candidates, source payloads and feedback without
+  printing those contents. The output must be a new file, never an overwritten backup.
 
 ## Rollback
 

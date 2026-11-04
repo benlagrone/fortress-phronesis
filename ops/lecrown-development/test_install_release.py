@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from install_release import new_vhost_text, pursuit_health, rollback, validate_payload
+from install_release import new_vhost_text, pursuit_health, semantic_health, rollback, validate_payload
 from deploy import validate_source
 
 
@@ -69,6 +69,15 @@ class DeploymentBoundaryTest(unittest.TestCase):
              patch("install_release.private_write"), patch("install_release.compose") as compose:
             rollback(Path("/backup"), {})
             self.assertEqual(("up", "-d", "--remove-orphans"), compose.call_args.args[1:])
+
+    def test_semantic_health_requires_trained_exact_revision(self):
+        import json
+        health = {"status": "ok", "source_sha": "a" * 40, "evaluation": {"ready": True}, "training_count": 499}
+        with patch("install_release.run", side_effect=["running healthy", json.dumps(health)]):
+            self.assertEqual(499, semantic_health("a" * 40)["training_count"])
+        with patch("install_release.run", return_value="running unhealthy"), patch("install_release.time.sleep"):
+            with self.assertRaises(RuntimeError):
+                semantic_health("a" * 40)
 
 
 if __name__ == "__main__":
