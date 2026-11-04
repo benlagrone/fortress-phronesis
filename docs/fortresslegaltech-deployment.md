@@ -1,0 +1,114 @@
+# Fortress Legal Technologies Deployment
+
+This document is the production implementation contract for `fortresslegaltech.com`. The source application lives in `/Users/benjaminlagrone/Documents/projects/fortresslegaltech.com`; operational Compose, nginx, TLS, and host routing remain owned by the `fortress-phronesis` deployment repository. That repository name does not make the physical home-LAN Phronesis machine a runtime dependency.
+
+## Locked Runtime
+
+- Deployment target: Contabo `vmi2669159`
+- Stack root: `/srv/fortresslegaltech`
+- Compose file: `docker-compose.fortresslegaltech.yml`
+- Compose project: `fortresslegaltech`
+- Service: `fortresslegaltech`
+- Image: `ghcr.io/benlagrone/fortresslegaltech:sha-<commit>`
+- Host bind: `127.0.0.1:18042`
+- Public hosts: `https://fortresslegaltech.com/` and `https://www.fortresslegaltech.com/`
+
+The application container is never exposed on a public host interface. Host nginx is the only public entry point.
+
+## Current Gate
+
+The runtime contract is prepared but must not be represented as deployed until all of these are true:
+
+1. `benlagrone/fortresslegaltech.com` exists and the source commit is pushed.
+2. The matching immutable GHCR image exists.
+3. The Contabo deployment checkout is clean and synchronized to the deployment commit.
+4. Namecheap DNS points the apex and `www` records to the authorized public host.
+5. Local health, nginx bootstrap, ACME issuance, TLS routing, and public acceptance checks pass.
+
+## Deploy
+
+Run from the isolated application stack root. The deployment artifact is copied
+from the synchronized `fortress-phronesis` deployment repository; the production checkout
+is not used as mutable application storage.
+
+```bash
+FORTRESSLEGALTECH_IMAGE=ghcr.io/benlagrone/fortresslegaltech:sha-<commit> \
+docker compose -p fortresslegaltech -f docker-compose.fortresslegaltech.yml pull fortresslegaltech
+
+FORTRESSLEGALTECH_IMAGE=ghcr.io/benlagrone/fortresslegaltech:sha-<commit> \
+docker compose -p fortresslegaltech -f docker-compose.fortresslegaltech.yml up -d fortresslegaltech
+
+docker compose -p fortresslegaltech -f docker-compose.fortresslegaltech.yml ps
+curl -fsS http://127.0.0.1:18042/healthz
+curl -fsS http://127.0.0.1:18042/expunction >/dev/null
+```
+
+Do not set `FORTRESSLEGALTECH_LEGAL_API_BASE_URL` until an authenticated server-to-server route is approved. The public app remains useful with that optional capability unconfigured and does not expose personal Fortress data.
+
+## Tyler Texas STAGE
+
+The Tyler EFSP adapter is server-side only. Its issued certificate, encrypted private key, and password file live under `/srv/fortresslegaltech/secrets/tyler-stage` on the deployment host. Keep the directory root-owned with mode `0700`. Keep each file owned by `root`, grouped to the container's fixed app GID `10001`, and mode `0640`; the root-only parent directory prevents host users from traversing to the files while Compose exposes them read-only to the non-root application process through `/run/secrets`.
+
+The approved STAGE host is `https://texas-stage.tylertech.cloud`. Validate certificate authentication and the CodeService response from the deployed image without exposing a public route:
+
+```bash
+docker compose -p fortresslegaltech -f docker-compose.fortresslegaltech.yml \
+  exec -T fortresslegaltech fortress-tyler-stage-probe
+```
+
+A successful probe reports HTTP 200 and a validated archive containing only `locations.xml`. Never print, commit, copy into the image, or return the private key, password, CMS header, or provider payload through a browser endpoint.
+
+## Tyler STAGE Callback
+
+The two exact public callback paths are owned by the `fortresslegaltech.com`
+nginx vhost and proxy to the same Contabo-hosted Fortress Legal application on
+loopback port `18042`:
+
+- `GET /legal/api/efsp/tyler/stage/callback/healthz`
+- `POST /legal/api/efsp/tyler/stage/callback`
+
+No prefix route is exposed. Phronesis and the home LAN are not runtime
+dependencies. The callback route does not use interactive Basic Auth because
+Tyler cannot supply it; the receiver instead verifies Tyler WS-Security inside
+the public application. Before activation, place the Tyler STAGE root at
+`secrets/tyler-stage/tylerofsefmrootsha2.crt`, create
+`state/tyler-stage-callback` owned by UID/GID `10001:10001` with mode `0700`,
+and set `FORTRESSLEGALTECH_TYLER_STAGE_CALLBACK_ENABLED=true`. The container
+keeps `TYLER_STAGE_CALLBACK_SIGNATURE_REQUIRED=true` fixed. Do not install or
+reload this vhost until the loopback health response reports `ok: true`,
+signature validation enabled, and the trust anchor ready.
+
+Before requesting Tyler callback registration, verify externally that the exact
+health path returns HTTP 200, malformed or unsigned callback requests are
+rejected, oversized payloads are rejected, and an adjacent path remains routed
+to the public application rather than the callback receiver. Retain only
+redacted, correlation-bound evidence.
+
+## DNS And TLS
+
+1. Install `deploy/nginx/fortresslegaltech.com.bootstrap.conf` only after the container health checks pass.
+2. Point Namecheap apex `A` and `www` records at the authorized public host.
+3. Verify public DNS from an external resolver.
+4. Issue one certificate covering `fortresslegaltech.com` and `www.fortresslegaltech.com`.
+5. Replace the bootstrap vhost with `deploy/nginx/fortresslegaltech.com.conf`.
+6. Run `nginx -t` before every reload.
+
+## Acceptance
+
+```bash
+curl -fsS https://fortresslegaltech.com/healthz
+curl -fsS https://fortresslegaltech.com/expunction >/dev/null
+curl -fsS https://fortresslegaltech.com/api/v1/workflows/expunction >/dev/null
+curl -fsS https://fortresslegaltech.com/legal/api/efsp/tyler/stage/callback/healthz
+test "$(curl -sS -o /dev/null -w '%{http_code}' \
+  -H 'Content-Type: application/xml' \
+  --data '<not-valid-callback/>' \
+  https://fortresslegaltech.com/legal/api/efsp/tyler/stage/callback)" = "400"
+curl -fsSI https://www.fortresslegaltech.com/ | grep -i '^location: https://fortresslegaltech.com/'
+```
+
+Browser acceptance must verify desktop and mobile layouts, the Civil/Expunction submenu, and a successful non-persistent intake preview.
+
+## Rollback
+
+Set `FORTRESSLEGALTECH_IMAGE` to the prior immutable `sha-<commit>` image and rerun the same Compose `up -d` command. Verify loopback health before leaving nginx enabled.

@@ -1,6 +1,20 @@
 schema_version: 1
 environment: prod
 apps:
+  fortresslegaltech:
+    enabled: false
+    release_channel: candidate
+    image_repo: ghcr.io/benlagrone/fortresslegaltech
+    compose_file: docker-compose.fortresslegaltech.yml
+    compose_project: fortresslegaltech
+    service: fortresslegaltech
+    local_health_urls:
+      - http://127.0.0.1:18042/healthz
+      - http://127.0.0.1:18042/expunction
+      - http://127.0.0.1:18042/api/v1/workflows/expunction
+    public_urls:
+      - https://fortresslegaltech.com/
+      - https://www.fortresslegaltech.com/
   unicornjump:
     enabled: true
     release_channel: stable
