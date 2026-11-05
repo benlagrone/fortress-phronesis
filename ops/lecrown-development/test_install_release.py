@@ -4,9 +4,9 @@ import io
 import tarfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from install_release import new_vhost_text, pursuit_health, semantic_health, rollback, validate_payload
+from install_release import new_vhost_text, pursuit_health, semantic_health, rollback, validate_payload, wait_frontend_health
 from deploy import validate_source
 
 
@@ -61,6 +61,16 @@ class DeploymentBoundaryTest(unittest.TestCase):
         with patch("install_release.run", return_value="running unhealthy"), patch("install_release.time.sleep"):
             with self.assertRaises(RuntimeError):
                 pursuit_health("a" * 40)
+
+    def test_frontend_health_retries_a_startup_connection_race(self):
+        response = Mock()
+        response.__enter__ = Mock(return_value=Mock(status=200))
+        response.__exit__ = Mock(return_value=False)
+        with patch("install_release.urllib.request.urlopen", side_effect=[ConnectionRefusedError(), response]) as urlopen, \
+             patch("install_release.time.sleep") as sleep:
+            wait_frontend_health("http://127.0.0.1:13095/container-healthz")
+        self.assertEqual(2, urlopen.call_count)
+        sleep.assert_called_once_with(2)
 
     def test_rollback_removes_only_development_project_orphans(self):
         import json

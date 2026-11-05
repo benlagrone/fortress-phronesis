@@ -80,6 +80,18 @@ def wait_health(url):
     raise RuntimeError(f"Health check did not pass: {url}")
 
 
+def wait_frontend_health(url):
+    for _ in range(45):
+        try:
+            with urllib.request.urlopen(url, timeout=20) as response:
+                if response.status == 200:
+                    return
+        except Exception:
+            pass
+        time.sleep(2)
+    raise RuntimeError(f"Frontend health check did not pass: {url}")
+
+
 def compose(env, *args):
     return run(["docker", "compose", "-p", "lecrown-development", "-f", str(ROOT / "compose.yaml"), *args], env=env)
 
@@ -256,9 +268,7 @@ def install(payload):
         capabilities = http_json("http://127.0.0.1:18045/contracts/capabilities", token=login["access_token"])
         if not capabilities.get("candidate_inbox_enabled"):
             raise RuntimeError("Candidate inbox is not enabled in the new runtime")
-        with urllib.request.urlopen("http://127.0.0.1:13095/container-healthz", timeout=20) as response:
-            if response.status != 200:
-                raise RuntimeError("Frontend health check failed")
+        wait_frontend_health("http://127.0.0.1:13095/container-healthz")
         for domain, (old, new) in ROUTES.items():
             path = targets[domain]
             private_write(path, new_vhost_text(domain, path.read_text()))
