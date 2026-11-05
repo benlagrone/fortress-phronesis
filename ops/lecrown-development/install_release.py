@@ -286,7 +286,8 @@ def install(payload):
         worker_health = pursuit_health(payload["source_sha"])
         compose(env, "up", "-d", "semantic-qualifier")
         semantic_worker = semantic_health(payload["source_sha"])
-        compose(env, "up", "-d", "collector")
+        # Sextant owns the timer; keep the collector service defined for rollback only.
+        compose(env, "stop", "-t", "180", "collector")
         state = {"source_sha": payload["source_sha"], "archive_sha256": payload["archive_sha256"],
                  "released_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "backup": str(backup),
                  "properties_identity": baseline, "candidate_path": "/app/data/procurement-candidates.json",

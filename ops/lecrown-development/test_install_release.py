@@ -98,6 +98,11 @@ class DeploymentBoundaryTest(unittest.TestCase):
         self.assertIn("read_only: true", worker)
         self.assertIn("no-new-privileges:true", worker)
 
+    def test_sextant_schedule_disables_duplicate_collector(self):
+        text = (Path(__file__).parent / "install_release.py").read_text()
+        self.assertIn('compose(env, "stop", "-t", "180", "collector")', text)
+        self.assertNotIn('compose(env, "up", "-d", "collector")', text)
+
 
 if __name__ == "__main__":
     unittest.main()
