@@ -95,6 +95,40 @@ services:
       retries: 3
       start_period: 600s
 
+  semantic-promoter:
+    image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
+    restart: unless-stopped
+    command: [python, -u, -m, app.jobs.promote_semantic_candidates]
+    environment:
+      APP_NAME: LeCrown Development
+      DATABASE_URL: sqlite:////app/data/lecrown-development.db
+      ESPOCRM_BASE_URL: https://crm.lecrowndevelopment.com
+      ESPOCRM_USERNAME: ${ESPOCRM_USERNAME:?EspoCRM login is required}
+      ESPOCRM_PASSWORD: ${ESPOCRM_PASSWORD:?EspoCRM password is required}
+      PROCUREMENT_CANDIDATE_JSON_PATH: /app/data/procurement-candidates.json
+      SEMANTIC_FIT_ENABLED: 'true'
+      SEMANTIC_FIT_STATE_DIR: /app/data/semantic-fit
+      SEMANTIC_AUTO_PROMOTE_ENABLED: 'true'
+      SEMANTIC_PROMOTION_STATE_DIR: /app/data/semantic-promotion
+      SEMANTIC_PROMOTION_POLL_SECONDS: '60'
+      SOURCE_SHA: ${SOURCE_SHA:?Source revision is required}
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - development-data:/app/data
+    depends_on:
+      semantic-qualifier:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -m, app.jobs.promote_semantic_candidates, --healthcheck]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+
   pursuit-ranker:
     image: lecrown-development-api:sha-${SOURCE_SHA:?Source revision is required}
     restart: unless-stopped

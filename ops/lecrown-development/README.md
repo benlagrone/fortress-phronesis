@@ -79,6 +79,12 @@ existing account records; neither bootstrap credentials nor existing users are r
   application's signing key, administrator password or EspoCRM credentials. Its
   root filesystem is read-only, Linux capabilities are dropped, privilege escalation
   is disabled, and browser scratch space is a temporary filesystem.
+- The portless `semantic-promoter` is the only semantic worker with scoped EspoCRM
+  credentials. It creates a Prospecting Opportunity only for an open, unreviewed,
+  current `semantic_high` candidate with a captured substantive description. The
+  durable candidate marker and EspoCRM readback make the write idempotent. Human
+  High/Low ratings, Low fits, missing descriptions, RFIs, and bid submission remain
+  outside this automation; amount and close date remain unknown until qualified.
 
 ## Rollback
 

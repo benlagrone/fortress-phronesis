@@ -118,7 +118,9 @@ def verify_release():
     if properties_identity() != release["properties_identity"]:
         raise RuntimeError("Properties identity differs from the recorded release")
     semantic = semantic_health(release["source_sha"]) if release.get("semantic_worker") else None
+    promotion = semantic_promotion_health(release["source_sha"]) if release.get("semantic_promotion_worker") else None
     return {"verified": True, "source_sha": release["source_sha"], "pursuit_worker": health, "semantic_worker": semantic,
+            "semantic_promotion_worker": promotion,
             "properties_unchanged": True, "backup": release["backup"]}
 
 
@@ -147,6 +149,35 @@ def semantic_health(source_sha):
                 return health
         time.sleep(5)
     raise RuntimeError("Semantic qualification did not complete a trained, verified production pass")
+
+
+def semantic_promotion_health(source_sha):
+    container = "lecrown-development-semantic-promoter-1"
+    for _ in range(48):
+        status = run(["docker", "inspect", "--format", "{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}", container], capture=True).strip()
+        if status == "running healthy":
+            script = "import json; print(json.dumps(json.load(open('/app/data/semantic-promotion/health.json'))))"
+            health = json.loads(run(["docker", "exec", container, "python", "-c", script], capture=True))
+            if health.get("status") == "ok" and health.get("source_sha") == source_sha:
+                inspected = json.loads(run(["docker", "inspect", container], capture=True))[0]
+                names = {value.split("=", 1)[0] for value in inspected["Config"]["Env"]}
+                if names & {"SECRET_KEY", "ADMIN_PASSWORD"}:
+                    raise RuntimeError("Semantic promotion worker must not receive application credentials")
+                if not {"ESPOCRM_USERNAME", "ESPOCRM_PASSWORD"}.issubset(names):
+                    raise RuntimeError("Semantic promotion worker requires scoped EspoCRM credentials")
+                if not inspected["HostConfig"].get("ReadonlyRootfs"):
+                    raise RuntimeError("Semantic promotion worker root filesystem must be read-only")
+                started = inspected.get("State", {}).get("StartedAt")
+                def stamp(value):
+                    return datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", value).replace("Z", "+00:00"))
+                if not started or stamp(health["checked_at"]) < stamp(started):
+                    time.sleep(5)
+                    continue
+                health["crm_credentials_scoped"] = True
+                health["container_started_at"] = started
+                return health
+        time.sleep(5)
+    raise RuntimeError("Semantic promotion did not complete a verified production pass")
 
 
 def snapshot_existing_database(backup):
@@ -286,15 +317,19 @@ def install(payload):
         worker_health = pursuit_health(payload["source_sha"])
         compose(env, "up", "-d", "semantic-qualifier")
         semantic_worker = semantic_health(payload["source_sha"])
+        compose(env, "up", "-d", "semantic-promoter")
+        semantic_promotion_worker = semantic_promotion_health(payload["source_sha"])
         # Sextant owns the timer; keep the collector service defined for rollback only.
         compose(env, "stop", "-t", "180", "collector")
         state = {"source_sha": payload["source_sha"], "archive_sha256": payload["archive_sha256"],
                  "released_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "backup": str(backup),
                  "properties_identity": baseline, "candidate_path": "/app/data/procurement-candidates.json",
-                 "pursuit_worker": worker_health, "semantic_worker": semantic_worker}
+                 "pursuit_worker": worker_health, "semantic_worker": semantic_worker,
+                 "semantic_promotion_worker": semantic_promotion_worker}
         private_write(ROOT / "release.json", json.dumps(state, indent=2))
         print(json.dumps({"deployed": True, "source_sha": payload["source_sha"], "properties_unchanged": True,
                           "backup": str(backup), "pursuit_worker": worker_health, "semantic_worker": semantic_worker,
+                          "semantic_promotion_worker": semantic_promotion_worker,
                           "app": "https://app.lecrowndevelopment.com/"}), flush=True)
     except Exception:
         rollback(backup, env)

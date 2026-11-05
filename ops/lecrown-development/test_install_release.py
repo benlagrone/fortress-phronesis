@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from install_release import new_vhost_text, pursuit_health, semantic_health, rollback, validate_payload, wait_frontend_health
+from install_release import (new_vhost_text, pursuit_health, rollback, semantic_health,
+                             semantic_promotion_health, validate_payload, wait_frontend_health)
 from deploy import validate_source
 
 
@@ -92,9 +93,28 @@ class DeploymentBoundaryTest(unittest.TestCase):
 
     def test_semantic_worker_has_no_app_or_crm_credentials(self):
         text = (Path(__file__).parent / "compose.yaml").read_text()
-        worker = text.split("  semantic-qualifier:\n", 1)[1].split("  pursuit-ranker:", 1)[0]
+        worker = text.split("  semantic-qualifier:\n", 1)[1].split("  semantic-promoter:", 1)[0]
         for secret in ["*runtime", "ADMIN_PASSWORD", "ESPOCRM_PASSWORD", "SECRET_KEY"]:
             self.assertNotIn(secret, worker)
+        self.assertIn("read_only: true", worker)
+        self.assertIn("no-new-privileges:true", worker)
+
+    def test_semantic_promotion_health_requires_scoped_crm_credentials(self):
+        import json
+        health = {"status": "ok", "source_sha": "a" * 40, "checked_at": "2026-11-04T22:00:00Z"}
+        inspected = [{"Config": {"Env": ["DATABASE_URL=test", "ESPOCRM_USERNAME=test", "ESPOCRM_PASSWORD=test"]},
+                      "HostConfig": {"ReadonlyRootfs": True}, "State": {"StartedAt": "2026-11-04T21:59:00Z"}}]
+        with patch("install_release.run", side_effect=["running healthy", json.dumps(health), json.dumps(inspected)]):
+            self.assertTrue(semantic_promotion_health("a" * 40)["crm_credentials_scoped"])
+
+    def test_semantic_promotion_worker_is_constrained_to_crm_delivery(self):
+        text = (Path(__file__).parent / "compose.yaml").read_text()
+        worker = text.split("  semantic-promoter:\n", 1)[1].split("  pursuit-ranker:", 1)[0]
+        self.assertNotIn("*runtime", worker)
+        self.assertNotIn("SECRET_KEY", worker)
+        self.assertNotIn("ADMIN_PASSWORD", worker)
+        self.assertIn("ESPOCRM_USERNAME", worker)
+        self.assertIn("ESPOCRM_PASSWORD", worker)
         self.assertIn("read_only: true", worker)
         self.assertIn("no-new-privileges:true", worker)
 
