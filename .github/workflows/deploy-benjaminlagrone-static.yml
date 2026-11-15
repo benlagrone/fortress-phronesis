@@ -1,0 +1,95 @@
+name: Deploy Benjamin Lagrone Static Site
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact benlagrone/benjaminlagrone.com commit to deploy
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benjaminlagrone-static-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      DEPLOY_HOST: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_USER }}
+      DEPLOY_ROOT: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_ROOT }}
+      DEPLOY_SSH_KEY: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.SOLOMONIC_CLOCK_DEPLOY_KNOWN_HOSTS }}
+      GHCR_READ_TOKEN: ${{ secrets.SOLOMONIC_CLOCK_GHCR_READ_TOKEN }}
+      ARTICLE_PATH: /2026/10/27/these-are-not-the-droids-you-are-looking-for/
+
+    steps:
+      - name: Validate release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          required=(DEPLOY_HOST DEPLOY_USER DEPLOY_ROOT DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS GHCR_READ_TOKEN)
+          missing=()
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then missing+=("${name}"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required static-site deployment configuration: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Prepare shared Fortress deployment identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Build and replace the static-site container
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "SOURCE_SHA='${SOURCE_SHA}' ARTICLE_PATH='${ARTICLE_PATH}' GHCR_READ_TOKEN='${GHCR_READ_TOKEN}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          IMAGE="ghcr.io/benlagrone/benjaminlagrone-static:sha-${SOURCE_SHA}"
+          echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u benlagrone --password-stdin
+          docker pull "${IMAGE}"
+          if docker inspect benjaminlagrone-static >/dev/null 2>&1; then
+            docker rm -f benjaminlagrone-static
+          fi
+          docker run -d --name benjaminlagrone-static --restart unless-stopped \
+            -p 127.0.0.1:18020:80 "${IMAGE}"
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:18020${ARTICLE_PATH}" | grep -q "These Are Not the Droids You Are Looking For"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+          REMOTE
+
+      - name: Verify the public article and image
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            page="$(curl -fsSL "https://benjaminlagrone.com${ARTICLE_PATH}" || true)"
+            if grep -q "These Are Not the Droids You Are Looking For" <<<"${page}" && \
+              grep -q "these-are-not-the-droids-you-are-looking-for-imlavd-transporter.png" <<<"${page}"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
