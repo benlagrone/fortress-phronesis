@@ -150,3 +150,17 @@ apps:
     public_urls:
       - https://assets.pericopeai.com/healthz
       - https://assets.pericopeai.com/scriptorium-icons/v1/manifest.json
+  # Planned. Not active. The registry flag is enabled: false (there is no
+  # separate planned value). Go-live is blocked until Contabo credential
+  # rotation, key-only SSH, and Benjamin's approval. See docs/sextant-remote.md.
+  sextant-remote-edge:
+    enabled: false
+    release_channel: candidate
+    image_repo: quay.io/oauth2-proxy/oauth2-proxy
+    compose_file: docker-compose.sextant-remote-edge.yml
+    compose_project: sextant-remote-edge
+    service: oauth2-proxy
+    local_health_urls:
+      - http://127.0.0.1:18046/ping
+    public_urls:
+      - https://sextant.lecrowndevelopment.com/

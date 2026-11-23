@@ -1,0 +1,44 @@
+# Sextant remote edge. Prepared config only.
+# Compose project: sextant-remote-edge
+# This stack is not part of docker-compose.pericope.yml.
+# Do not start it until the go-live gate in docs/sextant-remote.md is open.
+#
+# Secrets come from /etc/fortress/sextant-remote-edge.env on the host
+# (root:root, mode 0600). Copy deploy/sextant-remote/.env.example there and
+# fill it on the host. Do not commit that file and do not pass the secrets
+# on the command line.
+#
+# Image pin: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+# (upstream release 2026-11-05). Re-pin deliberately; do not float to :latest.
+#
+# --http-address=0.0.0.0:4180 listens on the container interface so the
+# published host port can reach it. The host publish is 127.0.0.1 only.
+# --upstream=static://202 is a dummy. Host nginx proxies the observer.
+
+name: sextant-remote-edge
+
+services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+    container_name: sextant-oauth2-proxy
+    restart: unless-stopped
+    env_file:
+      - /etc/fortress/sextant-remote-edge.env
+    ports:
+      - "127.0.0.1:18046:4180"
+    command:
+      - --provider=keycloak-oidc
+      - --oidc-issuer-url=https://auth.pericopeai.com/realms/fortress
+      - --client-id=sextant-remote
+      - --redirect-url=https://sextant.lecrowndevelopment.com/oauth2/callback
+      - --allowed-role=sextant-operator
+      - --cookie-secure=true
+      - --cookie-samesite=lax
+      - --cookie-domain=sextant.lecrowndevelopment.com
+      - --reverse-proxy=true
+      - --set-xauthrequest=true
+      - --code-challenge-method=S256
+      - --email-domain=*
+      - --skip-provider-button=true
+      - --http-address=0.0.0.0:4180
+      - --upstream=static://202
