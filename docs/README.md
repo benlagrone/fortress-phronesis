@@ -29,6 +29,7 @@ This directory is the authoritative documentation hub for PericopeAI strategy, d
 - [Release Runbook v1.1.0](release-runbook-v1.1.0.md)
 - [Local Pericope Stack Runbook](local-pericope-stack-runbook.md)
 - [Server Environments](server-environments.md)
+- [Sextant Remote Observer](sextant-remote.md)
 - [Container Runbook (Dev Server)](dev-server-container-runbook.md)
 - [Workspace DS Broker Deployment Contract](workspace-ds-broker-deployment.md)
 - [Roadmap](roadmap.md)

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent example for fortress-sextant. Prepared config only.
+  Copy to ~/Library/LaunchAgents/ after substituting every REPLACE_ME value.
+  launchd does not expand "~". REPLACE_ME_HOME is the absolute home directory
+  so logs land in ~/Library/Logs.
+
+  Do not commit the private key, the real host, or the real user name.
+  GatewayPorts on the Contabo sshd must stay no. The reverse forward is
+  bound to 127.0.0.1:18219 on both ends.
+
+  BatchMode, StrictHostKeyChecking, and UserKnownHostsFile keep the agent
+  from prompting. Pin the server host key into REPLACE_ME_KNOWN_HOSTS_PATH
+  before loading the agent.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fortress.sextant.contabo-observer-tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE_ME_AUTOSSH_PATH</string>
+    <string>-M</string>
+    <string>0</string>
+    <string>-N</string>
+    <string>-o</string>
+    <string>ServerAliveInterval=30</string>
+    <string>-o</string>
+    <string>ServerAliveCountMax=3</string>
+    <string>-o</string>
+    <string>ExitOnForwardFailure=yes</string>
+    <string>-o</string>
+    <string>IdentitiesOnly=yes</string>
+    <string>-o</string>
+    <string>BatchMode=yes</string>
+    <string>-o</string>
+    <string>StrictHostKeyChecking=yes</string>
+    <string>-o</string>
+    <string>UserKnownHostsFile=REPLACE_ME_KNOWN_HOSTS_PATH</string>
+    <string>-i</string>
+    <string>REPLACE_ME_TUNNEL_KEY_PATH</string>
+    <string>-R</string>
+    <string>127.0.0.1:18219:127.0.0.1:18219</string>
+    <string>REPLACE_ME_TUNNEL_USER@REPLACE_ME_CONTABO_HOST</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>AUTOSSH_GATETIME</key>
+    <string>0</string>
+  </dict>
+  <key>KeepAlive</key>
+  <true/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>REPLACE_ME_HOME/Library/Logs/com.fortress.sextant.contabo-observer-tunnel.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>REPLACE_ME_HOME/Library/Logs/com.fortress.sextant.contabo-observer-tunnel.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,21 @@
+schema_version: 1
+app_id: sextant-remote-edge
+display_name: Sextant Remote Edge
+deploy_kind: compose_image
+repo:
+  url: https://github.com/benlagrone/fortress-phronesis
+artifacts:
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+runtime:
+  compose_file: docker-compose.sextant-remote-edge.yml
+  project_name: sextant-remote-edge
+  service: oauth2-proxy
+  host_bind: 127.0.0.1:18046
+release_types:
+  - code_release
+  - rollback
+healthchecks:
+  - type: http
+    url: http://127.0.0.1:18046/ping
+public_urls:
+  - https://sextant.lecrowndevelopment.com/

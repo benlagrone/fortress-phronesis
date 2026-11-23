@@ -12,6 +12,7 @@ scripts/*
 !scripts/verify-pericope-payment-browser-e2e.py
 !scripts/verify-pericope-payment-smoke.py
 !scripts/verify-pericope-prod-smoke.py
+!scripts/smoke-sextant-remote.sh
 .env
 .env*.local
 scripts/.env

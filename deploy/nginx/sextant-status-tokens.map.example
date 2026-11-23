@@ -1,0 +1,18 @@
+# Sextant bot status tokens.
+# One Bearer token per bot. Owned by FortressPhronesis.
+#
+# Install on the host, outside git, as:
+#   /etc/nginx/sextant-status-tokens.map
+# owner root, group root, mode 0600.
+# Never commit the installed file. The nginx master reads it as root.
+#
+# Replace every REPLACE_ME value before install, then delete the placeholder
+# line. Do not leave REPLACE_ME_bot_name in the live map. The match is exact,
+# including the "Bearer " prefix and the single space. Add one quoted line
+# per bot. Do not log $http_authorization.
+
+map $http_authorization $sextant_status_ok {
+    default 0;
+    "Bearer REPLACE_ME_bot_name" 1;
+    # "Bearer REPLACE_ME_other_bot" 1;
+}

@@ -1,0 +1,14 @@
+# Dedicated non-root tunnel user on Contabo. One public key line.
+# Replace REPLACE_ME with the ssh-ed25519 public key generated on
+# fortress-sextant. Never commit the private key.
+#
+# GatewayPorts in sshd_config must stay no (the OpenSSH default). This key
+# may only listen on 127.0.0.1:18219. restrict disables forwarding, then
+# port-forwarding turns forwarding back on for this key only. command runs
+# only if a session is requested; the LaunchAgent uses ssh -N, so the reverse
+# forward stays up and a shell request cannot.
+#
+# AllowTcpForwarding must allow remote forwards (yes or remote). Do not set
+# GatewayPorts clientspecified.
+
+restrict,port-forwarding,permitlisten="127.0.0.1:18219",command="/bin/false" ssh-ed25519 REPLACE_ME
